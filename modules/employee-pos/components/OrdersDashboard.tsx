@@ -5,6 +5,9 @@ import axios from "axios";
 import OrdersNavbar from "./OrdersNavbar";
 import DashboardView from "./DashboardView";
 import SalesSummaryView from "./SalesSummaryView";
+import ReportsView from "./ReportsView";
+import UpdateProfileView from "./UpdateProfileView";
+import ChangePasswordView from "./ChangePasswordView";
 import ExpenseDashboardView from "./ExpenseDashboardView";
 import POSSidebarDrawer from "./POSSidebarDrawer";
 import OrdersTableView from "./OrdersTableView";
@@ -23,7 +26,7 @@ import toast from "react-hot-toast";
 export default function OrdersDashboard() {
   // ── Sub-tabs ──
   const [activeSubTab, setActiveSubTab] = useState<
-    "dashboard" | "orders" | "sales_summary" | "expense_payout"
+    "dashboard" | "orders" | "sales_summary" | "reports" | "expense_payout" | "update_profile" | "change_password"
   >("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
@@ -125,7 +128,7 @@ export default function OrdersDashboard() {
       const tab = params.get("tab");
       if (
         tab &&
-        ["dashboard", "orders", "sales_summary", "expense_payout"].includes(tab)
+        ["dashboard", "orders", "sales_summary", "reports", "expense_payout", "update_profile", "change_password"].includes(tab)
       ) {
         setActiveSubTab(tab as any);
         if (tab === "dashboard") {
@@ -298,7 +301,13 @@ export default function OrdersDashboard() {
                 ? "Orders"
                 : activeSubTab === "sales_summary"
                   ? "Sales Summary"
-                  : "Expense/Payout"}
+                  : activeSubTab === "reports"
+                    ? "Reports"
+                    : activeSubTab === "update_profile"
+                      ? "Update Profile"
+                      : activeSubTab === "change_password"
+                        ? "Change Password"
+                        : "Expense/Payout"}
           </h1>
 
           <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200">
@@ -484,6 +493,12 @@ export default function OrdersDashboard() {
               />
             ) : activeSubTab === "sales_summary" ? (
               <SalesSummaryView selectedDate={singleDate} />
+            ) : activeSubTab === "reports" ? (
+              <ReportsView />
+            ) : activeSubTab === "update_profile" ? (
+              <UpdateProfileView />
+            ) : activeSubTab === "change_password" ? (
+              <ChangePasswordView />
             ) : activeSubTab === "expense_payout" ? (
               <ExpenseDashboardView />
             ) : (
@@ -506,6 +521,9 @@ export default function OrdersDashboard() {
             tabKey === "dashboard" ||
             tabKey === "orders" ||
             tabKey === "sales_summary" ||
+            tabKey === "reports" ||
+            tabKey === "update_profile" ||
+            tabKey === "change_password" ||
             tabKey === "expense_payout"
           ) {
             setActiveSubTab(tabKey as any);
