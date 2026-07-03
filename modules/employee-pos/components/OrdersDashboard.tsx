@@ -5,10 +5,20 @@ import axios from "axios";
 import OrdersNavbar from "./OrdersNavbar";
 import DashboardView from "./DashboardView";
 import SalesSummaryView from "./SalesSummaryView";
+import ReportsView from "./ReportsView";
+import UpdateProfileView from "./UpdateProfileView";
+import ChangePasswordView from "./ChangePasswordView";
+import DummyReportView from "./DummyReportView";
+import ItemSalesView from "./ItemSalesView";
+import HourlySalesView from "./HourlySalesView";
+import MonthlySalesView from "./MonthlySalesView";
 import ExpenseDashboardView from "./ExpenseDashboardView";
 import POSSidebarDrawer from "./POSSidebarDrawer";
 import OrdersTableView from "./OrdersTableView";
 import OrderDetailModal from "./OrderDetailModal";
+import FailedTransactionsView from "./FailedTransactionsView";
+import RefundOrdersView from "./RefundOrdersView";
+import CashOutSummaryView from "./CashOutSummaryView";
 import { Order } from "../types";
 import {
   Search,
@@ -23,10 +33,40 @@ import toast from "react-hot-toast";
 export default function OrdersDashboard() {
   // ── Sub-tabs ──
   const [activeSubTab, setActiveSubTab] = useState<
-    "dashboard" | "orders" | "sales_summary" | "expense_payout"
+    | "dashboard"
+    | "orders"
+    | "sales_summary"
+    | "reports"
+    | "expense_payout"
+    | "update_profile"
+    | "change_password"
+    | "item_sales"
+    | "item_wise_sales"
+    | "hourly_sales"
+    | "cash_out_report"
+    | "cash_out_summary"
+    | "monthly_sales_summary"
+    | "failed_transaction"
+    | "refund_orders"
   >("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+
+  const MORE_TABS = [
+    { key: "item_sales", label: "Item Sales" },
+    // { key: "item_wise_sales", label: "Item Wise Sales" },
+    { key: "hourly_sales", label: "Hourly Sales Report" },
+    { key: "cash_out_report", label: "Cash Out Report" },
+    { key: "cash_out_summary", label: "Cash Out Summary" },
+    { key: "monthly_sales_summary", label: "Monthly Sales Summary" },
+    { key: "failed_transaction", label: "Failed Transaction" },
+    { key: "refund_orders", label: "Refund Orders" },
+  ];
+
+  const isMoreTabActive = MORE_TABS.some((t) => t.key === activeSubTab);
+  const activeMoreTab = MORE_TABS.find((t) => t.key === activeSubTab);
+  const moreButtonLabel = activeMoreTab ? activeMoreTab.label : "More";
 
   // ── Orders State ──
   const [orders, setOrders] = useState<Order[]>([]);
@@ -125,7 +165,23 @@ export default function OrdersDashboard() {
       const tab = params.get("tab");
       if (
         tab &&
-        ["dashboard", "orders", "sales_summary", "expense_payout"].includes(tab)
+        [
+          "dashboard",
+          "orders",
+          "sales_summary",
+          "reports",
+          "expense_payout",
+          "update_profile",
+          "change_password",
+          "item_sales",
+          "item_wise_sales",
+          "hourly_sales",
+          "cash_out_report",
+          "cash_out_summary",
+          "monthly_sales_summary",
+          "failed_transaction",
+          "refund_orders",
+        ].includes(tab)
       ) {
         setActiveSubTab(tab as any);
         if (tab === "dashboard") {
@@ -160,11 +216,43 @@ export default function OrdersDashboard() {
   // ── Sync singleDate to startDate/endDate range ──
   const handleSingleDateChange = (val: string) => {
     setSingleDate(val);
-    if (activeSubTab === "orders") {
+    if (activeSubTab === "orders" || isMoreTabActive) {
       setStartDate(val);
       setEndDate(val);
     }
   };
+
+  // ── Month Selection Helper (Advance Search) ──
+  const handleMonthSelect = (monthIdx: number) => {
+    const currentYear = new Date().getFullYear();
+    const start = new Date(currentYear, monthIdx, 1);
+    const end = new Date(currentYear, monthIdx + 1, 0);
+    const startStr = start.toISOString().slice(0, 10);
+    const endStr = end.toISOString().slice(0, 10);
+    setAdvStartDate(startStr);
+    setAdvEndDate(endStr);
+  };
+
+  // ── Reset Date Ranges on Tab Change ──
+  useEffect(() => {
+    if (!isReady) return;
+    if (activeSubTab === "dashboard") {
+      const defaultStart = getPastDateStr(30);
+      const defaultEnd = getTodayDateStr();
+      setStartDate(defaultStart);
+      setEndDate(defaultEnd);
+      setSingleDate(defaultEnd);
+      setAdvStartDate(defaultStart);
+      setAdvEndDate(defaultEnd);
+    } else if (activeSubTab === "orders" || isMoreTabActive) {
+      const today = getTodayDateStr();
+      setStartDate(today);
+      setEndDate(today);
+      setSingleDate(today);
+      setAdvStartDate(today);
+      setAdvEndDate(today);
+    }
+  }, [activeSubTab, isReady]);
 
   // ── Apply Quick Date Ranges (Advance Search) ──
   const handleQuickRange = (
@@ -236,7 +324,9 @@ export default function OrdersDashboard() {
   };
 
   const handleResetAdvanceSearch = () => {
-    const defaultStart = getPastDateStr(30);
+    const defaultStart = isMoreTabActive
+      ? getTodayDateStr()
+      : getPastDateStr(30);
     const defaultEnd = getTodayDateStr();
     setAdvStartDate(defaultStart);
     setAdvEndDate(defaultEnd);
@@ -244,7 +334,11 @@ export default function OrdersDashboard() {
     setEndDate(defaultEnd);
     setSingleDate(defaultEnd);
     setIsAdvanceSearchOpen(false);
-    toast.success("Filters reset to default last 30 days");
+    toast.success(
+      isMoreTabActive
+        ? "Filters reset to Today"
+        : "Filters reset to default last 30 days",
+    );
   };
 
   const handleClearFilters = () => {
@@ -298,13 +392,36 @@ export default function OrdersDashboard() {
                 ? "Orders"
                 : activeSubTab === "sales_summary"
                   ? "Sales Summary"
-                  : "Expense/Payout"}
+                  : activeSubTab === "reports"
+                    ? "Reports"
+                    : activeSubTab === "update_profile"
+                      ? "Update Profile"
+                      : activeSubTab === "change_password"
+                        ? "Change Password"
+                        : activeSubTab === "item_sales"
+                          ? "Item Sales"
+                          : activeSubTab === "item_wise_sales"
+                            ? "Item Wise Sales"
+                            : activeSubTab === "hourly_sales"
+                              ? "Hourly Sales Report"
+                              : activeSubTab === "cash_out_report"
+                                ? "Cash Out Report"
+                                : activeSubTab === "cash_out_summary"
+                                  ? "Cash Out Summary"
+                                  : activeSubTab === "monthly_sales_summary"
+                                    ? "Monthly Sales Summary"
+                                    : activeSubTab === "failed_transaction"
+                                      ? "Failed Transactions"
+                                      : activeSubTab === "refund_orders"
+                                        ? "Refund Orders"
+                                        : "Expense/Payout"}
           </h1>
 
           <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200">
             <button
               onClick={() => {
                 setActiveSubTab("dashboard");
+                setIsMoreDropdownOpen(false);
                 // Sync range to last 30 days relative to today's actual date
                 setStartDate(getPastDateStr(30));
                 setEndDate(getTodayDateStr());
@@ -320,6 +437,7 @@ export default function OrdersDashboard() {
             <button
               onClick={() => {
                 setActiveSubTab("orders");
+                setIsMoreDropdownOpen(false);
                 // Sync range to selected singleDate
                 setStartDate(singleDate);
                 setEndDate(singleDate);
@@ -335,6 +453,7 @@ export default function OrdersDashboard() {
             <button
               onClick={() => {
                 setActiveSubTab("sales_summary");
+                setIsMoreDropdownOpen(false);
               }}
               className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
                 activeSubTab === "sales_summary"
@@ -344,126 +463,314 @@ export default function OrdersDashboard() {
             >
               Sales Summary
             </button>
+
+            {/* More Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
+                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer flex items-center gap-1 ${
+                  isMoreTabActive
+                    ? "bg-brand-primary text-white shadow-sm"
+                    : "text-neutral-500 hover:text-brand-primary"
+                }`}
+              >
+                <span>{moreButtonLabel}</span>
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform duration-200 ${isMoreDropdownOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {isMoreDropdownOpen && (
+                <>
+                  {/* Backdrop overlay to close dropdown */}
+                  <div
+                    className="fixed inset-0 z-30 cursor-default"
+                    onClick={() => setIsMoreDropdownOpen(false)}
+                  />
+
+                  {/* Dropdown Menu */}
+                  <div className="absolute left-0 mt-2 w-52 bg-white border border-neutral-200 rounded-xl shadow-lg py-1.5 z-40 animate-scale-up font-sans">
+                    {MORE_TABS.map((tab) => {
+                      const isActive = activeSubTab === tab.key;
+                      return (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          onClick={() => {
+                            if (tab.key === "cash_out_report") {
+                              window.location.href = "/employee/orders?tab=reports";
+                            } else {
+                              setActiveSubTab(tab.key as any);
+                            }
+                            setIsMoreDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-[11px] font-750 transition-colors cursor-pointer flex items-center justify-between ${
+                            isActive
+                              ? "bg-brand-primary text-white"
+                              : "text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900"
+                          }`}
+                        >
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Right Side: Filters (Keyword, Status, Payment, Date, More Search) */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Date Picker Input */}
-          <div className="relative">
-            <Calendar
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-            />
-            <input
-              type="date"
-              value={singleDate}
-              onChange={(e) => handleSingleDateChange(e.target.value)}
-              className="bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
-            />
-          </div>
+          {activeSubTab === "cash_out_summary" ? (
+            <>
+              {/* Start Date Picker Input */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
 
-          {/* Keyword Search Input */}
-          <div className="relative w-[180px] sm:w-[220px]">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-            />
-            <input
-              type="text"
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="Search by Order #, Cust"
-              className="w-full bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary hover:border-neutral-350 focus:bg-white transition-all"
-            />
-            {searchKeyword && (
+              {/* End Date Picker Input */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
+
+              {/* More Search Button */}
               <button
-                onClick={() => setSearchKeyword("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                onClick={() => setIsAdvanceSearchOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
               >
-                <X size={11} />
+                <Search size={13} />
+                <span>More Search</span>
               </button>
-            )}
-          </div>
+            </>
+          ) : activeSubTab === "failed_transaction" || activeSubTab === "refund_orders" ? (
+            <>
+              {/* Date Picker Input (Pill style with calendar icon on right) */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={singleDate}
+                  onChange={(e) => handleSingleDateChange(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
 
-          {/* Order Status Select */}
-          {activeSubTab === "orders" && (
-            <div className="relative">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-3 pr-8 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+              {/* Keyword Search Input */}
+              <div className="relative w-[180px] sm:w-[220px]">
+                <input
+                  type="text"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  placeholder="Search By Order #, Custom"
+                  className="w-full bg-white border border-neutral-300 rounded-full px-5 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-455 focus:outline-none focus:border-brand-primary hover:border-neutral-400 transition-all shadow-sm"
+                />
+                {searchKeyword && (
+                  <button
+                    onClick={() => setSearchKeyword("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+
+              {/* Order Status Select */}
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="appearance-none bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm"
+                >
+                  <option value="">Select Order Status</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="pending">Pending</option>
+                </select>
+                <ChevronDown
+                  size={13}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
+
+              {/* More Search Button */}
+              <button
+                onClick={() => setIsAdvanceSearchOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
               >
-                <option value="">Order Status</option>
-                <option value="pending">Pending</option>
-                <option value="preparing">In Preparing</option>
-                <option value="ready">Ready For Pickup</option>
-                <option value="completed">Order Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-              <ChevronDown
-                size={13}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-              />
-            </div>
-          )}
+                <Search size={13} />
+                <span>More Search</span>
+              </button>
+            </>
+          ) : isMoreTabActive ? (
+            <>
+              {/* Date Picker Input (Pill style with calendar icon on right) */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={singleDate}
+                  onChange={(e) => handleSingleDateChange(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
 
-          {/* Payment Method Select */}
-          {activeSubTab === "orders" && (
-            <div className="relative">
-              <select
-                value={paymentFilter}
-                onChange={(e) => setPaymentFilter(e.target.value)}
-                className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-3 pr-8 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+              {/* More Search Button */}
+              <button
+                onClick={() => setIsAdvanceSearchOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
               >
-                <option value="">Payment Status</option>
-                <option value="paid">Paid</option>
-                <option value="unpaid">Unpaid</option>
-              </select>
-              <ChevronDown
-                size={13}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-              />
-            </div>
-          )}
+                <Search size={13} />
+                <span>More Search</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Date Picker Input */}
+              <div className="relative">
+                <Calendar
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                />
+                <input
+                  type="date"
+                  value={singleDate}
+                  onChange={(e) => handleSingleDateChange(e.target.value)}
+                  className="bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+                />
+              </div>
 
-          {/* Advance Search Button */}
-          {activeSubTab === "orders" && (
-            <button
-              onClick={() => setIsAdvanceSearchOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 rounded-lg bg-neutral-50 hover:bg-neutral-100 text-[12px] font-600 text-neutral-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
-            >
-              <SlidersHorizontal size={13} />
-              <span>Advance Search</span>
-            </button>
-          )}
+              {/* Keyword Search Input */}
+              <div className="relative w-[180px] sm:w-[220px]">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                />
+                <input
+                  type="text"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  placeholder="Search by Order #, Cust"
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary hover:border-neutral-350 focus:bg-white transition-all"
+                />
+                {searchKeyword && (
+                  <button
+                    onClick={() => setSearchKeyword("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
 
-          {/* Clear Filters Button */}
-          <button
-            onClick={handleClearFilters}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-600 text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer"
-          >
-            <span>Clear</span>
-          </button>
+              {/* Order Status Select */}
+              {activeSubTab === "orders" && (
+                <div className="relative">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-3 pr-8 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+                  >
+                    <option value="">Order Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="preparing">In Preparing</option>
+                    <option value="ready">Ready For Pickup</option>
+                    <option value="completed">Order Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <ChevronDown
+                    size={13}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                  />
+                </div>
+              )}
 
-          {/* Manual Refresh Trigger */}
-          {activeSubTab === "orders" && (
-            <button
-              onClick={fetchOrders}
-              className={`p-1.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-brand-primary transition-all cursor-pointer ${
-                loading ? "animate-spin" : ""
-              }`}
-              title="Refresh list"
-            >
-              <RefreshCw size={13} />
-            </button>
+              {/* Payment Method Select */}
+              {/* {activeSubTab === "orders" && (
+                <div className="relative">
+                  <select
+                    value={paymentFilter}
+                    onChange={(e) => setPaymentFilter(e.target.value)}
+                    className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-3 pr-8 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+                  >
+                    <option value="">Payment Status</option>
+                    <option value="paid">Paid</option>
+                    <option value="unpaid">Unpaid</option>
+                  </select>
+                  <ChevronDown
+                    size={13}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                  />
+                </div>
+              )} */}
+
+              {/* Advance Search Button */}
+              {activeSubTab === "orders" && (
+                <button
+                  onClick={() => setIsAdvanceSearchOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 rounded-lg bg-neutral-50 hover:bg-neutral-100 text-[12px] font-600 text-neutral-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
+                >
+                  <SlidersHorizontal size={13} />
+                  <span>Advance Search</span>
+                </button>
+              )}
+
+              {/* Clear Filters Button */}
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-600 text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer"
+              >
+                <span>Clear</span>
+              </button>
+
+              {/* Manual Refresh Trigger */}
+              {activeSubTab === "orders" && (
+                <button
+                  onClick={fetchOrders}
+                  className={`p-1.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-brand-primary transition-all cursor-pointer ${
+                    loading ? "animate-spin" : ""
+                  }`}
+                  title="Refresh list"
+                >
+                  <RefreshCw size={13} />
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
 
       {/* ── Main View Container ── */}
       <div className="flex-1 overflow-hidden p-6 bg-brand-bg flex flex-col min-h-0">
-        {loading && (activeSubTab === "dashboard" ? !dashboardMetrics : orders.length === 0) ? (
+        {loading &&
+        (activeSubTab === "dashboard"
+          ? !dashboardMetrics
+          : orders.length === 0) ? (
           <div className="flex-1 flex flex-col items-center justify-center text-neutral-400 font-750 text-[12px] gap-2">
             <span className="animate-spin text-xl">⏳</span>
             <span>Fetching updated dashboard records...</span>
@@ -472,20 +779,67 @@ export default function OrdersDashboard() {
           <>
             {activeSubTab === "dashboard" ? (
               <DashboardView
-                metrics={dashboardMetrics || {
-                  totalOrders: 0,
-                  totalEarnings: 0,
-                  newCustomers: 0,
-                  returningCustomers: 0,
-                  popularDaysData: [],
-                  popularFoodData: []
-                }}
+                metrics={
+                  dashboardMetrics || {
+                    totalOrders: 0,
+                    totalEarnings: 0,
+                    newCustomers: 0,
+                    returningCustomers: 0,
+                    popularDaysData: [],
+                    popularFoodData: [],
+                  }
+                }
                 loading={loading}
               />
             ) : activeSubTab === "sales_summary" ? (
               <SalesSummaryView selectedDate={singleDate} />
+            ) : activeSubTab === "reports" ? (
+              <ReportsView />
+            ) : activeSubTab === "update_profile" ? (
+              <UpdateProfileView />
+            ) : activeSubTab === "change_password" ? (
+              <ChangePasswordView />
             ) : activeSubTab === "expense_payout" ? (
               <ExpenseDashboardView />
+            ) : activeSubTab === "item_sales" ? (
+              <ItemSalesView startDate={startDate} endDate={endDate} />
+            ) : activeSubTab === "hourly_sales" ? (
+              <HourlySalesView startDate={startDate} endDate={endDate} />
+            ) : activeSubTab === "monthly_sales_summary" ? (
+              <MonthlySalesView startDate={startDate} endDate={endDate} />
+            ) : activeSubTab === "failed_transaction" ? (
+              <FailedTransactionsView
+                orders={orders}
+                onSelectOrder={handleSelectOrder}
+                searchKeyword={searchKeyword}
+                statusFilter={statusFilter}
+                selectedDate={singleDate}
+              />
+            ) : activeSubTab === "refund_orders" ? (
+              <RefundOrdersView
+                orders={orders}
+                onSelectOrder={handleSelectOrder}
+                searchKeyword={searchKeyword}
+                statusFilter={statusFilter}
+                selectedDate={singleDate}
+              />
+            ) : activeSubTab === "cash_out_summary" ? (
+              <CashOutSummaryView
+                orders={orders}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            ) : [
+                "item_wise_sales",
+                "cash_out_report",
+              ].includes(activeSubTab) ? (
+              <DummyReportView
+                title={
+                  activeSubTab === "item_wise_sales"
+                    ? "Item Wise Sales"
+                    : "Cash Out Report"
+                }
+              />
             ) : (
               <OrdersTableView
                 orders={filteredOrders}
@@ -503,10 +857,23 @@ export default function OrdersDashboard() {
         activeTab={activeSubTab}
         onSelectTab={(tabKey) => {
           if (
-            tabKey === "dashboard" ||
-            tabKey === "orders" ||
-            tabKey === "sales_summary" ||
-            tabKey === "expense_payout"
+            [
+              "dashboard",
+              "orders",
+              "sales_summary",
+              "reports",
+              "update_profile",
+              "change_password",
+              "expense_payout",
+              "item_sales",
+              "item_wise_sales",
+              "hourly_sales",
+              "cash_out_report",
+              "cash_out_summary",
+              "monthly_sales_summary",
+              "failed_transaction",
+              "refund_orders",
+            ].includes(tabKey)
           ) {
             setActiveSubTab(tabKey as any);
           } else {
@@ -525,8 +892,8 @@ export default function OrdersDashboard() {
             className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-scale-up"
           >
             {/* Modal Header */}
-            <div className="bg-amber-500 text-white px-5 py-3.5 flex items-center justify-between">
-              <h3 className="font-800 text-[13px] uppercase tracking-wide">
+            <div className="bg-brand-primary text-white px-5 py-3.5 flex items-center justify-between">
+              <h3 className="font-850 text-[13px] uppercase tracking-wider">
                 Advance Search
               </h3>
               <button
@@ -542,16 +909,13 @@ export default function OrdersDashboard() {
             <div className="p-5 space-y-4">
               {/* Quick Ranges */}
               <div className="space-y-1.5">
-                <label className="text-[10px] text-neutral-450 font-800 tracking-wider uppercase block">
-                  Quick Ranges
-                </label>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: "today", label: "Today" },
-                    { id: "this_week", label: "This Week" },
-                    { id: "last_week", label: "Last Week" },
-                    { id: "this_month", label: "This Month" },
-                    { id: "last_month", label: "Last Month" },
+                    { id: "this_week", label: "This week" },
+                    { id: "last_week", label: "Last week" },
+                    { id: "this_month", label: "This month" },
+                    { id: "last_month", label: "Last month" },
                   ].map((btn) => (
                     <button
                       key={btn.id}
@@ -565,8 +929,37 @@ export default function OrdersDashboard() {
                 </div>
               </div>
 
+              {/* Month selections */}
+              <div className="space-y-1.5 pt-1.5 border-t border-neutral-100/70">
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    "January",
+                    "February",
+                    "March",
+                    "April",
+                    "May",
+                    "June",
+                    "July",
+                    "August",
+                    "September",
+                    "October",
+                    "November",
+                    "December",
+                  ].map((month, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleMonthSelect(idx)}
+                      className="px-2 py-1 border border-neutral-200 rounded-md bg-white hover:bg-neutral-50 hover:border-neutral-350 text-[10.5px] font-700 text-neutral-600 hover:text-brand-primary transition-all cursor-pointer text-center"
+                    >
+                      {month}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Start and End Date selection */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 pt-1.5 border-t border-neutral-100/70">
                 <div className="space-y-1">
                   <label className="text-[10.5px] text-neutral-500 font-700">
                     Start Date
@@ -595,17 +988,17 @@ export default function OrdersDashboard() {
             </div>
 
             {/* Modal Actions */}
-            <div className="bg-neutral-50 border-t border-neutral-150 p-4 flex items-center justify-end gap-3.5 select-none">
+            <div className="bg-neutral-50 border-t border-neutral-150 p-4 flex items-center justify-end gap-3 select-none">
               <button
                 type="submit"
-                className="px-6 py-1.5 bg-red-700 hover:bg-red-800 text-white text-[11px] font-800 tracking-wide uppercase rounded-lg shadow-sm active:scale-95 transition-all cursor-pointer"
+                className="px-8 py-2 bg-[#881337] hover:bg-[#7F1D1D] active:scale-95 text-white text-[11px] font-800 tracking-wide uppercase rounded-full shadow-sm transition-all cursor-pointer"
               >
                 Search
               </button>
               <button
                 type="button"
                 onClick={handleResetAdvanceSearch}
-                className="px-6 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-800 tracking-wide uppercase rounded-lg shadow-sm active:scale-95 transition-all cursor-pointer"
+                className="px-8 py-2 bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-[11px] font-800 tracking-wide uppercase rounded-full shadow-sm transition-all cursor-pointer"
               >
                 Reset
               </button>

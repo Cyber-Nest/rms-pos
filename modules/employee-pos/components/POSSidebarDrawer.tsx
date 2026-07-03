@@ -31,7 +31,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     { key: 'setting', label: 'Setting', icon: Settings },
     { key: 'update_profile', label: 'Update Profile', icon: UserCheck },
     { key: 'change_password', label: 'Change Password', icon: Lock },
-    { key: 'sound_notification', label: 'Sound Notification', icon: Bell },
+    // { key: 'sound_notification', label: 'Sound Notification', icon: Bell },
     { key: 'reports', label: 'Reports', icon: BarChart3 },
     { key: 'master_logout', label: 'Master Logout', icon: LogOut, isLogout: true },
   ];
@@ -73,8 +73,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key || 
-                             (item.key === 'transactions' && activeTab === 'orders') ||
-                             (item.key === 'reports' && activeTab === 'sales_summary');
+                             (item.key === 'transactions' && activeTab === 'orders');
 
             return (
               <button
@@ -86,17 +85,22 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                     window.location.href = '/employee/kitchen';
                   } else if (item.key === 'customers') {
                     window.location.href = '/employee/customers';
+                  } else if (item.key === 'setting') {
+                    window.location.href = '/employee/settings';
+                  } else if (item.key === 'menus') {
+                    window.location.href = '/employee/menu';
                   } else if (
                     item.key === 'orders' || 
                     item.key === 'dashboard' || 
                     item.key === 'expense_payout' || 
                     item.key === 'sales_summary' || 
                     item.key === 'transactions' ||
-                    item.key === 'reports'
+                    item.key === 'reports' ||
+                    item.key === 'update_profile' ||
+                    item.key === 'change_password'
                   ) {
                     let targetTab = item.key;
                     if (item.key === 'transactions') targetTab = 'orders';
-                    if (item.key === 'reports') targetTab = 'sales_summary';
 
                     if (typeof window !== 'undefined' && !window.location.pathname.includes('/employee/orders')) {
                       window.location.href = `/employee/orders?tab=${targetTab}`;
