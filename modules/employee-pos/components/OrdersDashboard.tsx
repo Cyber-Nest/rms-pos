@@ -711,7 +711,7 @@ export default function OrdersDashboard() {
               )}
 
               {/* Payment Method Select */}
-              {activeSubTab === "orders" && (
+              {/* {activeSubTab === "orders" && (
                 <div className="relative">
                   <select
                     value={paymentFilter}
@@ -727,7 +727,7 @@ export default function OrdersDashboard() {
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                   />
                 </div>
-              )}
+              )} */}
 
               {/* Advance Search Button */}
               {activeSubTab === "orders" && (

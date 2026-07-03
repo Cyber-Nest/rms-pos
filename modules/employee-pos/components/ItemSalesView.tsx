@@ -8,10 +8,10 @@ import { BarChart3, AlertCircle } from 'lucide-react';
 interface ItemSaleDetail {
   name: string;
   menuItemId: string;
+  productId?: string;
   quantitySold: number;
   totalSales: number;
   percentageSales: number;
-  dummyId?: string; // Generated on fetch
 }
 
 interface CategorySalesGroup {
@@ -40,22 +40,7 @@ export default function ItemSalesView({ startDate, endDate }: ItemSalesViewProps
         params: { startDate, endDate }
       });
       if (res.data && res.data.success) {
-        // Generate dummy product IDs for the frontend to match the screenshot
-        let baseDummyNum = 2030;
-        const formattedData = (res.data.data || []).map((group: CategorySalesGroup) => {
-          const itemsWithDummyIds = group.items.map((item) => {
-            baseDummyNum += Math.floor(Math.random() * 3) + 1;
-            return {
-              ...item,
-              dummyId: `M${baseDummyNum}`
-            };
-          });
-          return {
-            ...group,
-            items: itemsWithDummyIds
-          };
-        });
-        setData(formattedData);
+        setData(res.data.data || []);
       } else {
         setError('Failed to fetch item sales summary');
       }
@@ -147,7 +132,7 @@ export default function ItemSalesView({ startDate, endDate }: ItemSalesViewProps
                 {category.items.map((item, itemIdx) => (
                   <tr key={itemIdx} className="hover:bg-neutral-50/70 border-b border-neutral-100">
                     <td className="py-2.5 px-5 font-700 text-neutral-900">{item.name}</td>
-                    <td className="py-2.5 px-4 text-center font-600 text-neutral-500">{item.dummyId || 'M----'}</td>
+                    <td className="py-2.5 px-4 text-center font-600 text-neutral-500">{item.productId || 'M----'}</td>
                     <td className="py-2.5 px-4 text-center font-600 text-neutral-700">{item.quantitySold}</td>
                     <td className="py-2.5 px-4 text-right font-700 text-neutral-800">${item.totalSales.toFixed(2)}</td>
                     <td className="py-2.5 px-5 text-right font-600 text-neutral-500">{item.percentageSales.toFixed(2)} %</td>

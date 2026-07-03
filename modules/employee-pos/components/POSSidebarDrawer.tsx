@@ -87,6 +87,8 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                     window.location.href = '/employee/customers';
                   } else if (item.key === 'setting') {
                     window.location.href = '/employee/settings';
+                  } else if (item.key === 'menus') {
+                    window.location.href = '/employee/menu';
                   } else if (
                     item.key === 'orders' || 
                     item.key === 'dashboard' || 
