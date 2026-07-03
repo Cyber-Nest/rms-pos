@@ -16,6 +16,9 @@ import ExpenseDashboardView from "./ExpenseDashboardView";
 import POSSidebarDrawer from "./POSSidebarDrawer";
 import OrdersTableView from "./OrdersTableView";
 import OrderDetailModal from "./OrderDetailModal";
+import FailedTransactionsView from "./FailedTransactionsView";
+import RefundOrdersView from "./RefundOrdersView";
+import CashOutSummaryView from "./CashOutSummaryView";
 import { Order } from "../types";
 import {
   Search,
@@ -52,7 +55,7 @@ export default function OrdersDashboard() {
 
   const MORE_TABS = [
     { key: "item_sales", label: "Item Sales" },
-    { key: "item_wise_sales", label: "Item Wise Sales" },
+    // { key: "item_wise_sales", label: "Item Wise Sales" },
     { key: "hourly_sales", label: "Hourly Sales Report" },
     { key: "cash_out_report", label: "Cash Out Report" },
     { key: "cash_out_summary", label: "Cash Out Summary" },
@@ -408,7 +411,7 @@ export default function OrdersDashboard() {
                                   : activeSubTab === "monthly_sales_summary"
                                     ? "Monthly Sales Summary"
                                     : activeSubTab === "failed_transaction"
-                                      ? "Failed Transaction"
+                                      ? "Failed Transactions"
                                       : activeSubTab === "refund_orders"
                                         ? "Refund Orders"
                                         : "Expense/Payout"}
@@ -495,7 +498,11 @@ export default function OrdersDashboard() {
                           key={tab.key}
                           type="button"
                           onClick={() => {
-                            setActiveSubTab(tab.key as any);
+                            if (tab.key === "cash_out_report") {
+                              window.location.href = "/employee/orders?tab=reports";
+                            } else {
+                              setActiveSubTab(tab.key as any);
+                            }
                             setIsMoreDropdownOpen(false);
                           }}
                           className={`w-full text-left px-4 py-2.5 text-[11px] font-750 transition-colors cursor-pointer flex items-center justify-between ${
@@ -517,7 +524,107 @@ export default function OrdersDashboard() {
 
         {/* Right Side: Filters (Keyword, Status, Payment, Date, More Search) */}
         <div className="flex flex-wrap items-center gap-3">
-          {isMoreTabActive ? (
+          {activeSubTab === "cash_out_summary" ? (
+            <>
+              {/* Start Date Picker Input */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
+
+              {/* End Date Picker Input */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
+
+              {/* More Search Button */}
+              <button
+                onClick={() => setIsAdvanceSearchOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
+              >
+                <Search size={13} />
+                <span>More Search</span>
+              </button>
+            </>
+          ) : activeSubTab === "failed_transaction" || activeSubTab === "refund_orders" ? (
+            <>
+              {/* Date Picker Input (Pill style with calendar icon on right) */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={singleDate}
+                  onChange={(e) => handleSingleDateChange(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
+
+              {/* Keyword Search Input */}
+              <div className="relative w-[180px] sm:w-[220px]">
+                <input
+                  type="text"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  placeholder="Search By Order #, Custom"
+                  className="w-full bg-white border border-neutral-300 rounded-full px-5 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-455 focus:outline-none focus:border-brand-primary hover:border-neutral-400 transition-all shadow-sm"
+                />
+                {searchKeyword && (
+                  <button
+                    onClick={() => setSearchKeyword("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+
+              {/* Order Status Select */}
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="appearance-none bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm"
+                >
+                  <option value="">Select Order Status</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="pending">Pending</option>
+                </select>
+                <ChevronDown
+                  size={13}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                />
+              </div>
+
+              {/* More Search Button */}
+              <button
+                onClick={() => setIsAdvanceSearchOpen(true)}
+                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
+              >
+                <Search size={13} />
+                <span>More Search</span>
+              </button>
+            </>
+          ) : isMoreTabActive ? (
             <>
               {/* Date Picker Input (Pill style with calendar icon on right) */}
               <div className="relative">
@@ -700,24 +807,37 @@ export default function OrdersDashboard() {
               <HourlySalesView startDate={startDate} endDate={endDate} />
             ) : activeSubTab === "monthly_sales_summary" ? (
               <MonthlySalesView startDate={startDate} endDate={endDate} />
+            ) : activeSubTab === "failed_transaction" ? (
+              <FailedTransactionsView
+                orders={orders}
+                onSelectOrder={handleSelectOrder}
+                searchKeyword={searchKeyword}
+                statusFilter={statusFilter}
+                selectedDate={singleDate}
+              />
+            ) : activeSubTab === "refund_orders" ? (
+              <RefundOrdersView
+                orders={orders}
+                onSelectOrder={handleSelectOrder}
+                searchKeyword={searchKeyword}
+                statusFilter={statusFilter}
+                selectedDate={singleDate}
+              />
+            ) : activeSubTab === "cash_out_summary" ? (
+              <CashOutSummaryView
+                orders={orders}
+                startDate={startDate}
+                endDate={endDate}
+              />
             ) : [
                 "item_wise_sales",
                 "cash_out_report",
-                "cash_out_summary",
-                "failed_transaction",
-                "refund_orders",
               ].includes(activeSubTab) ? (
               <DummyReportView
                 title={
                   activeSubTab === "item_wise_sales"
                     ? "Item Wise Sales"
-                    : activeSubTab === "cash_out_report"
-                      ? "Cash Out Report"
-                      : activeSubTab === "cash_out_summary"
-                        ? "Cash Out Summary"
-                        : activeSubTab === "failed_transaction"
-                          ? "Failed Transaction"
-                          : "Refund Orders"
+                    : "Cash Out Report"
                 }
               />
             ) : (
