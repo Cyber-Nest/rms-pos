@@ -27,6 +27,7 @@ import {
   SlidersHorizontal,
   RefreshCw,
   X,
+  Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -82,6 +83,7 @@ export default function OrdersDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
 
   // ── Filters State ──
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -226,10 +228,21 @@ export default function OrdersDashboard() {
   // ── Sync singleDate to startDate/endDate range ──
   const handleSingleDateChange = (val: string) => {
     setSingleDate(val);
-    if (activeSubTab === "orders" || isMoreTabActive) {
+    if (activeSubTab === "orders" || isMoreTabActive || activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard") {
       setStartDate(val);
       setEndDate(val);
     }
+  };
+
+  const handleExport = (format: "pdf" | "excel") => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    let params = `type=${activeSubTab}&format=${format}&startDate=${startDate}&endDate=${endDate}`;
+    if (activeSubTab === "failed_transaction" || activeSubTab === "refund_orders") {
+      if (searchKeyword) params += `&search=${encodeURIComponent(searchKeyword)}`;
+      if (statusFilter) params += `&status=${encodeURIComponent(statusFilter)}`;
+    }
+    const downloadUrl = `${apiUrl}/orders/export-report?${params}`;
+    window.open(downloadUrl, "_blank");
   };
 
   // ── Month Selection Helper (Advance Search) ──
@@ -536,7 +549,7 @@ export default function OrdersDashboard() {
         <div className="flex flex-wrap items-center gap-3">
           {!["reports", "update_profile", "change_password", "expense_payout"].includes(activeSubTab) && (
             <>
-              {activeSubTab === "hourly_sales" ? (
+              {activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard" ? (
             <>
               {/* Date Picker Input (Pill style with calendar icon on right) */}
               <div className="relative">
@@ -794,7 +807,49 @@ export default function OrdersDashboard() {
                   <RefreshCw size={13} />
                 </button>
               )}
+
             </>
+          )}
+          {/* Export Button */}
+          {["item_sales", "hourly_sales", "cash_out_summary", "monthly_sales_summary", "failed_transaction", "refund_orders"].includes(activeSubTab) && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                className="flex items-center gap-1.5 px-4 py-1.5 border border-neutral-300 rounded-full bg-white hover:bg-neutral-50 text-[12px] font-800 text-neutral-750 hover:text-brand-primary active:scale-95 transition-all cursor-pointer shadow-sm select-none"
+              >
+                <Download size={13} />
+                <span>Export</span>
+                <ChevronDown size={12} />
+              </button>
+              {isExportDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setIsExportDropdownOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-36 bg-white border border-neutral-250 rounded-xl shadow-lg py-1 z-40 animate-scale-up font-sans">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExport("pdf");
+                        setIsExportDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                    >
+                      Export as PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleExport("excel");
+                        setIsExportDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                    >
+                      Export as Excel
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
           </>
         )}
