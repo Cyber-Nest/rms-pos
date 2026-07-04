@@ -30,6 +30,16 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+const formatDateDisplay = (dateStr: string) => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    // Convert YYYY-MM-DD to MM/DD/YYYY
+    return `${parts[1]}/${parts[2]}/${parts[0]}`;
+  }
+  return dateStr;
+};
+
 export default function OrdersDashboard() {
   // ── Sub-tabs ──
   const [activeSubTab, setActiveSubTab] = useState<
@@ -524,7 +534,25 @@ export default function OrdersDashboard() {
 
         {/* Right Side: Filters (Keyword, Status, Payment, Date, More Search) */}
         <div className="flex flex-wrap items-center gap-3">
-          {activeSubTab === "cash_out_summary" ? (
+          {!["reports", "update_profile", "change_password", "expense_payout"].includes(activeSubTab) && (
+            <>
+              {activeSubTab === "hourly_sales" ? (
+            <>
+              {/* Date Picker Input (Pill style with calendar icon on right) */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={singleDate}
+                  onChange={(e) => handleSingleDateChange(e.target.value)}
+                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                />
+                <Calendar
+                  size={14}
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
+                />
+              </div>
+            </>
+          ) : activeSubTab === "cash_out_summary" ? (
             <>
               {/* Start Date Picker Input */}
               <div className="relative">
@@ -626,17 +654,20 @@ export default function OrdersDashboard() {
             </>
           ) : isMoreTabActive ? (
             <>
-              {/* Date Picker Input (Pill style with calendar icon on right) */}
+              {/* Date Display Pill (Clickable to open Advance Search) */}
               <div className="relative">
-                <input
-                  type="date"
-                  value={singleDate}
-                  onChange={(e) => handleSingleDateChange(e.target.value)}
-                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
-                />
+                <button
+                  type="button"
+                  onClick={() => setIsAdvanceSearchOpen(true)}
+                  className="bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm min-w-[135px] text-left flex items-center min-h-[32px]"
+                >
+                  {startDate === endDate
+                    ? formatDateDisplay(startDate)
+                    : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
+                </button>
                 <Calendar
                   size={14}
-                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
                 />
               </div>
 
@@ -651,17 +682,20 @@ export default function OrdersDashboard() {
             </>
           ) : (
             <>
-              {/* Date Picker Input */}
+              {/* Date Display Pill (Clickable to open Advance Search) */}
               <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsAdvanceSearchOpen(true)}
+                  className="bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all min-w-[120px] text-left flex items-center min-h-[32px]"
+                >
+                  {startDate === endDate
+                    ? formatDateDisplay(startDate)
+                    : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
+                </button>
                 <Calendar
                   size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                />
-                <input
-                  type="date"
-                  value={singleDate}
-                  onChange={(e) => handleSingleDateChange(e.target.value)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                 />
               </div>
 
@@ -762,7 +796,9 @@ export default function OrdersDashboard() {
               )}
             </>
           )}
-        </div>
+          </>
+        )}
+      </div>
       </div>
 
       {/* ── Main View Container ── */}
