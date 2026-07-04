@@ -12,7 +12,7 @@ interface MenuGridProps {
 }
 
 export default function MenuGrid({ onOpenModifiers }: MenuGridProps) {
-  const { search, selectedCategory, sortBy, menuItems, categories } = usePosStore();
+  const { search, selectedCategory, sortBy, menuItems, categories, loadingMenu } = usePosStore();
 
   const catName = useMemo(() => {
     return categories.find((c) => c.id === selectedCategory)?.name ?? 'All Menus';
@@ -52,7 +52,37 @@ export default function MenuGrid({ onOpenModifiers }: MenuGridProps) {
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto pt-3 min-h-0 pr-0.5">
-        {items.length > 0 ? (
+        {loadingMenu ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <div
+                key={`menu-skeleton-${idx}`}
+                className="flex flex-col bg-white rounded-xl border border-neutral-200 overflow-hidden p-2.5 gap-2.5 animate-pulse"
+              >
+                {/* Image placeholder */}
+                <div className="h-[90px] w-full bg-neutral-100 rounded-lg flex-shrink-0" />
+                
+                {/* Body placeholder */}
+                <div className="flex-1 flex flex-col justify-between gap-2.5">
+                  <div className="space-y-2">
+                    {/* Title */}
+                    <div className="h-3 w-3/4 bg-neutral-100 rounded" />
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <div className="h-2 w-full bg-neutral-50 rounded" />
+                      <div className="h-2 w-5/6 bg-neutral-50 rounded" />
+                    </div>
+                  </div>
+                  {/* Price and Cart button */}
+                  <div className="flex justify-between items-center mt-1">
+                    <div className="h-3.5 w-1/3 bg-neutral-100 rounded" />
+                    <div className="h-6 w-6 bg-neutral-100 rounded-md" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : items.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             {items.map((item) => (
               <MenuCard key={item.id} item={item} onOpenModifiers={onOpenModifiers} />

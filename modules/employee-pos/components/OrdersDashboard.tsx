@@ -771,9 +771,21 @@ export default function OrdersDashboard() {
         (activeSubTab === "dashboard"
           ? !dashboardMetrics
           : orders.length === 0) ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-neutral-400 font-750 text-[12px] gap-2">
-            <span className="animate-spin text-xl">⏳</span>
-            <span>Fetching updated dashboard records...</span>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            <div className="relative flex items-center justify-center">
+              {/* Outer pulsing ring */}
+              <div className="absolute w-12 h-12 rounded-full border-4 border-brand-primary/10 animate-ping duration-1000" />
+              {/* Inner spinning gradient ring */}
+              <div className="w-12 h-12 rounded-full border-4 border-neutral-200 border-t-brand-primary animate-spin" />
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[11px] font-800 tracking-wider uppercase text-neutral-550 animate-pulse">
+                Fetching updated dashboard records
+              </span>
+              <span className="text-[9px] text-neutral-400 font-500">
+                Please wait a moment...
+              </span>
+            </div>
           </div>
         ) : (
           <>

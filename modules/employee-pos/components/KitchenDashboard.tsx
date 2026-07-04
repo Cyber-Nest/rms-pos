@@ -235,9 +235,21 @@ export default function KitchenDashboard() {
       {/* ── Main Dashboard Cards Row with pagination arrows (height constrained to fill screen) ── */}
       <div className="flex-1 p-6 flex items-stretch justify-center gap-4 min-h-0 bg-brand-bg select-none">
         {loading ? (
-          <div className="h-full flex flex-col items-center justify-center text-neutral-400 font-700 text-[12px] gap-2">
-            <span className="animate-spin text-xl">⏳</span>
-            <span>Loading active queue...</span>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            <div className="relative flex items-center justify-center">
+              {/* Outer pulsing ring */}
+              <div className="absolute w-12 h-12 rounded-full border-4 border-brand-primary/10 animate-ping duration-1000" />
+              {/* Inner spinning gradient ring */}
+              <div className="w-12 h-12 rounded-full border-4 border-neutral-200 border-t-brand-primary animate-spin" />
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[11px] font-800 tracking-wider uppercase text-neutral-550 animate-pulse">
+                Loading active queue
+              </span>
+              <span className="text-[9px] text-neutral-400 font-500">
+                Please wait a moment...
+              </span>
+            </div>
           </div>
         ) : (
           <>
