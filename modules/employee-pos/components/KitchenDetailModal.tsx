@@ -811,13 +811,13 @@ export default function KitchenDetailModal({
                         >
                           <div className="flex items-start">
                             <div className="flex-1">
-                              <h4 className="font-700 text-[13px] text-brand-primary leading-tight">
+                              <h4 className="font-700 text-[15.5px] text-brand-primary leading-tight">
                                 {item.name}
                               </h4>
 
                               {item.selectedModifiers &&
                                 item.selectedModifiers.length > 0 && (
-                                  <div className="pl-3 mt-1.5 border-l-2 border-neutral-200 flex flex-col gap-1 text-[11px] font-sans">
+                                  <div className="pl-3 mt-1.5 border-l-2 border-neutral-200 flex flex-col gap-1 text-[13px] font-sans">
                                     {getGroupedModifiers(
                                       item.selectedModifiers,
                                     ).map((mod, modIdx) => (
@@ -827,23 +827,23 @@ export default function KitchenDetailModal({
                                       >
                                         {mod.isRoot ? (
                                           <>
-                                            <span className="text-neutral-450 font-700 text-[9px] uppercase tracking-wider mt-1 select-none">
+                                            <span className="text-neutral-450 font-700 text-[11px] uppercase tracking-wider mt-1 select-none">
                                               {mod.groupName}
                                             </span>
                                             <div className="flex justify-between items-baseline text-neutral-700 font-600 pl-0.5">
                                               <span>{mod.optionName}</span>
                                               {mod.quantity > 1 && (
-                                                <span className="font-700 text-neutral-850 ml-1 text-[10px]">
+                                                <span className="font-700 text-neutral-850 ml-1 text-[11.5px]">
                                                   x{mod.quantity}
                                                 </span>
                                               )}
                                             </div>
                                           </>
                                         ) : (
-                                          <div className="flex justify-between items-baseline text-neutral-555 font-500 pl-2 italic">
+                                          <div className="flex justify-between items-baseline text-neutral-555 font-500 text-[12px] pl-2 italic">
                                             <span>{mod.optionName}</span>
                                             {mod.quantity > 1 && (
-                                              <span className="font-600 text-neutral-600 ml-1 text-[9px]">
+                                              <span className="font-600 text-neutral-600 ml-1 text-[10.5px]">
                                                 x{mod.quantity}
                                               </span>
                                             )}
@@ -908,13 +908,13 @@ export default function KitchenDetailModal({
                         >
                           <div className="flex items-center">
                             <div className="flex-1 pr-4">
-                              <h4 className="font-700 text-[12.5px] text-neutral-800 leading-tight">
+                              <h4 className="font-700 text-[15.5px] text-neutral-800 leading-tight">
                                 {item.name}
                               </h4>
 
                               {item.selectedModifiers &&
                                 item.selectedModifiers.length > 0 && (
-                                  <div className="pl-2.5 mt-1 border-l-2 border-neutral-200 flex flex-col gap-0.5 text-[10.5px] font-sans">
+                                  <div className="pl-2.5 mt-1 border-l-2 border-neutral-200 flex flex-col gap-0.5 text-[13px] font-sans">
                                     {getGroupedModifiers(
                                       item.selectedModifiers,
                                     ).map((mod, modIdx) => (
@@ -924,23 +924,23 @@ export default function KitchenDetailModal({
                                       >
                                         {mod.isRoot ? (
                                           <div className="mt-0.5">
-                                            <span className="text-neutral-400 font-750 text-[8.5px] uppercase tracking-wider select-none">
+                                            <span className="text-neutral-400 font-750 text-[11px] uppercase tracking-wider select-none">
                                               {mod.groupName}
                                             </span>
                                             <div className="flex justify-between items-baseline text-neutral-600 font-600 pl-0.5">
                                               <span>{mod.optionName}</span>
                                               {mod.quantity > 1 && (
-                                                <span className="font-700 text-neutral-800 ml-1 text-[9.5px]">
+                                                <span className="font-700 text-neutral-800 ml-1 text-[11.5px]">
                                                   x{mod.quantity}
                                                 </span>
                                               )}
                                             </div>
                                           </div>
                                         ) : (
-                                          <div className="flex justify-between items-baseline text-neutral-500 font-500 pl-1.5 italic">
+                                          <div className="flex justify-between items-baseline text-neutral-500 font-500 text-[12px] pl-1.5 italic">
                                             <span>{mod.optionName}</span>
                                             {mod.quantity > 1 && (
-                                              <span className="font-650 text-neutral-600 ml-1 text-[8.5px]">
+                                              <span className="font-650 text-neutral-600 ml-1 text-[10.5px]">
                                                 x{mod.quantity}
                                               </span>
                                             )}
@@ -958,7 +958,7 @@ export default function KitchenDetailModal({
                             </div>
 
                             <div className="w-16 text-center">
-                              <span className="px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-700 text-[11px]">
+                              <span className="px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-700 text-[13px]">
                                 {item.quantity}
                               </span>
                             </div>
