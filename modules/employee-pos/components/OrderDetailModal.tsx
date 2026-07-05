@@ -280,11 +280,11 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                 {order.items.map((item: CartItem, idx) => (
                   <div key={idx} className="px-4 py-3.5 grid grid-cols-12 text-[12px] text-neutral-800 items-start">
                     <div className="col-span-8 space-y-1.5">
-                      <p className="font-800 text-neutral-800">{item.name}</p>
+                      <p className="font-800 text-neutral-800 text-[15.5px]">{item.name}</p>
                       
                       {/* Render modifiers if any */}
                       {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                        <div className="pl-3 mt-1 border-l-2 border-neutral-200 space-y-0.5 text-neutral-500 text-[10px] font-600">
+                        <div className="pl-3 mt-1 border-l-2 border-neutral-200 space-y-0.5 text-neutral-500 text-[12.5px] font-600">
                           {item.selectedModifiers.map((mod, mIdx) => (
                             <p key={mIdx}>
                               {mod.groupName}: {mod.optionName} {mod.price > 0 ? `(+$${mod.price.toFixed(2)})` : ''}
@@ -300,7 +300,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     </div>
                     {/* Quantity Badge */}
                     <div className="col-span-2 text-center self-start pt-0.5">
-                      <span className="px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-700 text-[10.5px]">
+                      <span className="px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-700 text-[13px]">
                         {item.quantity}
                       </span>
                     </div>

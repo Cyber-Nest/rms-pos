@@ -140,11 +140,11 @@ export default function KitchenOrderCard({
             >
               {/* Item Title & Qty */}
               <div className="flex items-start gap-2">
-                <span className="w-5.5 h-5.5 flex-shrink-0 rounded-full bg-orange-50 border border-orange-100 text-[10.5px] font-800 text-brand-primary flex items-center justify-center">
+                <span className="w-6 h-6 flex-shrink-0 rounded-full bg-orange-50 border border-orange-100 text-[12px] font-800 text-brand-primary flex items-center justify-center">
                   {item.quantity}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-neutral-800 font-700 text-[12px] leading-tight">
+                  <p className="text-neutral-800 font-700 text-[15px] leading-tight">
                     {item.name}
                   </p>
 
@@ -155,27 +155,27 @@ export default function KitchenOrderCard({
                         (mod, modIdx) => (
                           <div
                             key={modIdx}
-                            className="text-[10.5px] leading-tight text-neutral-600"
+                            className="text-[12.5px] leading-tight text-neutral-600"
                           >
                             {mod.isRoot ? (
                               <div className="mt-1">
-                                <span className="text-[9px] font-800 text-neutral-400 uppercase tracking-wider">
+                                <span className="text-[10.5px] font-800 text-neutral-400 uppercase tracking-wider">
                                   {mod.groupName}
                                 </span>
                                 <div className="flex justify-between items-baseline font-600 text-neutral-700">
                                   <span>{mod.optionName}</span>
                                   {mod.quantity > 1 && (
-                                    <span className="font-700 text-neutral-900 text-[9.5px]">
+                                    <span className="font-700 text-neutral-900 text-[11px]">
                                       x{mod.quantity}
                                     </span>
                                   )}
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex justify-between items-baseline text-neutral-500 font-500 italic pl-1.5">
+                              <div className="flex justify-between items-baseline text-neutral-500 font-500 text-[11.5px] italic pl-1.5">
                                 <span>{mod.optionName}</span>
                                 {mod.quantity > 1 && (
-                                  <span className="font-600 text-neutral-600 text-[9px]">
+                                  <span className="font-600 text-neutral-600 text-[10px]">
                                     x{mod.quantity}
                                   </span>
                                 )}

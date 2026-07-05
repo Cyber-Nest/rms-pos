@@ -141,6 +141,12 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
     }
   };
 
+  const handleDownloadSalesSummaryPdf = () => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const downloadUrl = `${apiUrl}/orders/sales-summary/pdf?date=${selectedDate}`;
+    window.open(downloadUrl, '_blank');
+  };
+
   useEffect(() => {
     fetchSummary();
   }, [fetchSummary]);
@@ -183,21 +189,21 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* <button 
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-250 bg-neutral-50 hover:bg-neutral-100 text-[12px] font-700 text-neutral-700 transition-all cursor-pointer shadow-2xs"
-            title="Print Report"
+          <button 
+            onClick={handleDownloadSalesSummaryPdf}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-primary hover:bg-brand-primary/90 active:scale-95 text-white font-850 text-[11px] uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-xs hover:shadow-sm"
+            title="Print Sales Summary Receipt"
           >
-            <Printer size={14} className="text-neutral-600" />
-            <span>Print Report</span>
-          </button> */}
+            <Printer size={13} strokeWidth={2.5} />
+            <span>Print Receipt</span>
+          </button>
 
           <button 
             onClick={() => fetchSummary()}
-            className="p-1.5 rounded-lg border border-neutral-250 bg-neutral-50 hover:bg-neutral-100 text-neutral-600 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
+            className="p-2 rounded-xl border border-neutral-250 bg-neutral-50 hover:bg-neutral-100 text-neutral-600 hover:text-brand-primary transition-all duration-200 cursor-pointer shadow-3xs active:scale-95 flex items-center justify-center"
             title="Refresh Report"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={13} strokeWidth={2.5} />
           </button>
         </div>
       </div>
