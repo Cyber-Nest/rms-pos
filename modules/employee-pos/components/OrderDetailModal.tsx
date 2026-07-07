@@ -511,7 +511,9 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                   order.payments.map((p, pIdx) => (
                     <div key={pIdx} className="bg-neutral-50 p-2.5 rounded-lg border border-neutral-150 text-[11px] space-y-1">
                       <div className="flex justify-between font-800 text-neutral-750">
-                        <span className="uppercase text-[9.5px] text-neutral-500">{p.method}</span>
+                        <span className="uppercase text-[9.5px] text-neutral-500">
+                          {p.cardBrand ? `Stripe (${p.cardBrand})` : p.method}
+                        </span>
                         <span className="font-mono text-neutral-800">${(p.amount ?? 0).toFixed(2)}</span>
                       </div>
                       {p.cashGiven !== undefined && p.cashGiven > 0 && (
@@ -520,7 +522,17 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                           <span>Change: ${(p.changeGiven ?? 0).toFixed(2)}</span>
                         </div>
                       )}
-
+                      {p.cardBrand && (
+                        <div className="text-[10px] text-neutral-500 font-600 space-y-0.5 mt-1 border-t border-neutral-200/50 pt-1">
+                          <p>Type: <span className="capitalize">{p.cardFunding || 'N/A'}</span></p>
+                          {p.cardLast4 && <p>Card: **** **** **** {p.cardLast4}</p>}
+                          {p.transactionId && (
+                            <p className="text-[8px] font-mono text-neutral-450 select-all truncate mt-0.5">
+                              ID: {p.transactionId}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (

@@ -26,6 +26,10 @@ export interface SplitPayment {
   personName?: string;
   cashGiven?: number;
   changeGiven?: number;
+  transactionId?: string;
+  cardBrand?: string;
+  cardFunding?: string;
+  cardLast4?: string;
 }
 
 export interface PromoApplied {
