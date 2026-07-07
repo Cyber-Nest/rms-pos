@@ -78,7 +78,7 @@ export default function StoreTimingsTab({
       <div className="flex justify-end pt-2">
         <button
           type="submit"
-          className="px-8 py-2.5 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-98"
+          className="px-8 py-2.5 rounded-full bg-[#8a1538] hover:bg-[#70102b] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-98"
         >
           Submit
         </button>
