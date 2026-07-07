@@ -206,7 +206,7 @@ export default function RefundOrdersView({
                         ) : (
                           <>
                             <Smartphone size={10} />
-                            <span>Online ({order.orderSource})</span>
+                            <span>Online</span>
                           </>
                         )}
                       </span>

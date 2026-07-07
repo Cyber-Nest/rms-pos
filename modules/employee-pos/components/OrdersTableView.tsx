@@ -220,7 +220,7 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
                         ) : (
                           <>
                             <Smartphone size={10} />
-                            <span>Online ({order.orderSource})</span>
+                            <span>Online</span>
                           </>
                         )}
                       </span>

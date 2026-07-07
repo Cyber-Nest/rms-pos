@@ -69,6 +69,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
       takeout: 0,
       dineIn: 0,
       driveThrough: 0,
+      delivery: 0,
       total: 0
     },
     channelSummary: {
@@ -351,6 +352,12 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                   <td className="py-2 px-4">Drive Through</td>
                   <td className="py-2 px-4 text-right font-700">${orderTypeSummary.driveThrough.toFixed(2)}</td>
                 </tr>
+                {orderTypeSummary.delivery !== undefined && (
+                  <tr>
+                    <td className="py-2 px-4">Delivery</td>
+                    <td className="py-2 px-4 text-right font-700">${orderTypeSummary.delivery.toFixed(2)}</td>
+                  </tr>
+                )}
                 <tr className="bg-orange-50/60 font-900 text-neutral-900 border-t border-brand-primary/20">
                   <td className="py-2 px-4 uppercase text-[10.5px]">Total</td>
                   <td className="py-2 px-4 text-right text-brand-primary font-900">${orderTypeSummary.total.toFixed(2)}</td>

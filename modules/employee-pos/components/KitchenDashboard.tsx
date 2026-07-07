@@ -17,7 +17,7 @@ export default function KitchenDashboard() {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'preparing' | 'ready'>('all');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'takeout' | 'drive-through' | 'dine-in' | 'delivery'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'takeout' | 'drive-through' | 'dine-in' | 'delivery' | 'online'>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [startIndex, setStartIndex] = useState(0);
 
@@ -128,10 +128,11 @@ export default function KitchenDashboard() {
   const countAll = countConfirmed + countPreparing + countReady;
 
   // Totals for Order Types (Only count active DB orders, exclude pending draftCart)
-  const countTakeout = orders.filter((o) => o.orderType === 'takeout').length;
-  const countDriveThrough = orders.filter((o) => o.orderType === 'drive-through').length;
-  const countDineIn = orders.filter((o) => o.orderType === 'dine-in').length;
-  const countDelivery = orders.filter((o) => o.orderType === 'delivery').length;
+  const countTakeout = orders.filter((o) => o.orderType === 'takeout' && o.orderSource === 'pos').length;
+  const countDriveThrough = orders.filter((o) => o.orderType === 'drive-through' && o.orderSource === 'pos').length;
+  const countDineIn = orders.filter((o) => o.orderType === 'dine-in' && o.orderSource === 'pos').length;
+  const countDelivery = orders.filter((o) => o.orderType === 'delivery' && o.orderSource === 'pos').length;
+  const countOnline = orders.filter((o) => o.orderSource === 'online').length;
 
   // Reset startIndex on filter change
   useEffect(() => {
@@ -155,7 +156,16 @@ export default function KitchenDashboard() {
     orders.forEach((o) => {
       const mapped = getMappedStatus(o);
       const matchesStatus = statusFilter === 'all' || statusFilter === mapped;
-      const matchesType = typeFilter === 'all' || typeFilter === o.orderType;
+      
+      let matchesType = false;
+      if (typeFilter === 'all') {
+        matchesType = true;
+      } else if (typeFilter === 'online') {
+        matchesType = o.orderSource === 'online';
+      } else {
+        matchesType = o.orderType === typeFilter && o.orderSource === 'pos';
+      }
+
       if (matchesStatus && matchesType) {
         candidates.push(o);
       }
@@ -213,6 +223,7 @@ export default function KitchenDashboard() {
             { id: "drive-through", label: "Drive Thru", count: countDriveThrough },
             { id: "dine-in", label: "Dine In", count: countDineIn },
             { id: "delivery", label: "Delivery", count: countDelivery },
+            { id: "online", label: "Online", count: countOnline },
           ].map((typeTab) => {
             const active = typeFilter === typeTab.id;
             return (
