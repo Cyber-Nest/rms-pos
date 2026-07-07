@@ -143,7 +143,7 @@ export default function MainSettingsTab({
             <button
               type="button"
               onClick={handleFetchGPS}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-primary hover:text-[#EA580C] cursor-pointer flex items-center justify-center p-1 hover:bg-brand-primary/10 rounded-lg transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-primary hover:text-[#70102b] cursor-pointer flex items-center justify-center p-1 hover:bg-brand-primary/10 rounded-lg transition-colors"
               title="Fetch GPS Coordinates"
             >
               <MapPin size={15} />
@@ -234,7 +234,7 @@ export default function MainSettingsTab({
       <div className="flex justify-end pt-4">
         <button
           type="submit"
-          className="px-8 py-2.5 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-98"
+          className="px-8 py-2.5 rounded-full bg-[#8a1538] hover:bg-[#70102b] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-98"
         >
           Submit
         </button>

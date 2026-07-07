@@ -98,7 +98,7 @@ export default function StoreTimingsUpdateTab({
             setTimingUpdateForm({ startDate: '', endDate: '', startTime: '10:00 AM', endTime: '10:00 PM', status: true });
             setIsTimingUpdateAddOpen(true);
           }}
-          className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[#F97316] hover:bg-[#EA580C] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-95"
+          className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-[#8a1538] hover:bg-[#70102b] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-95"
         >
           <Plus size={14} strokeWidth={2.5} />
           Add Timing Update
@@ -224,13 +224,13 @@ export default function StoreTimingsUpdateTab({
             <div className="bg-neutral-50 px-6 py-4 flex justify-end gap-2.5">
               <button
                 onClick={() => handleAddTimingUpdate(false)}
-                className="px-5 py-2 rounded-lg border border-[#F97316] text-[#F97316] hover:bg-[#F97316]/10 text-xs font-800 transition-colors cursor-pointer active:scale-95"
+                className="px-5 py-2 rounded-lg border border-[#8a1538] text-[#8a1538] hover:bg-[#8a1538]/10 text-xs font-800 transition-colors cursor-pointer active:scale-95"
               >
                 Submit
               </button>
               <button
                 onClick={() => handleAddTimingUpdate(true)}
-                className="px-5 py-2 rounded-lg bg-[#F97316] hover:bg-[#EA580C] text-white text-xs font-800 transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-lg bg-[#8a1538] hover:bg-[#70102b] text-white text-xs font-800 transition-colors cursor-pointer"
               >
                 Submit & Close
               </button>
