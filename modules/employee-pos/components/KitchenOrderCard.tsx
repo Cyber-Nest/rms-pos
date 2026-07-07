@@ -73,13 +73,14 @@ export default function KitchenOrderCard({
   const isUnpaid = order.paymentStatus === "unpaid";
   const isDraft = order.orderNumber === "#DRAFT";
 
-  const formattedType =
-    {
-      takeout: "Take-Out",
-      "drive-through": "Drive-Through",
-      "dine-in": "Dine-In",
-      delivery: "Delivery",
-    }[order.orderType] || order.orderType;
+  const formattedType = order.orderSource === "online"
+    ? `Online - ${order.orderType === "delivery" ? "Delivery" : "Takeout"}`
+    : ({
+        takeout: "Take-Out",
+        "drive-through": "Drive-Through",
+        "dine-in": "Dine-In",
+        delivery: "Delivery",
+      }[order.orderType] || order.orderType);
 
   // Status Colors Mapping
   const statusColorMap: Record<string, string> = {
@@ -91,13 +92,14 @@ export default function KitchenOrderCard({
   };
   const statusBarBg = isDraft ? "bg-amber-500" : (statusColorMap[order.status] || "bg-neutral-300");
 
-  const typeBadgeClass =
-    {
-      takeout: "bg-orange-50 text-brand-primary border-orange-100",
-      "drive-through": "bg-purple-50 text-purple-600 border-purple-100",
-      "dine-in": "bg-blue-50 text-blue-600 border-blue-100",
-      delivery: "bg-amber-50 text-amber-700 border-amber-100",
-    }[order.orderType] || "bg-neutral-50 text-neutral-600 border-neutral-100";
+  const typeBadgeClass = order.orderSource === "online"
+    ? "bg-rose-50 text-rose-600 border-rose-100 font-bold"
+    : ({
+        takeout: "bg-orange-50 text-brand-primary border-orange-100",
+        "drive-through": "bg-purple-50 text-purple-600 border-purple-100",
+        "dine-in": "bg-blue-50 text-blue-600 border-blue-100",
+        delivery: "bg-amber-50 text-amber-700 border-amber-100",
+      }[order.orderType] || "bg-neutral-50 text-neutral-600 border-neutral-100");
 
   // If order is older than 15 mins, mark as delayed
   const isDelayed = !isDraft && elapsedMins >= 15 && order.status !== "ready";

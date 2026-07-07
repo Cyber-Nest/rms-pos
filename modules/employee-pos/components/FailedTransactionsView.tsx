@@ -242,7 +242,7 @@ export default function FailedTransactionsView({
                         ) : (
                           <>
                             <Smartphone size={10} />
-                            <span>Online ({order.orderSource})</span>
+                            <span>Online</span>
                           </>
                         )}
                       </span>
