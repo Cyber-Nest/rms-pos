@@ -9,6 +9,7 @@ import POSSidebarDrawer from './POSSidebarDrawer';
 import { Order } from '../types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Pusher from 'pusher-js';
 
 export default function KitchenDashboard() {
   // ── States ───────────────────────────────────────────────────
@@ -59,6 +60,46 @@ export default function KitchenDashboard() {
   // ── Initial Fetch ────────────────────────────────────────────
   useEffect(() => {
     fetchOrders();
+  }, [fetchOrders]);
+
+  // ── Pusher Real-time Listener ────────────────────────────────
+  useEffect(() => {
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap2';
+
+    if (!pusherKey) {
+      console.warn('Pusher key is missing. Real-time updates are disabled.');
+      return;
+    }
+
+    // Initialize Pusher Client
+    const pusher = new Pusher(pusherKey, {
+      cluster: pusherCluster,
+      forceTLS: true,
+    });
+
+    // Subscribe to the global 'orders' channel
+    const channel = pusher.subscribe('orders');
+
+    // Bind to the 'new-order' event
+    channel.bind('new-order', (data: any) => {
+      console.log('Real-time order received via Pusher:', data);
+      // Re-fetch all active orders in the background
+      fetchOrders();
+      // Show visual notification toast
+      toast.success(`New Order Received: ${data.orderNumber ? '#' + data.orderNumber : ''}`, {
+        duration: 4000,
+        position: 'top-right',
+        icon: '🍳'
+      });
+    });
+
+    // Cleanup on unmount
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+      pusher.disconnect();
+    };
   }, [fetchOrders]);
 
   // ── LocalStorage Draft Cart Listener ──

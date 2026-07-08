@@ -11,6 +11,7 @@ import CheckoutModal from '@/modules/employee-pos/components/CheckoutModal';
 import POSSidebarDrawer from '@/modules/employee-pos/components/POSSidebarDrawer';
 import { MenuItem } from '@/modules/employee-pos/types';
 import { usePosStore } from '@/modules/employee-pos/store/pos.store';
+import OnlineOrderBanner from '@/modules/employee-pos/components/OnlineOrderBanner';
 
 export default function PosPage() {
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
@@ -79,6 +80,9 @@ export default function PosPage() {
 
       {/* Checkout Modal Overlay */}
       <CheckoutModal />
+
+      {/* Real-time Online Order Banner Alert */}
+      <OnlineOrderBanner />
     </main>
   );
 }
