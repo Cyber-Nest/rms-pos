@@ -279,7 +279,7 @@ export default function OrdersDashboard() {
 
   // ── Apply Quick Date Ranges (Advance Search) ──
   const handleQuickRange = (
-    range: "today" | "this_week" | "last_week" | "this_month" | "last_month",
+    range: "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month",
   ) => {
     const today = new Date();
     let start = new Date();
@@ -289,6 +289,12 @@ export default function OrdersDashboard() {
       case "today":
         start = today;
         end = today;
+        break;
+      case "yesterday":
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = yesterday;
+        end = yesterday;
         break;
       case "this_week":
         // Current week (Monday to Sunday)
@@ -1015,6 +1021,7 @@ export default function OrdersDashboard() {
                 <div className="flex flex-wrap gap-2">
                   {[
                     { id: "today", label: "Today" },
+                    { id: "yesterday", label: "Yesterday" },
                     { id: "this_week", label: "This week" },
                     { id: "last_week", label: "Last week" },
                     { id: "this_month", label: "This month" },
