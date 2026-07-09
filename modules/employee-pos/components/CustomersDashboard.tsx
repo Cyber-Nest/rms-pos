@@ -8,6 +8,7 @@ import OrdersNavbar from './OrdersNavbar';
 import POSSidebarDrawer from './POSSidebarDrawer';
 import CustomerModal from './CustomerModal';
 import { usePosStore } from '../store/pos.store';
+import { getLocalTodayStr, getLocalDateStr, formatLocalDateTime12 } from '../utils/timezone';
 
 interface CustomerRecord {
   firstName: string;
@@ -25,7 +26,7 @@ export default function CustomersDashboard() {
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
-    return new Date().toISOString().slice(0, 10);
+    return getLocalTodayStr();
   });
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -61,34 +62,16 @@ export default function CustomersDashboard() {
 
   const getLocalDateStr = (dateInput: string | Date) => {
     try {
-      const d = new Date(dateInput);
-      const localDate = new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
-      return localDate.toISOString().slice(0, 10);
+      return getLocalDateStr(dateInput);
     } catch {
       return '';
     }
   };
 
-  // ── Format Date for Display (MM/DD/YYYY HH:MM) ──
+  // ── Format Date for Display (MM/DD/YYYY HH:MM AM/PM) in local timezone ──
   const formatDate = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      
-      let ampm = 'AM';
-      let hour12 = d.getHours();
-      if (hour12 >= 12) {
-        ampm = 'PM';
-        if (hour12 > 12) hour12 -= 12;
-      }
-      if (hour12 === 0) hour12 = 12;
-      
-      const hhStr = String(hour12).padStart(2, '0');
-      return `${mm}/${dd}/${yyyy} ${hhStr}:${min} ${ampm}`;
+      return formatLocalDateTime12(dateStr);
     } catch {
       return dateStr;
     }

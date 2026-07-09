@@ -10,6 +10,7 @@ import { Order } from '../types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Pusher from 'pusher-js';
+import { getLocalTodayStr, getLocalDateStr } from '../utils/timezone';
 
 export default function KitchenDashboard() {
   // ── States ───────────────────────────────────────────────────
@@ -34,14 +35,13 @@ export default function KitchenDashboard() {
       if (res.data.success) {
         // Only keep active kitchen orders (pending, preparing, ready)
         // and exclude future scheduled orders (orders scheduled for a day after today)
-        const todayLocalStr = new Date(Date.now() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+        const todayLocalStr = getLocalTodayStr();
         const activeOrders = (res.data.data as Order[]).filter((o) => {
           const isActive = ['pending', 'preparing', 'ready'].includes(o.status);
           if (!isActive) return false;
 
           if (o.orderTiming === 'later' && o.scheduledAt) {
-            const schedDate = new Date(o.scheduledAt);
-            const schedLocalStr = new Date(schedDate.getTime() - (schedDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+            const schedLocalStr = getLocalDateStr(o.scheduledAt);
             if (schedLocalStr > todayLocalStr) {
               return false;
             }

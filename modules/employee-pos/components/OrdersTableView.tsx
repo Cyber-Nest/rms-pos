@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Eye, Smartphone, Store } from 'lucide-react';
 import { Order } from '../types';
+import { formatLocalDateTime24 } from '../utils/timezone';
 
 interface OrdersTableViewProps {
   orders: Order[];
@@ -14,16 +15,10 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
 
-  // ── 24-Hour Date Formatting ──
+  // ── 24-Hour Date Formatting (Alberta Timezone) ──
   const formatDate = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${mm}/${dd}/${yyyy} ${hh}:${min}`;
+      return formatLocalDateTime24(dateStr);
     } catch {
       return dateStr;
     }

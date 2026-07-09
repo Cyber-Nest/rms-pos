@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { getLocalTodayStr } from '../utils/timezone';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
   const [category, setCategory] = useState('Store Maintenance');
   const [expenseType, setExpenseType] = useState<'employee' | 'store'>('employee');
   const [employeeName, setEmployeeName] = useState('Manager');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [expenseDate, setExpenseDate] = useState(getLocalTodayStr());
   const [amount, setAmount] = useState('');
   const [pst, setPst] = useState('');
   const [gst, setGst] = useState('');
