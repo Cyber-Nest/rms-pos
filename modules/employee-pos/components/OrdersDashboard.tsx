@@ -19,6 +19,7 @@ import OrderDetailModal from "./OrderDetailModal";
 import FailedTransactionsView from "./FailedTransactionsView";
 import RefundOrdersView from "./RefundOrdersView";
 import CashOutSummaryView from "./CashOutSummaryView";
+import ReceptionView from "./ReceptionView";
 import { Order } from "../types";
 import {
   Search,
@@ -43,10 +44,10 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 export default function OrdersDashboard() {
-  // ── Sub-tabs ──
   const [activeSubTab, setActiveSubTab] = useState<
     | "dashboard"
     | "orders"
+    | "reception_view"
     | "sales_summary"
     | "reports"
     | "expense_payout"
@@ -177,6 +178,7 @@ export default function OrdersDashboard() {
         [
           "dashboard",
           "orders",
+          "reception_view",
           "sales_summary",
           "reports",
           "expense_payout",
@@ -196,7 +198,7 @@ export default function OrdersDashboard() {
         if (tab === "dashboard") {
           setStartDate(getPastDateStr(30));
           setEndDate(getTodayDateStr());
-        } else if (tab === "orders") {
+        } else if (tab === "orders" || tab === "reception_view") {
           setStartDate(getTodayDateStr());
           setEndDate(getTodayDateStr());
           setSingleDate(getTodayDateStr());
@@ -225,7 +227,7 @@ export default function OrdersDashboard() {
   // ── Sync singleDate to startDate/endDate range ──
   const handleSingleDateChange = (val: string) => {
     setSingleDate(val);
-    if (activeSubTab === "orders" || isMoreTabActive || activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard") {
+    if (activeSubTab === "orders" || activeSubTab === "reception_view" || isMoreTabActive || activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard") {
       setStartDate(val);
       setEndDate(val);
     }
@@ -411,31 +413,33 @@ export default function OrdersDashboard() {
               ? "Dashboard"
               : activeSubTab === "orders"
                 ? "Orders"
-                : activeSubTab === "sales_summary"
-                  ? "Sales Summary"
-                  : activeSubTab === "reports"
-                    ? "Reports"
-                    : activeSubTab === "update_profile"
-                      ? "Update Profile"
-                      : activeSubTab === "change_password"
-                        ? "Change Password"
-                        : activeSubTab === "item_sales"
-                          ? "Item Sales"
-                          : activeSubTab === "item_wise_sales"
-                            ? "Item Wise Sales"
-                            : activeSubTab === "hourly_sales"
-                              ? "Hourly Sales Report"
-                              : activeSubTab === "cash_out_report"
-                                ? "Cash Out Report"
-                                : activeSubTab === "cash_out_summary"
-                                  ? "Cash Out Summary"
-                                  : activeSubTab === "monthly_sales_summary"
-                                    ? "Monthly Sales Summary"
-                                    : activeSubTab === "failed_transaction"
-                                      ? "Failed Transactions"
-                                      : activeSubTab === "refund_orders"
-                                        ? "Refund Orders"
-                                        : "Expense/Payout"}
+                : activeSubTab === "reception_view"
+                  ? "Reception View"
+                  : activeSubTab === "sales_summary"
+                    ? "Sales Summary"
+                    : activeSubTab === "reports"
+                      ? "Reports"
+                      : activeSubTab === "update_profile"
+                        ? "Update Profile"
+                        : activeSubTab === "change_password"
+                          ? "Change Password"
+                          : activeSubTab === "item_sales"
+                            ? "Item Sales"
+                            : activeSubTab === "item_wise_sales"
+                              ? "Item Wise Sales"
+                              : activeSubTab === "hourly_sales"
+                                ? "Hourly Sales Report"
+                                : activeSubTab === "cash_out_report"
+                                  ? "Cash Out Report"
+                                  : activeSubTab === "cash_out_summary"
+                                    ? "Cash Out Summary"
+                                    : activeSubTab === "monthly_sales_summary"
+                                      ? "Monthly Sales Summary"
+                                      : activeSubTab === "failed_transaction"
+                                        ? "Failed Transactions"
+                                        : activeSubTab === "refund_orders"
+                                          ? "Refund Orders"
+                                          : "Expense/Payout"}
           </h1>
 
           <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200">
@@ -964,6 +968,7 @@ export default function OrdersDashboard() {
             [
               "dashboard",
               "orders",
+              "reception_view",
               "sales_summary",
               "reports",
               "update_profile",

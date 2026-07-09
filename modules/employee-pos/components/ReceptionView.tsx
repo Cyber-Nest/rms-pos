@@ -1,0 +1,311 @@
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import axios from "axios";
+import Pusher from "pusher-js";
+import {
+  Store,
+  Smartphone,
+  RefreshCw,
+  Clock,
+  Utensils,
+  CheckCircle2,
+  TrendingUp,
+  Inbox,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { Order } from "../types";
+
+export default function ReceptionView() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── Fetch Active Orders from API ──
+  const fetchActiveOrders = useCallback(async () => {
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.get(`${apiUrl}/orders`, {
+        params: {
+          status: "pending,preparing,ready",
+        },
+      });
+      if (res.data.success) {
+        // Filter out completed and cancelled orders
+        const active = (res.data.data as Order[]).filter((o) =>
+          ["pending", "preparing", "ready"].includes(o.status),
+        );
+        // Sort by oldest first (standard queue processing)
+        active.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
+        setOrders(active);
+      }
+    } catch (err) {
+      console.error("Failed to fetch active orders in Reception View:", err);
+      toast.error("Could not load active orders list.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ── Initial Fetch ──
+  useEffect(() => {
+    fetchActiveOrders();
+  }, [fetchActiveOrders]);
+
+  // ── Pusher Real-time Listener ──
+  useEffect(() => {
+    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "ap2";
+
+    if (!pusherKey) {
+      console.warn("Pusher key is missing. Real-time updates are disabled.");
+      return;
+    }
+
+    const pusher = new Pusher(pusherKey, {
+      cluster: pusherCluster,
+      forceTLS: true,
+    });
+
+    const channel = pusher.subscribe("orders");
+
+    // Listen for new orders
+    channel.bind("new-order", (data: any) => {
+      console.log("New order received in Reception View via Pusher:", data);
+      fetchActiveOrders();
+    });
+
+    // Listen for status updates
+    channel.bind("order-updated", (data: any) => {
+      console.log(
+        "Order status update received in Reception View via Pusher:",
+        data,
+      );
+      fetchActiveOrders();
+    });
+
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+      pusher.disconnect();
+    };
+  }, [fetchActiveOrders]);
+
+  // ── Format Order Type and Platform ──
+  const getFormattedOrderType = (order: Order) => {
+    const source = order.orderSource ? order.orderSource.toLowerCase() : "pos";
+    const type = order.orderType ? order.orderType.toLowerCase() : "takeout";
+
+    // Format type text
+    let typeLabel = type
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+    if (typeLabel === "Dinein") typeLabel = "Dine In";
+    if (typeLabel === "Drivethrough") typeLabel = "Drive Thru";
+
+    if (source === "doordash") {
+      return `DoorDash - ${typeLabel}`;
+    } else if (source === "skip") {
+      return `Skip - ${typeLabel}`;
+    } else if (source === "ubereats") {
+      return `Uber Eats - ${typeLabel}`;
+    } else if (source === "online") {
+      return `Online - ${typeLabel}`;
+    } else {
+      return typeLabel;
+    }
+  };
+
+  // ── Format Platform Badges ──
+  const renderSourceBadge = (source: string) => {
+    const src = source?.toLowerCase() || "pos";
+
+    if (src === "pos") {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1 bg-neutral-50 text-neutral-600 border-neutral-200">
+          <Store size={10} />
+          <span>POS</span>
+        </span>
+      );
+    } else if (src === "doordash") {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1 bg-red-50 text-red-750 border-red-200/60">
+          <Smartphone size={10} />
+          <span>DoorDash</span>
+        </span>
+      );
+    } else if (src === "skip") {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1 bg-orange-50 text-orange-755 border-orange-200/60">
+          <Smartphone size={10} />
+          <span>Skip</span>
+        </span>
+      );
+    } else if (src === "ubereats") {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1 bg-emerald-50 text-emerald-750 border-emerald-200/60">
+          <Smartphone size={10} />
+          <span>Uber Eats</span>
+        </span>
+      );
+    } else {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1 bg-sky-50 text-sky-700 border-sky-100">
+          <Smartphone size={10} />
+          <span>Online</span>
+        </span>
+      );
+    }
+  };
+
+  // ── Status Badge Custom Styling ──
+  const getStatusConfig = (status: string) => {
+    const stat = status?.toLowerCase() || "pending";
+    if (stat === "ready") {
+      return {
+        bg: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+        label: "Ready for Pickup",
+        dot: "bg-emerald-500",
+        icon: <CheckCircle2 size={12} className="text-emerald-600" />,
+      };
+    } else if (stat === "preparing") {
+      return {
+        bg: "bg-orange-50 text-orange-755 border-orange-200/60",
+        label: "Preparing",
+        dot: "bg-orange-500 animate-pulse",
+        icon: <Utensils size={12} className="text-orange-600" />,
+      };
+    } else {
+      return {
+        bg: "bg-sky-50 text-sky-700 border-sky-200/60",
+        label: "Pending (Kitchen)",
+        dot: "bg-sky-500 animate-ping",
+        icon: <Clock size={12} className="text-sky-600" />,
+      };
+    }
+  };
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden select-none">
+      {/* Header section with stats & Refresh button */}
+      <div className="bg-neutral-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-brand-primary-light flex items-center justify-center text-brand-primary">
+            <TrendingUp size={16} />
+          </div>
+          <div>
+            <h2 className="text-[13px] font-850 uppercase tracking-wider text-neutral-800">
+              Live Reception
+            </h2>
+            <p className="text-[10px] font-600 text-neutral-450">
+              Track incoming & kitchen-active orders
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200 flex items-center gap-2 text-[11px] font-750 text-neutral-650">
+            <span>Active Orders:</span>
+            <span className="bg-brand-primary text-white px-2 py-0.5 rounded-md text-[10px] font-800">
+              {orders.length}
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchActiveOrders();
+            }}
+            className="p-2 border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-brand-primary rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Refresh List"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Table container */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {loading && orders.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3">
+            <div className="w-9 h-9 rounded-full border-3 border-neutral-200 border-t-brand-primary animate-spin" />
+            <span className="text-[11px] font-750 text-neutral-500 uppercase tracking-wider animate-pulse">
+              Loading active reception queue...
+            </span>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center p-8 text-neutral-400 bg-neutral-50/30">
+            <div className="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center border border-neutral-200 mb-3 shadow-2xs">
+              <Inbox size={22} className="text-neutral-400" />
+            </div>
+            <h3 className="text-[13px] font-800 text-neutral-750 uppercase tracking-wide">
+              Queue Clear
+            </h3>
+            <p className="text-[11px] text-neutral-400 mt-1 max-w-[260px] text-center leading-relaxed">
+              No orders are currently in the kitchen queue. Place a new order on
+              the POS Terminal or via website.
+            </p>
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-neutral-50/70 text-neutral-500 font-800 text-[10px] tracking-wider uppercase border-b border-neutral-200 sticky top-0 z-10 select-none">
+                <th className="px-6 py-3.5">Order #</th>
+                <th className="px-6 py-3.5">Source</th>
+                <th className="px-6 py-3.5">Order Type</th>
+                <th className="px-6 py-3.5 text-center">Kitchen Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {orders.map((order) => {
+                const statusCfg = getStatusConfig(order.status);
+                return (
+                  <tr
+                    key={order._id}
+                    className="hover:bg-neutral-50/65 transition-colors cursor-pointer group"
+                  >
+                    {/* Order Number */}
+                    <td className="px-6 py-4.5">
+                      <span className="text-[13px] font-800 text-neutral-850 group-hover:text-brand-primary transition-colors">
+                        #{order.orderNumber}
+                      </span>
+                    </td>
+
+                    {/* Order Source Badge */}
+                    <td className="px-6 py-4.5">
+                      {renderSourceBadge(order.orderSource)}
+                    </td>
+
+                    {/* Order Type */}
+                    <td className="px-6 py-4.5">
+                      <span className="text-[12.5px] font-700 text-neutral-700">
+                        {getFormattedOrderType(order)}
+                      </span>
+                    </td>
+
+                    {/* Kitchen Status Badge */}
+                    <td className="px-6 py-4.5 text-center">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-800 border uppercase ${statusCfg.bg}`}
+                      >
+                        {/* <span
+                          className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}
+                        /> */}
+                        {statusCfg.icon}
+                        <span>{statusCfg.label}</span>
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}

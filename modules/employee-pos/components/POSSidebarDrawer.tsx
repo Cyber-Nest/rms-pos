@@ -4,7 +4,7 @@ import React from 'react';
 import { 
   X, LogOut, LayoutDashboard, KeyRound, Clock, ShoppingBag, 
   Receipt, ArrowLeftRight, Wallet, Users, UtensilsCrossed, 
-  Settings, UserCheck, Lock, Bell, BarChart3, Power, ChefHat
+  Settings, UserCheck, Lock, Bell, BarChart3, Power, ChefHat, TrendingUp
 } from 'lucide-react';
 
 interface POSSidebarDrawerProps {
@@ -23,6 +23,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     { key: 'check_in_out', label: 'Check-In/Out', icon: Clock },
     { key: 'pos', label: 'POS', icon: ShoppingBag },
     { key: 'kitchen', label: 'Kitchen View', icon: ChefHat },
+    { key: 'reception_view', label: 'Reception View', icon: TrendingUp },
     // { key: 'orders', label: 'Orders', icon: Receipt },
     { key: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
     { key: 'expense_payout', label: 'Expense/Payout', icon: Wallet },
@@ -83,6 +84,8 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                     window.location.href = '/employee/pos';
                   } else if (item.key === 'kitchen') {
                     window.location.href = '/employee/kitchen';
+                  } else if (item.key === 'reception_view') {
+                    window.location.href = '/employee/reception';
                   } else if (item.key === 'customers') {
                     window.location.href = '/employee/customers';
                   } else if (item.key === 'setting') {

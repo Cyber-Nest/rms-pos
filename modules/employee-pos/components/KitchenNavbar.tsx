@@ -1,6 +1,6 @@
 'use client';
 
-import { ChefHat, ChevronDown, Bell, Settings, Power, LayoutGrid, ClipboardList, Menu } from 'lucide-react';
+import { ChefHat, ChevronDown, Bell, Settings, Power, LayoutGrid, ClipboardList, Menu, TrendingUp } from 'lucide-react';
 import React from 'react';
 
 interface KitchenNavbarProps {
@@ -73,6 +73,15 @@ export default function KitchenNavbar({ activePendingCount, activeConfirmedCount
         >
           <ClipboardList size={14} className="text-neutral-500" />
           <span>Orders</span>
+        </a>
+
+        {/* Reception View Link */}
+        <a
+          href="/employee/reception"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50 text-[12px] font-600 text-neutral-700 hover:border-brand-primary/30 hover:bg-brand-primary-light hover:text-brand-primary transition-all cursor-pointer"
+        >
+          <TrendingUp size={14} className="text-neutral-500" />
+          <span>Reception View</span>
         </a>
       </div>
 
