@@ -17,6 +17,8 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  Truck,
+  ChevronDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { usePosStore } from "../store/pos.store";
@@ -31,6 +33,7 @@ const ORDER_TYPE_LABELS: Record<
   { label: string; icon: React.ReactNode }
 > = {
   takeout: { label: "Takeout", icon: <ShoppingBag size={11} /> },
+  delivery: { label: "Delivery", icon: <Truck size={11} /> },
   "drive-through": { label: "Drive Thru", icon: <Car size={11} /> },
   "dine-in": { label: "Dine In", icon: <Utensils size={11} /> },
 };
@@ -117,8 +120,10 @@ export default function CheckoutModal() {
     }
   }, [checkoutOpen, cartItems, orderNotes, setOrderNotes]);
 
+  const isThirdParty = ["doordash", "skip", "ubereats"].includes(orderSource);
+
   const handleOrderTypeChange = (
-    type: "takeout" | "drive-through" | "dine-in",
+    type: "takeout" | "delivery" | "drive-through" | "dine-in",
   ) => {
     setOrderType(type);
   };
@@ -152,7 +157,7 @@ export default function CheckoutModal() {
           submittingRef.current = false;
           return;
         }
-      } else {
+      } else if (!isThirdParty) {
         if (paymentMethod === "cash" && cashGiven < total) {
           toast.error("Cash given is less than the total amount.");
           submittingRef.current = false;
@@ -232,8 +237,13 @@ export default function CheckoutModal() {
 
             {/* Order type tabs */}
             <div className="flex items-center gap-1.5 ml-2">
-              {(["takeout", "drive-through", "dine-in"] as const).map((t) => {
-                const { label } = ORDER_TYPE_LABELS[t];
+              {(isThirdParty
+                ? (["takeout", "delivery"] as const)
+                : (["takeout", "delivery", "drive-through", "dine-in"] as const)
+              ).map((t) => {
+                const entry = ORDER_TYPE_LABELS[t];
+                if (!entry) return null;
+                const { label } = entry;
                 return (
                   <button
                     key={t}
@@ -265,6 +275,7 @@ export default function CheckoutModal() {
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
                 {/* Pay Now / Pay Later */}
+                {!isThirdParty && (
                 <div className="grid grid-cols-2 gap-2">
                   {(["pay-now", "pay-later"] as const).map((t) => (
                     <button
@@ -280,9 +291,10 @@ export default function CheckoutModal() {
                     </button>
                   ))}
                 </div>
+                )}
 
                 {/* One Time / Split Payment */}
-                {paymentTiming === "pay-now" && (
+                {paymentTiming === "pay-now" && !isThirdParty && (
                   <div className="grid grid-cols-2 gap-2">
                     {(["one-time", "split"] as const).map((t) => (
                       <button
@@ -320,7 +332,7 @@ export default function CheckoutModal() {
                 )}
 
                 {/* ── ONE TIME PAYMENT ── */}
-                {paymentTiming === "pay-now" && paymentType === "one-time" && (
+                {paymentTiming === "pay-now" && paymentType === "one-time" && !isThirdParty && (
                   <>
                     {/* Amount */}
                     <div>
@@ -459,6 +471,36 @@ export default function CheckoutModal() {
                       </div>
                     )}
                   </>
+                )}
+
+                {/* ── ACCOUNT PAY (3rd Party) ── */}
+                {paymentTiming === "pay-now" && paymentType === "one-time" && isThirdParty && (
+                  <div className="space-y-2">
+                    {/* Amount */}
+                    <div>
+                      <label className="block text-[10px] font-600 text-neutral-500 mb-1.5 uppercase tracking-wide">
+                        Amount To Pay ($)
+                      </label>
+                      <div className="border border-neutral-200 rounded-xl px-3.5 py-2.5 bg-brand-primary/5">
+                        <span className="text-[16px] font-800 text-brand-primary">
+                          ${total.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Account Pay Badge */}
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2">
+                      <CheckCircle size={14} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[11px] font-700 text-emerald-800">
+                          Account Pay
+                        </p>
+                        <p className="text-[10px] text-emerald-600 mt-0.5">
+                          Payment received via {orderSource === "doordash" ? "DoorDash" : orderSource === "skip" ? "Skip The Dishes" : "Uber Eats"}. Amount will be recorded as Account Pay.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* ── SPLIT PAYMENT ── */}
@@ -696,20 +738,67 @@ export default function CheckoutModal() {
 
               {/* POS / Online Order */}
               <div className="grid grid-cols-2 gap-2">
-                {(["pos", "online"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setOrderSource(s)}
-                    className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer active:scale-[0.98] ${
-                      orderSource === s
-                        ? "bg-neutral-800 text-white shadow-sm"
-                        : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-                    }`}
-                  >
-                    {s === "pos" ? "POS" : "Online Order"}
-                  </button>
-                ))}
+                <button
+                  onClick={() => {
+                    setOrderSource("pos");
+                    // Reset order type if switching from 3rd party
+                    if (["doordash", "skip", "ubereats"].includes(orderSource) && orderType === "delivery") {
+                      setOrderType("takeout");
+                    }
+                  }}
+                  className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer active:scale-[0.98] ${
+                    orderSource === "pos"
+                      ? "bg-neutral-800 text-white shadow-sm"
+                      : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                  }`}
+                >
+                  POS
+                </button>
+                <button
+                  onClick={() => {
+                    setOrderSource("doordash");
+                    // Reset order type if it's not takeout or delivery
+                    if (orderType === "drive-through" || orderType === "dine-in") {
+                      setOrderType("takeout");
+                    }
+                  }}
+                  className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer active:scale-[0.98] ${
+                    isThirdParty
+                      ? "bg-neutral-800 text-white shadow-sm"
+                      : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                  }`}
+                >
+                  Online Order
+                </button>
               </div>
+
+              {/* 3rd Party Platform Selector */}
+              {isThirdParty && (
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-600 text-neutral-500 uppercase tracking-wide">
+                    Select Platform
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {([
+                      { id: "doordash" as const, label: "DoorDash", color: "bg-red-50 border-red-200 text-red-700", activeColor: "bg-red-600 border-red-600 text-white" },
+                      { id: "skip" as const, label: "Skip", color: "bg-orange-50 border-orange-200 text-orange-700", activeColor: "bg-orange-600 border-orange-600 text-white" },
+                      { id: "ubereats" as const, label: "Uber Eats", color: "bg-green-50 border-green-200 text-green-700", activeColor: "bg-green-600 border-green-600 text-white" },
+                    ]).map((platform) => (
+                      <button
+                        key={platform.id}
+                        onClick={() => setOrderSource(platform.id)}
+                        className={`py-2 rounded-xl text-[10px] font-700 uppercase tracking-wide transition-all cursor-pointer active:scale-[0.97] border ${
+                          orderSource === platform.id
+                            ? platform.activeColor + " shadow-sm"
+                            : platform.color + " hover:opacity-80"
+                        }`}
+                      >
+                        {platform.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Order Notes */}
               <div>

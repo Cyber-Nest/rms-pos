@@ -90,7 +90,17 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
             ORDER SUMMARY ({order.paymentStatus === "paid" ? "PAID" : "UNPAID"})
           </p>
           <p className="text-[11px] font-900 tracking-widest uppercase">
-            {order.orderType ? order.orderType.replace("-", " ") : "DINE-IN"}
+            {(() => {
+              const platformLabels: Record<string, string> = {
+                doordash: "DoorDash",
+                skip: "Skip",
+                ubereats: "Uber Eats",
+                online: "Online",
+              };
+              const platform = platformLabels[order.orderSource];
+              const typeStr = order.orderType ? order.orderType.replace("-", " ") : "TAKEOUT";
+              return platform ? `${platform} ${typeStr}` : typeStr;
+            })()}
           </p>
         </div>
 
@@ -190,17 +200,29 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
             order.payments && order.payments.length > 0
               ? order.payments[0]
               : null;
+          const isThirdParty = ["doordash", "skip", "ubereats"].includes(order.orderSource);
           const isCard = firstPayment
             ? ["card", "interac", "debit", "credit"].includes(
                 firstPayment.method.toLowerCase(),
               )
-            : (order.paymentType as string) === "card" || (order as any).paymentMethod === "card";
+            : (order.paymentType as string) === "card" || (order as any).paymentMethod === "card" || order.orderSource === "online";
           return (
             <div className="border-t border-b border-dashed border-neutral-800 py-2 my-3 space-y-1 text-[10px]">
               <p className="text-center font-800 uppercase tracking-wider mb-1">
                 TRANSACTION RECORD
               </p>
-              {isCard ? (
+              {isThirdParty ? (
+                <>
+                  <div className="flex justify-between font-600">
+                    <span>TYPE :</span>
+                    <span className="font-700">ACCOUNT PAY</span>
+                  </div>
+                  <div className="flex justify-between font-600">
+                    <span>PLATFORM :</span>
+                    <span className="font-700 uppercase">{order.orderSource === "online" ? "WEBSITE" : order.orderSource}</span>
+                  </div>
+                </>
+              ) : isCard ? (
                 <>
                   <div className="flex justify-between font-600">
                     <span>ACCT :</span>
