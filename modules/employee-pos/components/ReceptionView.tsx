@@ -246,8 +246,7 @@ export default function ReceptionView() {
               Queue Clear
             </h3>
             <p className="text-[11px] text-neutral-400 mt-1 max-w-[260px] text-center leading-relaxed">
-              No orders are currently in the kitchen queue. Place a new order on
-              the POS Terminal or via website.
+              No orders are currently in the kitchen. 
             </p>
           </div>
         ) : (
@@ -257,7 +256,7 @@ export default function ReceptionView() {
                 <th className="px-6 py-3.5">Order #</th>
                 <th className="px-6 py-3.5">Source</th>
                 <th className="px-6 py-3.5">Order Type</th>
-                <th className="px-6 py-3.5 text-center">Kitchen Status</th>
+                <th className="px-6 py-3.5 text-center">Order Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
