@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Eye, Smartphone, Store } from 'lucide-react';
 import { Order } from '../types';
+import { formatLocalDateTime24 } from '../utils/timezone';
 
 interface OrdersTableViewProps {
   orders: Order[];
@@ -14,16 +15,10 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(10);
 
-  // ── 24-Hour Date Formatting ──
+  // ── 24-Hour Date Formatting (Alberta Timezone) ──
   const formatDate = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${mm}/${dd}/${yyyy} ${hh}:${min}`;
+      return formatLocalDateTime24(dateStr);
     } catch {
       return dateStr;
     }
@@ -207,23 +202,32 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
 
                     {/* Order Placed (Source) */}
                     <td className="px-5 py-4">
-                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 ${
-                        order.orderSource === 'pos'
-                          ? 'bg-neutral-50 text-neutral-600 border-neutral-200'
-                          : 'bg-sky-50 text-sky-700 border-sky-100'
-                      }`}>
-                        {order.orderSource === 'pos' ? (
-                          <>
-                            <Store size={10} />
-                            <span>POS System</span>
-                          </>
-                        ) : (
-                          <>
-                            <Smartphone size={10} />
-                            <span>Online</span>
-                          </>
-                        )}
-                      </span>
+                      {order.orderSource === 'pos' ? (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-neutral-50 text-neutral-600 border-neutral-200">
+                          <Store size={10} />
+                          <span>POS System</span>
+                        </span>
+                      ) : order.orderSource === 'doordash' ? (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-red-50 text-red-750 border-red-200/60">
+                          <Smartphone size={10} />
+                          <span>Online - DoorDash</span>
+                        </span>
+                      ) : order.orderSource === 'skip' ? (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-orange-50 text-orange-755 border-orange-200/60">
+                          <Smartphone size={10} />
+                          <span>Online - Skip</span>
+                        </span>
+                      ) : order.orderSource === 'ubereats' ? (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-750 border-emerald-200/60">
+                          <Smartphone size={10} />
+                          <span>Online - Uber Eats</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 border-sky-100">
+                          <Smartphone size={10} />
+                          <span>Online</span>
+                        </span>
+                      )}
                     </td>
 
                     {/* Payment Status */}

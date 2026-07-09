@@ -50,7 +50,7 @@ interface PosState {
   changeAmount: number;
 
   // ── Order Details ────────────────────────────────────────────
-  orderSource: "pos" | "online";
+  orderSource: "pos" | "online" | "doordash" | "skip" | "ubereats";
   orderTiming: "now" | "later";
   scheduledAt: string | null;
   orderNotes: string;
@@ -98,7 +98,7 @@ interface PosState {
   addSplitPayment: (payment: SplitPayment) => void;
   updateSplitPayment: (index: number, payment: SplitPayment) => void;
   removeSplitPayment: (index: number) => void;
-  setOrderSource: (source: "pos" | "online") => void;
+  setOrderSource: (source: "pos" | "online" | "doordash" | "skip" | "ubereats") => void;
   setOrderTiming: (timing: "now" | "later") => void;
   setScheduledAt: (date: string | null) => void;
   setOrderNotes: (notes: string) => void;
@@ -513,7 +513,17 @@ export const usePosStore = create<PosState>((set, get) => ({
     set({ splitPayments: get().splitPayments.filter((_, i) => i !== index) }),
 
   // ── Order Details ────────────────────────────────────────────
-  setOrderSource: (source) => set({ orderSource: source }),
+  setOrderSource: (source) => {
+    set({ orderSource: source });
+    // For 3rd party platforms, auto-set payment to pay-now one-time (Account Pay)
+    if (["doordash", "skip", "ubereats"].includes(source)) {
+      set({
+        paymentTiming: "pay-now",
+        paymentType: "one-time",
+        paymentMethod: "cash",
+      });
+    }
+  },
   setOrderTiming: (timing) => set({ orderTiming: timing }),
   setScheduledAt: (date) => set({ scheduledAt: date }),
   setOrderNotes: (notes) => set({ orderNotes: notes }),
@@ -588,6 +598,17 @@ export const usePosStore = create<PosState>((set, get) => ({
     if (paymentTiming === "pay-now") {
       if (paymentType === "split") {
         payments = splitPayments;
+      } else if (["doordash", "skip", "ubereats"].includes(orderSource)) {
+        // 3rd party orders: payment goes to Account Pay
+        // Send as cash method - backend routes to accountPay based on orderSource
+        payments = [
+          {
+            method: "cash",
+            amount: total,
+            cashGiven: 0,
+            changeGiven: 0,
+          },
+        ];
       } else {
         payments = [
           {

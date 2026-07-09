@@ -62,6 +62,9 @@ export default function ReportsView() {
     },
     channelSummary: {
       online: 0,
+      doordash: 0,
+      skip: 0,
+      ubereats: 0,
       pos: 0
     },
     expense: []
@@ -541,12 +544,24 @@ export default function ReportsView() {
                 <table className="w-full text-left text-[12px]">
                   <tbody className="divide-y divide-neutral-200/60">
                     <tr>
-                      <td className="py-1.5 px-3 font-650 text-neutral-700">DoorDash / Online App</td>
-                      <td className="py-1.5 px-3 text-right font-700">${channelSummary.online.toFixed(2)}</td>
+                      <td className="py-1.5 px-3 font-650 text-neutral-700">Online (Website/App)</td>
+                      <td className="py-1.5 px-3 text-right font-700">${(channelSummary.online || 0).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-650 text-neutral-700">DoorDash</td>
+                      <td className="py-1.5 px-3 text-right font-700">${(channelSummary.doordash || 0).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-650 text-neutral-700">Skip</td>
+                      <td className="py-1.5 px-3 text-right font-700">${(channelSummary.skip || 0).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-650 text-neutral-700">Uber Eats</td>
+                      <td className="py-1.5 px-3 text-right font-700">${(channelSummary.ubereats || 0).toFixed(2)}</td>
                     </tr>
                     <tr className="bg-neutral-50 font-900 border-t border-neutral-200/80">
                       <td className="py-1.5 px-3 uppercase text-[10px]">Total</td>
-                      <td className="py-1.5 px-3 text-right text-brand-primary font-900">${channelSummary.online.toFixed(2)}</td>
+                      <td className="py-1.5 px-3 text-right text-brand-primary font-900">${((channelSummary.online || 0) + (channelSummary.doordash || 0) + (channelSummary.skip || 0) + (channelSummary.ubereats || 0)).toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>

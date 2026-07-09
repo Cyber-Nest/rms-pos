@@ -19,6 +19,7 @@ import OrderDetailModal from "./OrderDetailModal";
 import FailedTransactionsView from "./FailedTransactionsView";
 import RefundOrdersView from "./RefundOrdersView";
 import CashOutSummaryView from "./CashOutSummaryView";
+import ReceptionView from "./ReceptionView";
 import { Order } from "../types";
 import {
   Search,
@@ -30,6 +31,7 @@ import {
   Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { getLocalTodayStr, getLocalPastDateStr, getLocalPastDateOf, dateToLocalStr, getLocalYear } from "../utils/timezone";
 
 const formatDateDisplay = (dateStr: string) => {
   if (!dateStr) return "";
@@ -42,10 +44,10 @@ const formatDateDisplay = (dateStr: string) => {
 };
 
 export default function OrdersDashboard() {
-  // ── Sub-tabs ──
   const [activeSubTab, setActiveSubTab] = useState<
     | "dashboard"
     | "orders"
+    | "reception_view"
     | "sales_summary"
     | "reports"
     | "expense_payout"
@@ -92,17 +94,13 @@ export default function OrdersDashboard() {
 
   // Date states (Default: Last 30 Days)
   const getPastDateStr = (daysAgo: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    return d.toISOString().slice(0, 10);
+    return getLocalPastDateStr(daysAgo);
   };
   const getTodayDateStr = () => {
-    return new Date().toISOString().slice(0, 10);
+    return getLocalTodayStr();
   };
   const getPastDateOf = (dateStr: string, daysAgo: number) => {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() - daysAgo);
-    return d.toISOString().slice(0, 10);
+    return getLocalPastDateOf(dateStr, daysAgo);
   };
 
   const [startDate, setStartDate] = useState(getPastDateStr(30));
@@ -180,6 +178,7 @@ export default function OrdersDashboard() {
         [
           "dashboard",
           "orders",
+          "reception_view",
           "sales_summary",
           "reports",
           "expense_payout",
@@ -199,7 +198,7 @@ export default function OrdersDashboard() {
         if (tab === "dashboard") {
           setStartDate(getPastDateStr(30));
           setEndDate(getTodayDateStr());
-        } else if (tab === "orders") {
+        } else if (tab === "orders" || tab === "reception_view") {
           setStartDate(getTodayDateStr());
           setEndDate(getTodayDateStr());
           setSingleDate(getTodayDateStr());
@@ -228,7 +227,7 @@ export default function OrdersDashboard() {
   // ── Sync singleDate to startDate/endDate range ──
   const handleSingleDateChange = (val: string) => {
     setSingleDate(val);
-    if (activeSubTab === "orders" || isMoreTabActive || activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard") {
+    if (activeSubTab === "orders" || activeSubTab === "reception_view" || isMoreTabActive || activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard") {
       setStartDate(val);
       setEndDate(val);
     }
@@ -247,82 +246,77 @@ export default function OrdersDashboard() {
 
   // ── Month Selection Helper (Advance Search) ──
   const handleMonthSelect = (monthIdx: number) => {
-    const currentYear = new Date().getFullYear();
+    const currentYear = getLocalYear();
     const start = new Date(currentYear, monthIdx, 1);
     const end = new Date(currentYear, monthIdx + 1, 0);
-    const startStr = start.toISOString().slice(0, 10);
-    const endStr = end.toISOString().slice(0, 10);
+    const startStr = dateToLocalStr(start);
+    const endStr = dateToLocalStr(end);
     setAdvStartDate(startStr);
     setAdvEndDate(endStr);
   };
 
   // ── Reset Date Ranges on Tab Change ──
-  useEffect(() => {
-    if (!isReady) return;
-    if (activeSubTab === "dashboard") {
-      const defaultStart = getPastDateStr(30);
-      const defaultEnd = getTodayDateStr();
-      setStartDate(defaultStart);
-      setEndDate(defaultEnd);
-      setSingleDate(defaultEnd);
-      setAdvStartDate(defaultStart);
-      setAdvEndDate(defaultEnd);
-    } else if (activeSubTab === "orders" || isMoreTabActive) {
-      const today = getTodayDateStr();
-      setStartDate(today);
-      setEndDate(today);
-      setSingleDate(today);
-      setAdvStartDate(today);
-      setAdvEndDate(today);
-    }
-  }, [activeSubTab, isReady]);
+  // Deleted to preserve selected date across tabs as requested by the user.
 
   // ── Apply Quick Date Ranges (Advance Search) ──
   const handleQuickRange = (
     range: "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month",
   ) => {
-    const today = new Date();
-    let start = new Date();
-    let end = new Date();
+    const todayStr = getLocalTodayStr();
+    let startStr = todayStr;
+    let endStr = todayStr;
 
     switch (range) {
       case "today":
-        start = today;
-        end = today;
+        // already set
         break;
       case "yesterday":
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        start = yesterday;
-        end = yesterday;
+        startStr = getLocalPastDateStr(1);
+        endStr = startStr;
         break;
-      case "this_week":
+      case "this_week": {
         // Current week (Monday to Sunday)
+        const today = new Date(todayStr + "T12:00:00");
         const dayOfWeek = today.getDay();
-        const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is sunday
-        start = new Date(today.setDate(diff));
-        end = new Date();
+        const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        const weekStart = new Date(today);
+        weekStart.setDate(diff);
+        startStr = dateToLocalStr(weekStart);
+        endStr = todayStr;
         break;
-      case "last_week":
-        const lastWeekStart = new Date();
-        lastWeekStart.setDate(today.getDate() - today.getDay() - 6);
-        const lastWeekEnd = new Date();
-        lastWeekEnd.setDate(today.getDate() - today.getDay());
-        start = lastWeekStart;
-        end = lastWeekEnd;
+      }
+      case "last_week": {
+        const today = new Date(todayStr + "T12:00:00");
+        const dayOfWeek = today.getDay();
+        const thisMonday = new Date(today);
+        thisMonday.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+        const lastMonday = new Date(thisMonday);
+        lastMonday.setDate(thisMonday.getDate() - 7);
+        const lastSunday = new Date(thisMonday);
+        lastSunday.setDate(thisMonday.getDate() - 1);
+        startStr = dateToLocalStr(lastMonday);
+        endStr = dateToLocalStr(lastSunday);
         break;
-      case "this_month":
-        start = new Date(today.getFullYear(), today.getMonth(), 1);
-        end = new Date();
+      }
+      case "this_month": {
+        const today = new Date(todayStr + "T12:00:00");
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        startStr = dateToLocalStr(monthStart);
+        endStr = todayStr;
         break;
-      case "last_month":
-        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        end = new Date(today.getFullYear(), today.getMonth(), 0);
+      }
+      case "last_month": {
+        const today = new Date(todayStr + "T12:00:00");
+        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        startStr = dateToLocalStr(lastMonthStart);
+        endStr = dateToLocalStr(lastMonthEnd);
         break;
+      }
     }
 
-    setAdvStartDate(start.toISOString().slice(0, 10));
-    setAdvEndDate(end.toISOString().slice(0, 10));
+    setAdvStartDate(startStr);
+    setAdvEndDate(endStr);
   };
 
   const handleSelectOrder = async (order: Order) => {
@@ -419,31 +413,33 @@ export default function OrdersDashboard() {
               ? "Dashboard"
               : activeSubTab === "orders"
                 ? "Orders"
-                : activeSubTab === "sales_summary"
-                  ? "Sales Summary"
-                  : activeSubTab === "reports"
-                    ? "Reports"
-                    : activeSubTab === "update_profile"
-                      ? "Update Profile"
-                      : activeSubTab === "change_password"
-                        ? "Change Password"
-                        : activeSubTab === "item_sales"
-                          ? "Item Sales"
-                          : activeSubTab === "item_wise_sales"
-                            ? "Item Wise Sales"
-                            : activeSubTab === "hourly_sales"
-                              ? "Hourly Sales Report"
-                              : activeSubTab === "cash_out_report"
-                                ? "Cash Out Report"
-                                : activeSubTab === "cash_out_summary"
-                                  ? "Cash Out Summary"
-                                  : activeSubTab === "monthly_sales_summary"
-                                    ? "Monthly Sales Summary"
-                                    : activeSubTab === "failed_transaction"
-                                      ? "Failed Transactions"
-                                      : activeSubTab === "refund_orders"
-                                        ? "Refund Orders"
-                                        : "Expense/Payout"}
+                : activeSubTab === "reception_view"
+                  ? "Reception View"
+                  : activeSubTab === "sales_summary"
+                    ? "Sales Summary"
+                    : activeSubTab === "reports"
+                      ? "Reports"
+                      : activeSubTab === "update_profile"
+                        ? "Update Profile"
+                        : activeSubTab === "change_password"
+                          ? "Change Password"
+                          : activeSubTab === "item_sales"
+                            ? "Item Sales"
+                            : activeSubTab === "item_wise_sales"
+                              ? "Item Wise Sales"
+                              : activeSubTab === "hourly_sales"
+                                ? "Hourly Sales Report"
+                                : activeSubTab === "cash_out_report"
+                                  ? "Cash Out Report"
+                                  : activeSubTab === "cash_out_summary"
+                                    ? "Cash Out Summary"
+                                    : activeSubTab === "monthly_sales_summary"
+                                      ? "Monthly Sales Summary"
+                                      : activeSubTab === "failed_transaction"
+                                        ? "Failed Transactions"
+                                        : activeSubTab === "refund_orders"
+                                          ? "Refund Orders"
+                                          : "Expense/Payout"}
           </h1>
 
           <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200">
@@ -451,9 +447,9 @@ export default function OrdersDashboard() {
               onClick={() => {
                 setActiveSubTab("dashboard");
                 setIsMoreDropdownOpen(false);
-                // Sync range to last 30 days relative to today's actual date
-                setStartDate(getPastDateStr(30));
-                setEndDate(getTodayDateStr());
+                // Keep range synced to selected singleDate
+                setStartDate(singleDate);
+                setEndDate(singleDate);
               }}
               className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
                 activeSubTab === "dashboard"
@@ -483,6 +479,9 @@ export default function OrdersDashboard() {
               onClick={() => {
                 setActiveSubTab("sales_summary");
                 setIsMoreDropdownOpen(false);
+                // Sync range to selected singleDate
+                setStartDate(singleDate);
+                setEndDate(singleDate);
               }}
               className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
                 activeSubTab === "sales_summary"
@@ -969,6 +968,7 @@ export default function OrdersDashboard() {
             [
               "dashboard",
               "orders",
+              "reception_view",
               "sales_summary",
               "reports",
               "update_profile",

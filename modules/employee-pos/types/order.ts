@@ -44,7 +44,7 @@ export interface Order {
   _id?: string;
   orderNumber: string;
   orderType: "takeout" | "delivery" | "drive-through" | "dine-in";
-  orderSource: "pos" | "online";
+  orderSource: "pos" | "online" | "doordash" | "skip" | "ubereats";
   table: TableInfo | null;
   customer: CustomerInfo | null;
   vehicle: VehicleInfo | null;

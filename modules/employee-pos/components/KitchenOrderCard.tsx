@@ -73,14 +73,23 @@ export default function KitchenOrderCard({
   const isUnpaid = order.paymentStatus === "unpaid";
   const isDraft = order.orderNumber === "#DRAFT";
 
-  const formattedType = order.orderSource === "online"
-    ? `Online - ${order.orderType === "delivery" ? "Delivery" : "Takeout"}`
-    : ({
-        takeout: "Take-Out",
-        "drive-through": "Drive-Through",
-        "dine-in": "Dine-In",
-        delivery: "Delivery",
-      }[order.orderType] || order.orderType);
+  const PLATFORM_LABELS: Record<string, string> = {
+    doordash: "DoorDash",
+    skip: "Skip",
+    ubereats: "Uber Eats",
+    online: "Online",
+  };
+
+  const orderTypeLabel = ({
+    takeout: "Takeout",
+    "drive-through": "Drive-Through",
+    "dine-in": "Dine-In",
+    delivery: "Delivery",
+  }[order.orderType] || order.orderType);
+
+  const formattedType = PLATFORM_LABELS[order.orderSource]
+    ? `${PLATFORM_LABELS[order.orderSource]} - ${order.orderType === "delivery" ? "Delivery" : "Takeout"}`
+    : orderTypeLabel;
 
   // Status Colors Mapping
   const statusColorMap: Record<string, string> = {
@@ -92,7 +101,13 @@ export default function KitchenOrderCard({
   };
   const statusBarBg = isDraft ? "bg-amber-500" : (statusColorMap[order.status] || "bg-neutral-300");
 
-  const typeBadgeClass = order.orderSource === "online"
+  const typeBadgeClass = order.orderSource === "doordash"
+    ? "bg-red-50 text-red-600 border-red-100 font-bold"
+    : order.orderSource === "skip"
+    ? "bg-orange-50 text-orange-600 border-orange-100 font-bold"
+    : order.orderSource === "ubereats"
+    ? "bg-green-50 text-green-600 border-green-100 font-bold"
+    : order.orderSource === "online"
     ? "bg-rose-50 text-rose-600 border-rose-100 font-bold"
     : ({
         takeout: "bg-orange-50 text-brand-primary border-orange-100",

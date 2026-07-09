@@ -184,7 +184,13 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
               Customer: {displayCustomerName}
             </span>
             <span className="text-[12px] opacity-75 font-600">
-              Order By: {order.orderSource === 'online' ? 'Online Source' : 'Employee Terminal'}
+              Order By: {
+                order.orderSource === 'pos' ? 'Employee Terminal' :
+                order.orderSource === 'doordash' ? 'Online - DoorDash' :
+                order.orderSource === 'skip' ? 'Online - Skip' :
+                order.orderSource === 'ubereats' ? 'Online - Uber Eats' :
+                order.orderSource === 'online' ? 'Online - Website' : 'Online Source'
+              }
             </span>
             {!order.orderNumber.startsWith('#DRAFT') && (
               <button

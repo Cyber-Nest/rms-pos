@@ -48,27 +48,17 @@ export default function OrderTypePanel() {
       <div className="grid grid-cols-2 gap-1.5">
         {ORDER_TYPES.map(({ id, label }) => {
           const active = orderType === id;
-          const isDelivery = id === 'delivery';
           return (
             <button
               key={id}
-              onClick={() => !isDelivery && handleTypeChange(id)}
-              disabled={isDelivery}
-              title={isDelivery ? 'Delivery coming soon' : undefined}
+              onClick={() => handleTypeChange(id)}
               className={`py-2 px-1 rounded-lg border text-[10px] font-600 text-center tracking-wide transition-all relative ${
-                isDelivery
-                  ? 'bg-neutral-50 border-neutral-200 text-neutral-300 cursor-not-allowed'
-                  : active
+                active
                   ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm cursor-pointer active:scale-95'
                   : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 cursor-pointer active:scale-95'
               }`}
             >
               {label}
-              {isDelivery && (
-                <span className="absolute -top-1.5 -right-1.5 bg-neutral-300 text-white text-[7px] font-700 px-1 py-0.5 rounded-full leading-none">
-                  Soon
-                </span>
-              )}
             </button>
           );
         })}
