@@ -14,4 +14,5 @@ export interface MenuItem {
   itemType: MenuItemType;
   modifierGroupIds?: string[];
   modifierGroups?: ModifierGroup[];
+  kitchenLabel?: 'chicken' | 'pizza';
 }

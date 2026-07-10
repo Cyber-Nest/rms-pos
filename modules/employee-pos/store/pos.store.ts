@@ -280,6 +280,7 @@ export const usePosStore = create<PosState>((set, get) => ({
         quantity,
         totalPrice: roundToTwo(itemUnitCost * quantity),
         note,
+        kitchenLabel: menuItem.kitchenLabel || 'chicken',
       };
       updatedCartItems.push(newItem);
     }
@@ -644,6 +645,7 @@ export const usePosStore = create<PosState>((set, get) => ({
         quantity: item.quantity,
         totalPrice: item.totalPrice,
         note: item.note || "",
+        kitchenLabel: item.kitchenLabel || 'chicken',
       })),
       subtotal,
       taxRate: TAX_RATE,
