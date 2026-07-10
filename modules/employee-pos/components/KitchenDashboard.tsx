@@ -20,7 +20,7 @@ export default function KitchenDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'preparing' | 'ready'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'takeout' | 'drive-through' | 'dine-in' | 'delivery' | 'online'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'chicken' | 'pizza'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'chicken' | 'pizza'>('chicken');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [startIndex, setStartIndex] = useState(0);
 
@@ -30,7 +30,8 @@ export default function KitchenDashboard() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
-          status: 'pending,preparing,ready'
+          status: 'pending,preparing,ready',
+          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus'
         }
       });
       if (res.data.success) {
@@ -185,7 +186,7 @@ export default function KitchenDashboard() {
   // Reset startIndex on filter change
   useEffect(() => {
     setStartIndex(0);
-  }, [statusFilter, typeFilter]);
+  }, [statusFilter, typeFilter, categoryFilter]);
 
   // ── Filter and Sort All Candidates ──────────────────────────
   const filteredOrders = React.useMemo(() => {
@@ -219,8 +220,46 @@ export default function KitchenDashboard() {
       }
     });
 
+    // Apply category filter (kitchen label)
+    let categoryFiltered = candidates;
+    if (categoryFilter === 'pizza') {
+      categoryFiltered = candidates.filter((o) =>
+        o.items?.some((item: any) => item.kitchenLabel === 'pizza')
+      );
+    } else if (categoryFilter === 'chicken') {
+      categoryFiltered = candidates.filter((o) =>
+        !o.items?.some((item: any) => item.kitchenLabel === 'pizza')
+      );
+    }
+
     // Sort strictly by createdAt (oldest first)
-    return candidates.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return categoryFiltered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [orders, draftCart, statusFilter, typeFilter, categoryFilter]);
+
+  // Category counts (based on status+type filtered orders, before category filter)
+  const categoryCountData = React.useMemo(() => {
+    const candidates: Order[] = [];
+    if (draftCart) {
+      const matchesStatus = statusFilter === 'pending';
+      const matchesType = typeFilter === 'all' || typeFilter === draftCart.orderType;
+      if (matchesStatus && matchesType) candidates.push(draftCart);
+    }
+    orders.forEach((o) => {
+      const mapped = getMappedStatus(o);
+      const matchesStatus = statusFilter === 'all' || statusFilter === mapped;
+      let matchesType = false;
+      if (typeFilter === 'all') matchesType = true;
+      else if (typeFilter === 'online') matchesType = o.orderSource === 'online';
+      else matchesType = o.orderType === typeFilter && o.orderSource === 'pos';
+      if (matchesStatus && matchesType) candidates.push(o);
+    });
+    const pizzaCount = candidates.filter((o) =>
+      o.items?.some((item: any) => item.kitchenLabel === 'pizza')
+    ).length;
+    const chickenCount = candidates.filter((o) =>
+      !o.items?.some((item: any) => item.kitchenLabel === 'pizza')
+    ).length;
+    return { all: candidates.length, pizza: pizzaCount, chicken: chickenCount };
   }, [orders, draftCart, statusFilter, typeFilter]);
 
   const visibleOrders = filteredOrders.slice(startIndex, startIndex + 4);
@@ -271,6 +310,7 @@ export default function KitchenDashboard() {
             { id: "pizza", label: "Pizza" },
           ].map((catTab) => {
             const active = categoryFilter === catTab.id;
+            const count = categoryCountData[catTab.id as keyof typeof categoryCountData] ?? 0;
             return (
               <button
                 key={catTab.id}
@@ -281,7 +321,7 @@ export default function KitchenDashboard() {
                     : "text-neutral-550 hover:text-brand-primary"
                 }`}
               >
-                {catTab.label}
+                {catTab.label} ({count})
               </button>
             );
           })}

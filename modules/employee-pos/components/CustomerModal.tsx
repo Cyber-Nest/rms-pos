@@ -113,10 +113,6 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
 
   const onSubmit = (data: FormValues) => {
     const customerName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
-    if (!data.phone) {
-      toast.error('Please fill in Phone Number or Email Address.');
-      return;
-    }
     const finalName = customerName || 'No Name';
     setCustomer({
       name: finalName,
@@ -262,9 +258,8 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
                   <div>
                     <input
                       {...registerWithFocus('phone')}
-                      placeholder="Enter Phone # *"
+                      placeholder="Enter Phone #"
                       className="w-full bg-white border border-neutral-200 rounded-full px-4 py-2 text-[11px] font-500 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                      required
                     />
                   </div>
 

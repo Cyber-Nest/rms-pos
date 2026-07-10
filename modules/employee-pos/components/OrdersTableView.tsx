@@ -136,11 +136,21 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
                 }[order.orderType] || order.orderType;
 
                 // Customer helper flags
+                const isSkipOrder = order.orderSource === 'skip';
                 const hasCustomer = !!(order.customer?.name && order.customer.name.trim() !== '' && order.customer.name !== 'No Name');
                 const hasPhone = !!(order.customer?.phone && order.customer.phone.trim() !== '' && order.customer.phone !== 'No phone');
-                const customerInitials = hasCustomer && order.customer?.name
-                  ? order.customer.name.slice(0, 2)
-                  : 'NN';
+                
+                const customerInitials = isSkipOrder
+                  ? 'SK'
+                  : (hasCustomer && order.customer?.name
+                      ? order.customer.name.slice(0, 2)
+                      : 'NN');
+
+                const avatarClass = isSkipOrder
+                  ? 'bg-orange-50 border-orange-200 text-orange-700 font-750'
+                  : hasCustomer
+                    ? 'bg-brand-primary-light border-brand-primary-muted text-brand-primary'
+                    : 'bg-neutral-100 border-neutral-200 text-neutral-400';
 
                 return (
                   <tr
@@ -157,22 +167,18 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
                     {/* Customer with profile avatar initials */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-800 uppercase border ${
-                          hasCustomer
-                            ? 'bg-brand-primary-light border-brand-primary-muted text-brand-primary'
-                            : 'bg-neutral-100 border-neutral-200 text-neutral-400'
-                        }`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-800 uppercase border ${avatarClass}`}>
                           {customerInitials}
                         </div>
                         <div className="leading-tight">
                           <p className={`text-[11.5px] ${
-                            hasCustomer
+                            isSkipOrder || hasCustomer
                               ? 'font-800 text-neutral-800'
                               : 'font-700 text-neutral-400'
                           }`}>
-                            {hasCustomer ? order.customer?.name : 'No Name'}
+                            {isSkipOrder ? (order.customer?.name || 'No Digits') : (hasCustomer ? order.customer?.name : 'No Name')}
                           </p>
-                          {hasCustomer && hasPhone && (
+                          {!isSkipOrder && hasCustomer && hasPhone && (
                             <p className="text-[9.5px] text-neutral-400 font-550 mt-0.5">
                               {order.customer?.phone}
                             </p>

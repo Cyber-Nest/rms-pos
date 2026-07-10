@@ -54,6 +54,7 @@ interface PosState {
   orderTiming: "now" | "later";
   scheduledAt: string | null;
   orderNotes: string;
+  skipLastDigits: string;
 
   // ── Promo / Discount ─────────────────────────────────────────
   appliedPromo: PromoApplied | null;
@@ -102,6 +103,7 @@ interface PosState {
   setOrderTiming: (timing: "now" | "later") => void;
   setScheduledAt: (date: string | null) => void;
   setOrderNotes: (notes: string) => void;
+  setSkipLastDigits: (digits: string) => void;
   applyPromo: (promo: PromoApplied) => void;
   applyManualDiscount: (type: "percentage" | "flat", value: number) => void;
   removeDiscount: () => void;
@@ -191,6 +193,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   orderTiming: "now",
   scheduledAt: null,
   orderNotes: "",
+  skipLastDigits: "",
   appliedPromo: null,
   manualDiscountType: null,
   manualDiscountValue: 0,
@@ -277,6 +280,7 @@ export const usePosStore = create<PosState>((set, get) => ({
         quantity,
         totalPrice: roundToTwo(itemUnitCost * quantity),
         note,
+        kitchenLabel: menuItem.kitchenLabel || 'chicken',
       };
       updatedCartItems.push(newItem);
     }
@@ -461,6 +465,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       orderTiming: "now",
       scheduledAt: null,
       orderNotes: "",
+      skipLastDigits: "",
       appliedPromo: null,
       manualDiscountType: null,
       manualDiscountValue: 0,
@@ -527,6 +532,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   setOrderTiming: (timing) => set({ orderTiming: timing }),
   setScheduledAt: (date) => set({ scheduledAt: date }),
   setOrderNotes: (notes) => set({ orderNotes: notes }),
+  setSkipLastDigits: (digits) => set({ skipLastDigits: digits }),
 
   // ── Promo / Discount ─────────────────────────────────────────
   applyPromo: (promo) => {
@@ -583,6 +589,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       orderTiming,
       scheduledAt,
       orderNotes,
+      skipLastDigits,
       orders,
       currentOrderSeq,
     } = get();
@@ -638,6 +645,7 @@ export const usePosStore = create<PosState>((set, get) => ({
         quantity: item.quantity,
         totalPrice: item.totalPrice,
         note: item.note || "",
+        kitchenLabel: item.kitchenLabel || 'chicken',
       })),
       subtotal,
       taxRate: TAX_RATE,
@@ -652,11 +660,13 @@ export const usePosStore = create<PosState>((set, get) => ({
       orderTiming,
       scheduledAt: orderTiming === "later" ? scheduledAt : null,
       customer:
-        selectedCustomer &&
-        selectedCustomer.name &&
-        selectedCustomer.name.trim()
-          ? selectedCustomer
-          : { name: "No Name", phone: "", email: "" },
+        orderSource === "skip"
+          ? { name: skipLastDigits, phone: "", email: "" }
+          : selectedCustomer &&
+            selectedCustomer.name &&
+            selectedCustomer.name.trim()
+            ? selectedCustomer
+            : { name: "No Name", phone: "", email: "" },
       notes: orderNotes,
     };
 

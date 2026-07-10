@@ -10,4 +10,5 @@ export interface CartItem {
   quantity: number;
   totalPrice: number; // (basePrice + sum of modifier prices) * quantity
   note?: string;
+  kitchenLabel?: 'chicken' | 'pizza';
 }
