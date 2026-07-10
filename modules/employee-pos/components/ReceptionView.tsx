@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   TrendingUp,
   Inbox,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Order } from "../types";
@@ -19,6 +20,7 @@ import { Order } from "../types";
 export default function ReceptionView() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   // ── Fetch Active Orders from API ──
   const fetchActiveOrders = useCallback(async () => {
@@ -27,19 +29,32 @@ export default function ReceptionView() {
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
-          status: "pending,preparing,ready",
+          status: "pending,preparing,ready,completed",
         },
       });
       if (res.data.success) {
         // Filter out completed and cancelled orders
-        const active = (res.data.data as Order[]).filter((o) =>
-          ["pending", "preparing", "ready"].includes(o.status),
-        );
-        // Sort by oldest first (standard queue processing)
-        active.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        );
+        const active = (res.data.data as Order[]).filter((o) => {
+          if (o.status === "completed" && o.receptionCompleted === true) {
+            return false;
+          }
+          return ["pending", "preparing", "ready", "completed"].includes(o.status);
+        });
+        // Sort by status priority: Ready/Completed (1) > Preparing (2) > Pending (3). Then oldest first.
+        const statusWeights: Record<string, number> = {
+          ready: 1,
+          completed: 1,
+          preparing: 2,
+          pending: 3,
+        };
+        active.sort((a, b) => {
+          const weightA = statusWeights[a.status] || 99;
+          const weightB = statusWeights[b.status] || 99;
+          if (weightA !== weightB) {
+            return weightA - weightB;
+          }
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
         setOrders(active);
       }
     } catch (err) {
@@ -49,6 +64,31 @@ export default function ReceptionView() {
       setLoading(false);
     }
   }, []);
+
+  // ── Complete order by Cashier ──
+  const handleCompleteOrder = async (orderId: string) => {
+    setCompletingId(orderId);
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.patch(`${apiUrl}/orders/${orderId}/status`, {
+        status: "completed",
+        note: "Order completed and handed over to customer via Reception View",
+        receptionCompleted: true,
+      });
+      if (res.data.success) {
+        toast.success("Order marked as completed!");
+        fetchActiveOrders();
+      } else {
+        toast.error(res.data.message || "Failed to complete order.");
+      }
+    } catch (err) {
+      console.error("Failed to complete order:", err);
+      toast.error("Error completing order.");
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   // ── Initial Fetch ──
   useEffect(() => {
@@ -165,7 +205,7 @@ export default function ReceptionView() {
   // ── Status Badge Custom Styling ──
   const getStatusConfig = (status: string) => {
     const stat = status?.toLowerCase() || "pending";
-    if (stat === "ready") {
+    if (stat === "ready" || stat === "completed") {
       return {
         bg: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
         label: "Ready for Pickup",
@@ -257,6 +297,7 @@ export default function ReceptionView() {
                 <th className="px-6 py-3.5">Source</th>
                 <th className="px-6 py-3.5">Order Type</th>
                 <th className="px-6 py-3.5 text-center">Order Status</th>
+                <th className="px-6 py-3.5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -297,6 +338,27 @@ export default function ReceptionView() {
                         {statusCfg.icon}
                         <span>{statusCfg.label}</span>
                       </span>
+                    </td>
+
+                    {/* Action Column */}
+                    <td className="px-6 py-4.5 text-center">
+                      {(order.status === "ready" || order.status === "completed") ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (order._id) {
+                              handleCompleteOrder(order._id);
+                            }
+                          }}
+                          disabled={completingId === order._id}
+                          className="w-7 h-7 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/35 hover:scale-105 active:scale-95 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Complete Order & Handover"
+                        >
+                          <Check size={14} strokeWidth={3} />
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-neutral-350 italic font-500">-</span>
+                      )}
                     </td>
                   </tr>
                 );
