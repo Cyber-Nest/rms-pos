@@ -146,6 +146,7 @@ export default function OrdersDashboard() {
             endDate: endDate,
             status: statusFilter || undefined,
             paymentStatus: paymentFilter || undefined,
+            fields: "orderNumber,customer,subtotal,total,orderType,orderSource,paymentStatus,status,createdAt,orderTiming,scheduledAt,dueAt",
           },
         });
         if (res.data.success) {

@@ -30,7 +30,8 @@ export default function KitchenDashboard() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
-          status: 'pending,preparing,ready'
+          status: 'pending,preparing,ready',
+          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus'
         }
       });
       if (res.data.success) {

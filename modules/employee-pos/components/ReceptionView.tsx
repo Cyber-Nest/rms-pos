@@ -30,6 +30,8 @@ export default function ReceptionView() {
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
           status: "pending,preparing,ready,completed",
+          fields: "orderNumber,orderSource,orderType,status,receptionCompleted,createdAt",
+          excludeReceptionCompleted: "true",
         },
       });
       if (res.data.success) {
