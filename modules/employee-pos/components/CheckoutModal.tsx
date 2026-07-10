@@ -79,6 +79,8 @@ export default function CheckoutModal() {
     setCustomer,
     placeOrder,
     placingOrder,
+    skipLastDigits,
+    setSkipLastDigits,
   } = usePosStore();
 
   const [showOrderLater, setShowOrderLater] = useState(false);
@@ -142,6 +144,22 @@ export default function CheckoutModal() {
     submittingRef.current = true;
 
     // Validate
+    if (orderSource === "doordash" || orderSource === "ubereats") {
+      if (!selectedCustomer || !selectedCustomer.name || !selectedCustomer.name.trim()) {
+        toast.error("Customer name is required for DoorDash and Uber Eats orders.");
+        submittingRef.current = false;
+        return;
+      }
+    }
+
+    if (orderSource === "skip") {
+      if (!skipLastDigits || !/^\d{6}$/.test(skipLastDigits)) {
+        toast.error("Please enter a valid 6 digit number for Skip.");
+        submittingRef.current = false;
+        return;
+      }
+    }
+
     if (paymentTiming === "pay-now") {
       if (paymentType === "split") {
         if (splitPayments.length < 2) {
@@ -797,6 +815,25 @@ export default function CheckoutModal() {
                       </button>
                     ))}
                   </div>
+
+                  {orderSource === "skip" && (
+                    <div className="space-y-1 mt-2.5 animate-scale-up">
+                      <label className="block text-[10px] font-600 text-neutral-500 uppercase tracking-wide">
+                        Enter your skip last digit
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="Enter 6 digit number"
+                        value={skipLastDigits}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, ""); // Allow only digits
+                          setSkipLastDigits(val);
+                        }}
+                        className="w-full border border-neutral-200 rounded-xl px-3.5 py-2 text-[11px] font-600 text-neutral-800 bg-neutral-50 focus:outline-none focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -816,19 +853,26 @@ export default function CheckoutModal() {
 
               {/* Action Buttons */}
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setShowCustomer(true)}
-                  className={`py-2.5 rounded-xl text-[11px] font-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-[0.98] border ${
-                    selectedCustomer
-                      ? "bg-orange-50 border-brand-primary text-brand-primary"
-                      : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300"
-                  }`}
-                >
-                  <UserPlus size={12} />
-                  {selectedCustomer
-                    ? `${selectedCustomer.name}`
-                    : "Add Customer"}
-                </button>
+                {orderSource === "skip" ? (
+                  <div className="py-2.5 rounded-xl text-[11px] font-600 flex items-center justify-center gap-1.5 border bg-neutral-100 border-neutral-200 text-neutral-400 select-none cursor-not-allowed">
+                    <UserPlus size={12} />
+                    <span>Customer Details (Skip)</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowCustomer(true)}
+                    className={`py-2.5 rounded-xl text-[11px] font-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-[0.98] border ${
+                      selectedCustomer
+                        ? "bg-orange-50 border-brand-primary text-brand-primary"
+                        : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300"
+                    }`}
+                  >
+                    <UserPlus size={12} />
+                    {selectedCustomer
+                      ? `${selectedCustomer.name}`
+                      : "Add Customer"}
+                  </button>
+                )}
 
                 <button
                   onClick={() => setShowPromo(true)}

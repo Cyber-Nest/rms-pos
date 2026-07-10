@@ -25,11 +25,8 @@ export default function CustomerSearchModal({ isOpen, onClose }: CustomerSearchM
   if (!isOpen) return null;
 
   const handleSubmit = () => {
-    if (!form.name.trim()) {
-      return;
-    }
     setCustomer({
-      name: form.name.trim(),
+      name: form.name.trim() || 'No Name',
       phone: form.phone.trim(),
       email: form.email?.trim() || '',
     });
@@ -123,7 +120,7 @@ export default function CustomerSearchModal({ isOpen, onClose }: CustomerSearchM
               <Phone size={11} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
                 type="tel"
-                placeholder="Enter Phone # *"
+                placeholder="Enter Phone #"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 className="w-full border border-neutral-200 rounded-xl pl-8 pr-3 py-2.5 text-[11px] font-500 text-neutral-700 bg-neutral-50 focus:outline-none focus:border-brand-primary focus:bg-white transition-all placeholder:text-neutral-400"
@@ -143,7 +140,7 @@ export default function CustomerSearchModal({ isOpen, onClose }: CustomerSearchM
               <User size={11} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Enter First Name *"
+                placeholder="Enter First Name"
                 value={form.name.split(' ')[0] || ''}
                 onChange={(e) => {
                   const last = form.name.split(' ').slice(1).join(' ');
@@ -179,13 +176,10 @@ export default function CustomerSearchModal({ isOpen, onClose }: CustomerSearchM
             )}
             <button
               onClick={handleSubmit}
-              disabled={!form.name.trim()}
               className={`flex-1 py-2.5 rounded-xl text-[12px] font-700 transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                form.name.trim()
-                  ? submitted
-                    ? 'bg-green-500 text-white'
-                    : 'bg-brand-primary hover:bg-brand-primary-hover text-white shadow-sm active:scale-[0.99]'
-                  : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+                submitted
+                  ? 'bg-green-500 text-white'
+                  : 'bg-brand-primary hover:bg-brand-primary-hover text-white shadow-sm active:scale-[0.99]'
               }`}
             >
               {submitted ? <><CheckCircle size={13} /> Saved!</> : 'Submit'}
