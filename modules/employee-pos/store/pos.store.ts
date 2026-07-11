@@ -180,7 +180,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   currentOrderSeq: 124,
   categories: [],
   menuItems: [],
-  loadingMenu: false,
+  loadingMenu: true,
   checkoutOpen: false,
   paymentTiming: "pay-now",
   paymentType: "one-time",

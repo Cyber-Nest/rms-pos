@@ -224,7 +224,16 @@ export default function OrdersDashboard() {
         if (tab === "dashboard") {
           setStartDate(getPastDateStr(30));
           setEndDate(getTodayDateStr());
-        } else if (tab === "orders" || tab === "reception_view") {
+        } else if (
+          [
+            "orders",
+            "reception_view",
+            "sales_summary",
+            "hourly_sales",
+            "failed_transaction",
+            "refund_orders",
+          ].includes(tab)
+        ) {
           setStartDate(getTodayDateStr());
           setEndDate(getTodayDateStr());
           setSingleDate(getTodayDateStr());
@@ -543,6 +552,18 @@ export default function OrdersDashboard() {
                               window.location.href = "/employee/orders?tab=reports";
                             } else {
                               setActiveSubTab(tab.key as any);
+                              if (
+                                [
+                                  "hourly_sales",
+                                  "failed_transaction",
+                                  "refund_orders",
+                                  "sales_summary",
+                                  "dashboard",
+                                ].includes(tab.key)
+                              ) {
+                                setStartDate(singleDate);
+                                setEndDate(singleDate);
+                              }
                             }
                             setIsMoreDropdownOpen(false);
                           }}
@@ -1004,6 +1025,18 @@ export default function OrdersDashboard() {
             ].includes(tabKey)
           ) {
             setActiveSubTab(tabKey as any);
+            if (
+              [
+                "hourly_sales",
+                "failed_transaction",
+                "refund_orders",
+                "sales_summary",
+                "dashboard",
+              ].includes(tabKey)
+            ) {
+              setStartDate(singleDate);
+              setEndDate(singleDate);
+            }
           } else {
             toast.success(
               `Navigating to ${tabKey.replace("_", " ").toUpperCase()}`,
@@ -1117,7 +1150,7 @@ export default function OrdersDashboard() {
             </div>
 
             {/* Modal Actions */}
-            <div className="bg-neutral-50 border-t border-neutral-150 p-4 flex items-center justify-end gap-3 select-none">
+            <div className="bg-neutral-50 border-t border-neutral-200 p-4 flex items-center justify-end gap-3 select-none">
               <button
                 type="submit"
                 className="px-8 py-2 bg-[#881337] hover:bg-[#7F1D1D] active:scale-95 text-white text-[11px] font-800 tracking-wide uppercase rounded-full shadow-sm transition-all cursor-pointer"

@@ -276,8 +276,8 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
             
             {/* Left Col - Items Table (3/5) */}
             <div className="md:col-span-3 border border-neutral-200 bg-white rounded-xl overflow-hidden shadow-xs flex flex-col">
-              {/* Modern Clean Table Header */}
-              <div className="bg-neutral-50 border-b border-neutral-200 text-neutral-550 text-[10px] font-800 uppercase tracking-wider px-4 py-3 grid grid-cols-12 select-none">
+              {/* Modern Clean Table Header matching KitchenDetailModal */}
+              <div className="bg-brand-dark text-white border-b border-neutral-200 text-[11px] font-800 uppercase tracking-wider px-4 py-2.5 grid grid-cols-12 select-none">
                 <span className="col-span-8">Items</span>
                 <span className="col-span-2 text-center">QTY</span>
                 <span className="col-span-2 text-right">Price</span>
@@ -322,7 +322,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
             {/* Right Col - Receipt Calculations (2/5) */}
             <div className="md:col-span-2 border border-neutral-200 bg-white rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div className="space-y-2.5 text-[12px] text-neutral-600">
-                <h3 className="text-[10px] font-800 text-neutral-450 uppercase tracking-wider border-b border-neutral-150 pb-2.5 mb-3 select-none">
+                <h3 className="text-[10.5px] font-800 text-neutral-500 uppercase tracking-wider border-b border-neutral-300 pb-2.5 mb-3 select-none">
                   Invoice Breakdown
                 </h3>
                 <div className="flex justify-between font-600">
@@ -349,7 +349,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                   <span>Total Tax :</span>
                   <span className="text-neutral-850 font-700 font-mono">${(order.tax ?? 0).toFixed(2)}</span>
                 </div>
-                <div className="h-px bg-neutral-200 my-2" />
+                <div className="border-t border-dashed border-neutral-300 my-2.5" />
                 <div className="flex justify-between text-[14px] font-900 text-neutral-900 pt-1">
                   <span>Grand Total :</span>
                   <span className="font-mono text-brand-primary">${(order.total ?? 0).toFixed(2)}</span>
@@ -361,7 +361,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
               </div>
 
               {/* Status Actions panel */}
-              <div className="mt-6 pt-4 border-t border-neutral-100 space-y-3 select-none">
+              <div className="mt-6 pt-4 border-t border-neutral-300 space-y-3 select-none">
                 {updating ? (
                   <div className="text-center text-[11px] font-700 text-neutral-400 py-1.5 animate-pulse">
                     Processing request...
@@ -456,24 +456,24 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
           </div>
 
           {/* Triple-grid logs: Order Info, Discount Info, Payment Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t border-neutral-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t border-neutral-300">
             {/* Order Info card */}
             <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-3 shadow-xs">
-              <h3 className="font-800 text-[9.5px] text-neutral-450 border-b border-neutral-150 pb-2 uppercase tracking-wider select-none">
+              <h3 className="font-800 text-[9.5px] text-neutral-500 border-b border-neutral-300 pb-2 uppercase tracking-wider select-none">
                 Order Information
               </h3>
               <div className="space-y-2 text-[11px] text-neutral-600 font-600 divide-y divide-neutral-50">
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1.5 items-center">
                   <span>Order Date :</span>
-                  <span className="text-neutral-800 font-700">{formatDate(order.createdAt)}</span>
+                  <span className="text-neutral-850 font-800 bg-neutral-100/80 px-2 py-0.5 rounded border border-neutral-200/50 font-mono">{formatDate(order.createdAt)}</span>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1.5 items-center">
                   <span>Order Due Date :</span>
-                  <span className="text-neutral-800 font-700">{formatDate(order.dueAt || order.scheduledAt)}</span>
+                  <span className="text-brand-primary font-900 bg-orange-50/50 px-2 py-0.5 rounded border border-orange-100/60 font-mono">{formatDate(order.dueAt || order.scheduledAt)}</span>
                 </div>
-                <div className="flex justify-between py-1">
+                <div className="flex justify-between py-1.5 items-center">
                   <span>Report Date :</span>
-                  <span className="text-neutral-800 font-700">{formatDateOnly(order.createdAt)}</span>
+                  <span className="text-neutral-850 font-800 bg-neutral-100/80 px-2 py-0.5 rounded border border-neutral-200/50 font-mono">{formatDateOnly(order.createdAt)}</span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span>Order By :</span>
@@ -484,7 +484,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
 
             {/* Discount Info card */}
             <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-3 shadow-xs">
-              <h3 className="font-800 text-[9.5px] text-neutral-450 border-b border-neutral-150 pb-2 uppercase tracking-wider select-none">
+              <h3 className="font-800 text-[9.5px] text-neutral-500 border-b border-neutral-300 pb-2 uppercase tracking-wider select-none">
                 Order Discount History
               </h3>
               {(order.discount ?? 0) > 0 ? (
@@ -509,13 +509,13 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
 
             {/* Payment history card */}
             <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-3 shadow-xs md:col-span-2 lg:col-span-1">
-              <h3 className="font-800 text-[9.5px] text-neutral-450 border-b border-neutral-150 pb-2 uppercase tracking-wider select-none">
+              <h3 className="font-800 text-[9.5px] text-neutral-500 border-b border-neutral-300 pb-2 uppercase tracking-wider select-none">
                 Order Payment History
               </h3>
               <div className="space-y-2.5 max-h-[120px] overflow-y-auto pr-1">
                 {order.payments && order.payments.length > 0 ? (
                   order.payments.map((p, pIdx) => (
-                    <div key={pIdx} className="bg-neutral-50 p-2.5 rounded-lg border border-neutral-150 text-[11px] space-y-1">
+                    <div key={pIdx} className="bg-neutral-50 p-2.5 rounded-lg border border-neutral-200 text-[11px] space-y-1">
                       <div className="flex justify-between font-800 text-neutral-750">
                         <span className="uppercase text-[9.5px] text-neutral-500">
                           {p.cardBrand ? `Stripe (${p.cardBrand})` : p.method}
@@ -552,12 +552,12 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
 
           {/* Order Status History (Log) */}
           <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-xs">
-            <div className="bg-neutral-50/75 border-b border-neutral-200 text-neutral-550 text-[10px] font-800 uppercase tracking-wider px-4 py-2.5 select-none">
+            <div className="bg-neutral-50/75 border-b border-neutral-300 text-neutral-550 text-[10px] font-800 uppercase tracking-wider px-4 py-2.5 select-none">
               Order History Log
             </div>
             <div className="overflow-x-auto select-none">
               <table className="w-full text-left text-[11px] text-neutral-600 font-550">
-                <thead className="bg-neutral-50 border-b border-neutral-150 text-neutral-500 text-[9px] font-800 uppercase tracking-wider">
+                <thead className="bg-neutral-50 border-b border-neutral-300 text-neutral-500 text-[9px] font-800 uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-2 font-900">#</th>
                     <th className="px-4 py-2 font-900">Action</th>

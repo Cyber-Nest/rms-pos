@@ -29,7 +29,43 @@ export default function CartPanel() {
     openCheckout();
   };
 
+  const handleClearCart = () => {
+    if (cartItems.length === 0) return;
 
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-2 p-1.5 min-w-[220px]">
+          <p className="text-[11.5px] font-700 text-neutral-800 uppercase tracking-wide">
+            Clear Cart
+          </p>
+          <p className="text-[10px] text-neutral-500 font-550">
+            Are you sure you want to clear all items from your cart?
+          </p>
+          <div className="flex justify-end gap-2 mt-1.5">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-2.5 py-1 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[10px] font-700 transition-all cursor-pointer border border-neutral-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                clearCart();
+                toast.success("Cart cleared successfully.");
+              }}
+              className="px-2.5 py-1 rounded bg-[#DC2626] hover:bg-red-700 text-white text-[10px] font-700 transition-all cursor-pointer"
+            >
+              Yes, Clear
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: 8000,
+      },
+    );
+  };
 
   return (
     <div className="bg-white rounded-xl border border-neutral-200 flex flex-col h-full overflow-hidden select-none">
@@ -46,7 +82,7 @@ export default function CartPanel() {
             <span className="text-[9px] font-700 text-neutral-600">{selectedCustomer ? 1 : 0}</span>
           </div>
           <button
-            onClick={() => cartItems.length > 0 && confirm('Clear cart?') && clearCart()}
+            onClick={handleClearCart}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
             title="Clear cart"
           >

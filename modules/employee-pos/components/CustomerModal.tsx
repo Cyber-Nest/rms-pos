@@ -112,11 +112,16 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
   };
 
   const onSubmit = (data: FormValues) => {
+    const cleanPhone = data.phone.trim().replace(/\D/g, "");
+    if (cleanPhone.length > 0 && cleanPhone.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits.");
+      return;
+    }
     const customerName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
     const finalName = customerName || 'No Name';
     setCustomer({
       name: finalName,
-      phone: data.phone,
+      phone: cleanPhone,
       email: data.email || undefined,
       address: data.address || undefined,
       postalCode: data.postalCode || undefined,
@@ -162,10 +167,11 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
     if (!activeField) return;
     const currentVal = getValues(activeField) || '';
 
+    let newVal = '';
     if (key === 'Backspace') {
-      setValue(activeField, currentVal.slice(0, -1));
+      newVal = currentVal.slice(0, -1);
     } else if (key === 'Space') {
-      setValue(activeField, currentVal + ' ');
+      newVal = currentVal + ' ';
     } else if (key === 'Tab') {
       const fields: (keyof FormValues)[] = [
         'searchQuery',
@@ -184,21 +190,36 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
         const el = document.getElementsByName(nextField)[0];
         if (el) el.focus();
       }
+      return;
     } else if (key === 'Caps Lock' || key === 'Shift') {
       setCapsLock(!capsLock);
+      return;
     } else if (key === 'Enter') {
       const el = document.activeElement as HTMLElement;
       if (el) el.blur();
       setActiveField(null);
+      return;
     } else {
       const char = capsLock ? key.toUpperCase() : key.toLowerCase();
-      setValue(activeField, currentVal + char);
+      newVal = currentVal + char;
     }
+
+    if (activeField === 'firstName' || activeField === 'lastName') {
+      newVal = newVal.replace(/[0-9]/g, ""); // Strip out numbers
+      newVal = newVal
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    } else if (activeField === 'phone') {
+      newVal = newVal.replace(/\D/g, "").slice(0, 10); // Strip non-digits, limit 10
+    }
+
+    setValue(activeField, newVal);
   };
 
-  const registerWithFocus = (name: keyof FormValues) => {
+  const registerWithFocus = (name: keyof FormValues, options?: any) => {
     return {
-      ...register(name),
+      ...register(name, options),
       onFocus: () => setActiveField(name)
     };
   };
@@ -257,7 +278,12 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
                   {/* Enter Phone  & Email */}
                   <div>
                     <input
-                      {...registerWithFocus('phone')}
+                      {...registerWithFocus('phone', {
+                        onChange: (e: any) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setValue('phone', val);
+                        }
+                      })}
                       placeholder="Enter Phone #"
                       className="w-full bg-white border border-neutral-200 rounded-full px-4 py-2 text-[11px] font-500 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
                     />
@@ -274,7 +300,16 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
                   {/*First Name & Last Name */}
                   <div>
                     <input
-                      {...registerWithFocus('firstName')}
+                      {...registerWithFocus('firstName', {
+                        onChange: (e: any) => {
+                          const val = e.target.value.replace(/[0-9]/g, ""); // Strip numbers
+                          const capitalized = val
+                            .split(" ")
+                            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(" ");
+                          setValue('firstName', capitalized);
+                        }
+                      })}
                       placeholder="Enter First Name"
                       className="w-full bg-white border border-neutral-200 rounded-full px-4 py-2 text-[11px] font-500 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
                     />
@@ -282,7 +317,16 @@ export default function CustomerModal({ isOpen, onClose }: Props) {
 
                   <div>
                     <input
-                      {...registerWithFocus('lastName')}
+                      {...registerWithFocus('lastName', {
+                        onChange: (e: any) => {
+                          const val = e.target.value.replace(/[0-9]/g, ""); // Strip numbers
+                          const capitalized = val
+                            .split(" ")
+                            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(" ");
+                          setValue('lastName', capitalized);
+                        }
+                      })}
                       placeholder="Enter Last Name"
                       className="w-full bg-white border border-neutral-200 rounded-full px-4 py-2 text-[11px] font-500 text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
                     />
