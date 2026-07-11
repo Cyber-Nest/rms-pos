@@ -87,6 +87,12 @@ export default function OrdersDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
 
+  // ── Server-side Pagination States ──
+  const [currentPage, setCurrentPage] = useState(1);
+  const [entriesPerPage, setEntriesPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   // ── Filters State ──
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -147,10 +153,21 @@ export default function OrdersDashboard() {
             status: statusFilter || undefined,
             paymentStatus: paymentFilter || undefined,
             fields: "orderNumber,customer,subtotal,total,orderType,orderSource,paymentStatus,status,createdAt,orderTiming,scheduledAt,dueAt",
+            page: currentPage,
+            limit: entriesPerPage,
+            search: searchKeyword || undefined
           },
         });
         if (res.data.success) {
-          setOrders(res.data.data);
+          if (res.data.data && res.data.data.orders) {
+            setOrders(res.data.data.orders);
+            setTotalPages(res.data.data.pagination.totalPages);
+            setTotalCount(res.data.data.pagination.total);
+          } else {
+            setOrders(res.data.data || []);
+            setTotalPages(1);
+            setTotalCount(res.data.data?.length || 0);
+          }
         }
       }
     } catch (err) {
@@ -167,7 +184,15 @@ export default function OrdersDashboard() {
     singleDate,
     statusFilter,
     paymentFilter,
+    currentPage,
+    entriesPerPage,
+    searchKeyword
   ]);
+
+  // ── Reset Page On Filter Change ──
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchKeyword, statusFilter, paymentFilter, startDate, endDate]);
 
   // ── Parse Tab Query Param On Mount ──
   useEffect(() => {
@@ -382,23 +407,10 @@ export default function OrdersDashboard() {
     toast.success("Filters cleared successfully");
   };
 
-  // ── Client-side Text Filter (Instant Search) ──
+  // ── Server-side Filtered Orders ──
   const filteredOrders = React.useMemo(() => {
-    return orders.filter((order) => {
-      const keyword = searchKeyword.toLowerCase().trim();
-      if (!keyword) return true;
-
-      const orderNo = order.orderNumber.toLowerCase();
-      const custName = order.customer?.name?.toLowerCase() || "";
-      const custPhone = order.customer?.phone || "";
-
-      return (
-        orderNo.includes(keyword) ||
-        custName.includes(keyword) ||
-        custPhone.includes(keyword)
-      );
-    });
-  }, [orders, searchKeyword]);
+    return orders;
+  }, [orders]);
 
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
@@ -953,6 +965,12 @@ export default function OrdersDashboard() {
               <OrdersTableView
                 orders={filteredOrders}
                 onSelectOrder={handleSelectOrder}
+                isServerSide={true}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                entriesPerPage={entriesPerPage}
+                setEntriesPerPage={setEntriesPerPage}
+                totalEntries={totalCount}
               />
             )}
           </>

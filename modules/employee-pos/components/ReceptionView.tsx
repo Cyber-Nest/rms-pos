@@ -344,7 +344,7 @@ export default function ReceptionView() {
 
                     {/* Action Column */}
                     <td className="px-6 py-4.5 text-center">
-                      {(order.status === "ready" || order.status === "completed") ? (
+                      {order.status === "completed" ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
