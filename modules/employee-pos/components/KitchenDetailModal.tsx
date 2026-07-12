@@ -631,7 +631,7 @@ export default function KitchenDetailModal({
           <div className="flex items-center gap-3">
             {/* Customer Button */}
             <span className="bg-white/10 text-white text-[11px] font-600 px-3.5 py-1.5 rounded-lg border border-white/15 select-none">
-              Customer: {localOrder.customer?.name || "N/A"}
+              Customer: <span className="font-800 text-orange-300">{localOrder.customer?.name || "N/A"}</span>
             </span>
             <span className="text-[12px] font-500 text-neutral-300">
               Placed By :{" "}
@@ -687,18 +687,22 @@ export default function KitchenDetailModal({
                 <Clock size={12} className="text-neutral-450" />
                 <span>
                   Due at{" "}
-                  {dueDate.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  <span className="font-900 text-brand-primary bg-orange-50 px-2 py-0.5 rounded border border-orange-100/80 font-mono">
+                    {dueDate.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </span>
                 {!isDraft && (
-                  <span className="text-neutral-400 font-500">
+                  <span className="text-neutral-450 font-550">
                     (
-                    {Math.max(
-                      0,
-                      Math.floor((dueDate.getTime() - Date.now()) / 60000),
-                    )}{" "}
+                    <span className="font-800 text-neutral-750">
+                      {Math.max(
+                        0,
+                        Math.floor((dueDate.getTime() - Date.now()) / 60000),
+                      )}
+                    </span>{" "}
                     mins left)
                   </span>
                 )}
@@ -1040,9 +1044,9 @@ export default function KitchenDetailModal({
                       ).toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-[12.5px] font-700 text-red-600 pt-1">
+                  <div className="flex justify-between text-[12.5px] font-700 text-red-650 pt-1 items-center">
                     <span>Total Unpaid:</span>
-                    <span className="font-mono">
+                    <span className="font-mono bg-red-50 text-red-600 px-2.5 py-0.5 rounded border border-red-150 font-900 text-[13px]">
                       $
                       {Math.max(
                         0,
@@ -1079,21 +1083,21 @@ export default function KitchenDetailModal({
                   Order Information
                 </h4>
                 <div className="flex flex-col text-neutral-600 gap-1.5">
-                  <div className="flex justify-between py-1 border-b border-neutral-50 last:border-b-0">
+                  <div className="flex justify-between py-1.5 border-b border-neutral-50 last:border-b-0 items-center">
                     <span className="text-neutral-450 font-500">Order Date:</span>
-                    <span className="text-neutral-700 font-600">
+                    <span className="text-neutral-800 font-800 bg-neutral-100/80 px-2 py-0.5 rounded border border-neutral-200/50 font-mono">
                       {new Date(localOrder.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-neutral-50 last:border-b-0">
+                  <div className="flex justify-between py-1.5 border-b border-neutral-50 last:border-b-0 items-center">
                     <span className="text-neutral-450 font-500">Order Due Date:</span>
-                    <span className="text-neutral-700 font-600">
+                    <span className="text-brand-primary font-900 bg-orange-50/50 px-2 py-0.5 rounded border border-orange-100/60 font-mono">
                       {dueDate ? dueDate.toLocaleString() : "N/A"}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-neutral-50 last:border-b-0">
+                  <div className="flex justify-between py-1.5 border-b border-neutral-50 last:border-b-0 items-center">
                     <span className="text-neutral-450 font-500">Report Date:</span>
-                    <span className="text-neutral-700 font-600">
+                    <span className="text-neutral-800 font-800 bg-neutral-100/80 px-2 py-0.5 rounded border border-neutral-200/50 font-mono">
                       {new Date(localOrder.createdAt).toLocaleDateString()}
                     </span>
                   </div>

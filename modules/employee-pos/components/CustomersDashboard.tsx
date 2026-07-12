@@ -495,7 +495,7 @@ export default function CustomersDashboard() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-neutral-50 border-t border-neutral-150 p-4 flex items-center justify-end select-none">
+            <div className="bg-neutral-50 border-t border-neutral-200 p-4 flex items-center justify-end select-none">
               <button
                 type="button"
                 onClick={() => setViewCustomer(null)}

@@ -106,8 +106,8 @@ export default function HourlySalesView({ startDate, endDate }: HourlySalesViewP
 
   // Let's filter out slots that are 0 if they are at the very end or start, but keeping 10 AM to 10 PM.
   const activeSlots = data.filter(slot => {
-    // If it has transactions, display it. Or if it's within the standard 10 AM to 8 PM range, display it.
-    return slot.startHour >= 10 && slot.startHour <= 21;
+    // If it has transactions, display it. Or if it's within the standard 10 AM to 10 PM range, display it.
+    return slot.orderCount > 0 || (slot.startHour >= 10 && slot.startHour <= 21);
   });
 
   // Calculate grand totals

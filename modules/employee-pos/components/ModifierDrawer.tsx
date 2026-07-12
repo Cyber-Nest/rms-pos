@@ -230,9 +230,9 @@ export default function ModifierDrawer({ item, isOpen, onClose }: Props) {
                     </div>
                   )}
 
-                  {/* Thumbnail Image for Cards Grid only */}
-                  {isCard && (
-                    <div className="w-9 h-9 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-150 flex-shrink-0">
+                  {/* Thumbnail Image for Cards Grid or if option has an image */}
+                  {(isCard || !!opt.image) && (
+                    <div className="w-9 h-9 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200 flex-shrink-0">
                       <img
                         src={
                           opt.image ||

@@ -8,12 +8,27 @@ import { formatLocalDateTime24 } from '../utils/timezone';
 interface OrdersTableViewProps {
   orders: Order[];
   onSelectOrder: (order: Order) => void;
+  isServerSide?: boolean;
+  currentPage?: number;
+  setCurrentPage?: (page: number) => void;
+  entriesPerPage?: number;
+  setEntriesPerPage?: (limit: number) => void;
+  totalEntries?: number;
 }
 
-export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableViewProps) {
-  // ── Pagination States ──
-  const [currentPage, setCurrentPage] = useState(1);
-  const [entriesPerPage, setEntriesPerPage] = useState(10);
+export default function OrdersTableView({ 
+  orders, 
+  onSelectOrder,
+  isServerSide = false,
+  currentPage,
+  setCurrentPage,
+  entriesPerPage,
+  setEntriesPerPage,
+  totalEntries
+}: OrdersTableViewProps) {
+  // ── Local Pagination States (Fallback for client-side) ──
+  const [localCurrentPage, setLocalCurrentPage] = useState(1);
+  const [localEntriesPerPage, setLocalEntriesPerPage] = useState(10);
 
   // ── 24-Hour Date Formatting (Alberta Timezone) ──
   const formatDate = (dateStr: string) => {
@@ -81,15 +96,20 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
   };
 
   // ── Pagination Calculations ──
-  const totalEntries = orders.length;
-  const totalPages = Math.ceil(totalEntries / entriesPerPage);
+  const activeEntriesPerPage = isServerSide && entriesPerPage !== undefined ? entriesPerPage : localEntriesPerPage;
+  const activeCurrentPage = isServerSide && currentPage !== undefined ? currentPage : localCurrentPage;
+  const activeSetCurrentPage = isServerSide && setCurrentPage ? setCurrentPage : setLocalCurrentPage;
+  const activeSetEntriesPerPage = isServerSide && setEntriesPerPage ? setEntriesPerPage : setLocalEntriesPerPage;
+
+  const totalEntriesCount = isServerSide && totalEntries !== undefined ? totalEntries : orders.length;
+  const totalPages = Math.ceil(totalEntriesCount / activeEntriesPerPage);
   
   // Safety check: if currentPage goes out of bounds due to filters
-  const activePage = currentPage > totalPages ? 1 : currentPage;
+  const activePage = activeCurrentPage > totalPages ? 1 : activeCurrentPage;
   
-  const startIndex = (activePage - 1) * entriesPerPage;
-  const endIndex = Math.min(startIndex + entriesPerPage, totalEntries);
-  const visibleOrders = orders.slice(startIndex, endIndex);
+  const startIndex = (activePage - 1) * activeEntriesPerPage;
+  const endIndex = Math.min(startIndex + activeEntriesPerPage, totalEntriesCount);
+  const visibleOrders = isServerSide ? orders : orders.slice(startIndex, endIndex);
 
   return (
     <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden flex-1 flex flex-col min-h-0 font-sans select-none">
@@ -282,10 +302,10 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
         <div className="flex items-center gap-1.5">
           <span className="text-neutral-450 font-550">Show</span>
           <select
-            value={entriesPerPage}
+            value={activeEntriesPerPage}
             onChange={(e) => {
-              setEntriesPerPage(Number(e.target.value));
-              setCurrentPage(1); // Reset to first page
+              activeSetEntriesPerPage(Number(e.target.value));
+              activeSetCurrentPage(1); // Reset to first page
             }}
             className="bg-white border border-neutral-200 rounded-lg px-2.5 py-1 text-neutral-700 font-600 focus:outline-none focus:border-brand-primary cursor-pointer hover:border-neutral-300 transition-colors"
           >
@@ -299,8 +319,8 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
 
         {/* Middle: Count text */}
         <div className="text-neutral-400 font-550 text-[11.5px]">
-          {totalEntries > 0 ? (
-            <span>Showing {startIndex + 1} to {endIndex} of {totalEntries} entries</span>
+          {totalEntriesCount > 0 ? (
+            <span>Showing {startIndex + 1} to {endIndex} of {totalEntriesCount} entries</span>
           ) : (
             <span>Showing 0 to 0 of 0 entries</span>
           )}
@@ -309,8 +329,9 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
         {/* Right: Pagination buttons */}
         <div className="flex items-center gap-1">
           <button
+            type="button"
             disabled={activePage === 1}
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            onClick={() => activeSetCurrentPage(Math.max(1, activePage - 1))}
             className={`w-7 h-7 rounded-full flex items-center justify-center font-800 transition-all ${
               activePage === 1
                 ? 'bg-transparent text-neutral-300 cursor-not-allowed'
@@ -326,7 +347,8 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
             return (
               <button
                 key={pNum}
-                onClick={() => setCurrentPage(pNum)}
+                type="button"
+                onClick={() => activeSetCurrentPage(pNum)}
                 className={`w-7 h-7 rounded-full flex items-center justify-center font-800 transition-all cursor-pointer text-[10.5px] ${
                   active
                     ? 'bg-brand-primary text-white shadow-sm border border-brand-primary'
@@ -339,8 +361,9 @@ export default function OrdersTableView({ orders, onSelectOrder }: OrdersTableVi
           })}
 
           <button
+            type="button"
             disabled={activePage === totalPages || totalPages === 0}
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            onClick={() => activeSetCurrentPage(Math.min(totalPages, activePage + 1))}
             className={`w-7 h-7 rounded-full flex items-center justify-center font-800 transition-all ${
               activePage === totalPages || totalPages === 0
                 ? 'bg-transparent text-neutral-300 cursor-not-allowed'

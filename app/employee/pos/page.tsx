@@ -20,6 +20,11 @@ export default function PosPage() {
   const { fetchMenu } = usePosStore();
 
   useEffect(() => {
+    // Clear any dangling draft carts from previous sessions so they don't get stuck in the Kitchen Dashboard
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('rms_draft_cart');
+      window.dispatchEvent(new Event('storage'));
+    }
     fetchMenu();
   }, [fetchMenu]);
 
