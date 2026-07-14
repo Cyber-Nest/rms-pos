@@ -11,6 +11,7 @@ interface KitchenDetailModalProps {
   order: Order | null;
   onClose: () => void;
   onStatusChange: () => void;
+  categoryFilter?: 'all' | 'chicken' | 'pizza';
 }
 
 interface GroupedModifier {
@@ -59,6 +60,7 @@ export default function KitchenDetailModal({
   order,
   onClose,
   onStatusChange,
+  categoryFilter = 'all',
 }: KitchenDetailModalProps) {
   const [updating, setUpdating] = useState(false);
   const [showPrintReceipt, setShowPrintReceipt] = useState(false);
@@ -67,6 +69,13 @@ export default function KitchenDetailModal({
   const [localOrder, setLocalOrder] = useState<Order | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editItems, setEditItems] = useState<any[]>([]);
+
+  const isItemVisible = (item: any) => {
+    if (!categoryFilter || categoryFilter === 'all') return true;
+    if (categoryFilter === 'pizza') return item.kitchenLabel === 'pizza';
+    if (categoryFilter === 'chicken') return item.kitchenLabel !== 'pizza';
+    return true;
+  };
 
   useEffect(() => {
     setLocalOrder(order);
@@ -808,11 +817,13 @@ export default function KitchenDetailModal({
 
                 <div className="flex flex-col divider-y divider-neutral-100">
                   {isEditing
-                    ? editItems.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="p-4 border-b border-neutral-100 last:border-b-0"
-                        >
+                    ? editItems.map((item, idx) => {
+                        if (!isItemVisible(item)) return null;
+                        return (
+                          <div
+                            key={idx}
+                            className="p-4 border-b border-neutral-100 last:border-b-0"
+                          >
                           <div className="flex items-start">
                             <div className="flex-1">
                               <h4 className="font-700 text-[15.5px] text-brand-primary leading-tight">
@@ -904,12 +915,15 @@ export default function KitchenDetailModal({
                             </div>
                           </div>
                         </div>
-                      ))
-                    : localOrder.items.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="px-4 py-3 border-b border-neutral-100 last:border-b-0"
-                        >
+                      )
+                    })
+                    : localOrder.items.map((item, idx) => {
+                        if (!isItemVisible(item)) return null;
+                        return (
+                          <div
+                            key={idx}
+                            className="px-4 py-3 border-b border-neutral-100 last:border-b-0"
+                          >
                           <div className="flex items-center">
                             <div className="flex-1 pr-4">
                               <h4 className="font-700 text-[15.5px] text-neutral-800 leading-tight">
@@ -972,7 +986,8 @@ export default function KitchenDetailModal({
                             </div>
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
                 </div>
               </div>
             </div>

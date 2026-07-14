@@ -220,16 +220,30 @@ export default function KitchenDashboard() {
       }
     });
 
-    // Apply category filter (kitchen label)
-    let categoryFiltered = candidates;
+    // Apply category filter (kitchen label) and filter items inside the orders
+    let categoryFiltered: Order[] = [];
     if (categoryFilter === 'pizza') {
-      categoryFiltered = candidates.filter((o) =>
-        o.items?.some((item: any) => item.kitchenLabel === 'pizza')
-      );
+      candidates.forEach((o) => {
+        const pizzaItems = o.items?.filter((item: any) => item.kitchenLabel === 'pizza') || [];
+        if (pizzaItems.length > 0) {
+          categoryFiltered.push({
+            ...o,
+            items: pizzaItems
+          });
+        }
+      });
     } else if (categoryFilter === 'chicken') {
-      categoryFiltered = candidates.filter((o) =>
-        !o.items?.some((item: any) => item.kitchenLabel === 'pizza')
-      );
+      candidates.forEach((o) => {
+        const chickenItems = o.items?.filter((item: any) => item.kitchenLabel !== 'pizza') || [];
+        if (chickenItems.length > 0) {
+          categoryFiltered.push({
+            ...o,
+            items: chickenItems
+          });
+        }
+      });
+    } else {
+      categoryFiltered = candidates;
     }
 
     // Sort strictly by createdAt (oldest first)
@@ -257,7 +271,7 @@ export default function KitchenDashboard() {
       o.items?.some((item: any) => item.kitchenLabel === 'pizza')
     ).length;
     const chickenCount = candidates.filter((o) =>
-      !o.items?.some((item: any) => item.kitchenLabel === 'pizza')
+      o.items?.some((item: any) => item.kitchenLabel !== 'pizza')
     ).length;
     return { all: candidates.length, pizza: pizzaCount, chicken: chickenCount };
   }, [orders, draftCart, statusFilter, typeFilter]);
@@ -450,6 +464,7 @@ export default function KitchenDashboard() {
         order={selectedOrder}
         onClose={() => setSelectedOrder(null)}
         onStatusChange={fetchOrders}
+        categoryFilter={categoryFilter}
       />
 
       {/* Sidebar Drawer Component */}
