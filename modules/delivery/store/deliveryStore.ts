@@ -248,8 +248,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
     const channel = pusherInstance.subscribe("private-restaurant-default");
 
-    // 1. Listen for P2P client-driver-location events (sent directly by driver phone)
-    channel.bind("client-driver-location", (data: any) => {
+    // 1. Listen for Server-relayed driver location events
+    channel.bind("driver-location-update", (data: any) => {
       const { driverId, lat, lng, bearing, phase } = data;
       set((state) => {
         const updatedDrivers = state.drivers.map((d) => {
