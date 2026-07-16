@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Truck, Clock, ArrowLeft } from 'lucide-react';
+import { Truck, Clock, ArrowLeft, Menu, Power } from 'lucide-react';
 import { useDeliveryStore } from '../store/deliveryStore';
 
-export default function DeliveryNavbar() {
+interface DeliveryNavbarProps {
+  onToggleSidebar?: () => void;
+}
+
+export default function DeliveryNavbar({ onToggleSidebar }: DeliveryNavbarProps) {
   const orders = useDeliveryStore((s) => s.orders);
   const [currentTime, setCurrentTime] = useState('');
 
@@ -56,7 +60,7 @@ export default function DeliveryNavbar() {
       </div>
 
       {/* Right */}
-      <div className="flex items-center">
+      <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 px-3.5 py-1.5 bg-brand-primary rounded-lg text-xs font-semibold text-white">
           <Truck size={16} />
           <span>Delivery Orders</span>
@@ -64,6 +68,40 @@ export default function DeliveryNavbar() {
             {deliveryCount}
           </span>
         </div>
+
+        {/* Divider */}
+        <div className="h-7 w-px bg-white/10" />
+
+        {/* Employee Profile */}
+        <div className="flex items-center gap-2.5">
+          <div className="text-right leading-none">
+            <p className="text-[12px] font-700 text-white">Hi, Manager</p>
+            <span className="text-[10px] font-600 text-brand-primary leading-tight uppercase tracking-wide">Manager</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center text-[11px] font-800 text-white shadow-sm border border-brand-primary-hover/30">
+            MG
+          </div>
+        </div>
+
+        {/* Menu Drawer Toggle Button */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/8 text-white hover:bg-white/15 transition-all cursor-pointer"
+            title="Open Sidebar Menu"
+          >
+            <Menu size={16} />
+          </button>
+        )}
+
+        {/* Exit/Logout Button */}
+        <button
+          onClick={() => { if (confirm('Exit the system?')) window.close(); }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all cursor-pointer"
+          title="Exit POS"
+        >
+          <Power size={14} />
+        </button>
       </div>
     </nav>
   );

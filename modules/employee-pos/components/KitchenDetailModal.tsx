@@ -289,8 +289,39 @@ export default function KitchenDetailModal({
       },
     );
   };
-
   // ── Reorder Order (Kitchen side clone) ───────────────────────
+  const handleReorder = () => {
+    if (isDraft || !localOrder) return;
+
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3 p-1">
+          <p className="font-600 text-neutral-800 text-sm">
+            Clone & reorder <b>{localOrder.orderNumber}</b>?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                executeReorder();
+              }}
+              className="bg-brand-primary hover:bg-brand-primary-hover text-white px-3 py-1.5 rounded-lg text-xs font-700 transition-all flex-1 cursor-pointer"
+            >
+              Confirm Reorder
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-3 py-1.5 rounded-lg text-xs font-600 transition-all flex-1 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: 10000 }
+    );
+  };
+
   const executeReorder = async () => {
     if (isDraft || !localOrder) return;
     setUpdating(true);
@@ -344,14 +375,42 @@ export default function KitchenDetailModal({
       }
     } catch (err: any) {
       toast.error(
-        err.response?.data?.message || err.message || "Failed to reorder",
+        err.response?.data?.message || "Failed to update order status",
       );
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleReorder = () => {
+  const handleKitchenClear = async () => {
+    if (!localOrder || !localOrder._id) return;
+    setUpdating(true);
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.patch(
+        `${apiUrl}/orders/${localOrder._id}/kitchen-clear`,
+      );
+      if (res.data.success) {
+        toast.success("Order handed over to driver!");
+        setLocalOrder((prev) =>
+          prev ? { ...prev, kitchenCleared: true } : prev,
+        );
+        onStatusChange();
+        onClose();
+      } else {
+        toast.error("Failed to clear order from kitchen.");
+      }
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || "Failed to clear order from kitchen",
+      );
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handlePrintReceipt = async () => {
     if (isDraft || !localOrder) return;
 
     toast(
@@ -613,6 +672,20 @@ export default function KitchenDetailModal({
     }
 
     if (localOrder.status === "ready") {
+      if (localOrder.orderType === "delivery") {
+        if (!localOrder.kitchenCleared) {
+          return (
+            <button
+              onClick={handleKitchenClear}
+              disabled={updating}
+              className="bg-brand-primary text-white text-[12px] font-800 px-4 py-2 rounded-full hover:bg-brand-primary-hover shadow-sm transition-all cursor-pointer disabled:opacity-50"
+            >
+              Hand over to Driver
+            </button>
+          );
+        }
+        return null;
+      }
       return (
         <button
           onClick={() => handleTransition("completed")}
@@ -1049,6 +1122,14 @@ export default function KitchenDetailModal({
                       ).toFixed(2)}
                     </span>
                   </div>
+                  {((localOrder.deliveryFee as number | undefined) ?? 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>Delivery Fee:</span>
+                      <span className="text-neutral-800 font-mono">
+                        ${(localOrder.deliveryFee as number).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-[13.5px] font-750 text-neutral-900 border-t border-neutral-200 pt-2.5">
                     <span>Grand Total:</span>
                     <span className="font-mono text-[14.5px] text-brand-primary font-800">

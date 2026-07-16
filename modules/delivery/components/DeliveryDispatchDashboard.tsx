@@ -1,10 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import DeliveryNavbar from './DeliveryNavbar';
 import DispatchPanel from './DispatchPanel';
 import VehicleAssignModal from './VehicleAssignModal';
+import POSSidebarDrawer from '../../employee-pos/components/POSSidebarDrawer';
+
+import { useDeliveryStore } from '../store/deliveryStore';
 
 // Dynamic import for Leaflet (SSR not supported)
 const DeliveryMap = dynamic(() => import('./DeliveryMap'), {
@@ -18,9 +21,40 @@ const DeliveryMap = dynamic(() => import('./DeliveryMap'), {
 });
 
 export default function DeliveryDispatchDashboard() {
+  const fetchOrders = useDeliveryStore((s) => s.fetchOrders);
+  const fetchDrivers = useDeliveryStore((s) => s.fetchDrivers);
+  const fetchVehicles = useDeliveryStore((s) => s.fetchVehicles);
+  const initPusher = useDeliveryStore((s) => s.initPusher);
+  const cleanupPusher = useDeliveryStore((s) => s.cleanupPusher);
+  const setRestaurantLocation = useDeliveryStore((s) => s.setRestaurantLocation);
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Initial data fetch
+    fetchOrders();
+    fetchDrivers();
+    fetchVehicles();
+
+    // Start Pusher listeners
+    initPusher();
+
+    // Setup Geolocation for proper local testing
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setRestaurantLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.log("Geolocation not available/allowed:", err)
+      );
+    }
+
+    return () => {
+      cleanupPusher();
+    };
+  }, [fetchOrders, fetchDrivers, fetchVehicles, initPusher, cleanupPusher, setRestaurantLocation]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-brand-bg select-none">
-      <DeliveryNavbar />
+      <DeliveryNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
       <div className="flex flex-1 overflow-hidden">
         <div className="w-[35%] min-w-[360px] max-w-[480px] flex flex-col border-r border-neutral-200 bg-white overflow-hidden">
           <DispatchPanel />
@@ -30,6 +64,12 @@ export default function DeliveryDispatchDashboard() {
         </div>
       </div>
       <VehicleAssignModal />
+      <POSSidebarDrawer
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        activeTab="delivery"
+        onSelectTab={() => {}}
+      />
     </div>
   );
 }

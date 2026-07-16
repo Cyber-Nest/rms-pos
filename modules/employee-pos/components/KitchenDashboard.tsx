@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import KitchenNavbar from './KitchenNavbar';
 import KitchenOrderCard from './KitchenOrderCard';
@@ -24,6 +24,11 @@ export default function KitchenDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [startIndex, setStartIndex] = useState(0);
 
+  const ordersRef = useRef(orders);
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
+
   // ── Fetch DB Orders ──────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     try {
@@ -31,7 +36,7 @@ export default function KitchenDashboard() {
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
           status: 'pending,preparing,ready',
-          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus'
+          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared'
         }
       });
       if (res.data.success) {
@@ -41,6 +46,7 @@ export default function KitchenDashboard() {
         const activeOrders = (res.data.data as Order[]).filter((o) => {
           const isActive = ['pending', 'preparing', 'ready'].includes(o.status);
           if (!isActive) return false;
+          if (o.kitchenCleared) return false;
 
           if (o.orderTiming === 'later' && o.scheduledAt) {
             const schedLocalStr = getLocalDateStr(o.scheduledAt);
@@ -99,6 +105,25 @@ export default function KitchenDashboard() {
     // Bind to the 'order-updated' event
     channel.bind('order-updated', (data: any) => {
       console.log('Real-time order updated via Pusher:', data);
+      
+      const existingOrder = ordersRef.current.find((o) => o._id === data._id);
+      
+      if (!existingOrder) {
+        const isActiveStatus = ['pending', 'preparing', 'ready'].includes(data.status);
+        if (data.kitchenCleared || !isActiveStatus) {
+          console.log('Ignoring order-updated event in Kitchen View (order already not active/cleared).');
+          return;
+        }
+      } else {
+        const statusChanged = existingOrder.status !== data.status;
+        const kitchenClearedChanged = !!existingOrder.kitchenCleared !== !!data.kitchenCleared;
+        
+        if (!statusChanged && !kitchenClearedChanged) {
+          console.log('Ignoring order-updated event in Kitchen View (no status/kitchen-clear change).');
+          return;
+        }
+      }
+      
       fetchOrders();
     });
 

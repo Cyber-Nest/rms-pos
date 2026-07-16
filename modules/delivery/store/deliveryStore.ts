@@ -1,16 +1,15 @@
 import { create } from "zustand";
+import axios from "axios";
+import Pusher from "pusher-js";
 import {
   DeliveryOrder,
   Driver,
   Vehicle,
   RestaurantLocation,
 } from "../types/delivery";
-import {
-  dummyOrders,
-  dummyDrivers,
-  dummyVehicles,
-  restaurantLocation as defaultRestaurant,
-} from "../data/dummyData";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const DEFAULT_RESTAURANT_COORDS = { lat: 50.0280, lng: -110.6770 };
 
 interface DeliveryState {
   // ── Data ──
@@ -40,23 +39,35 @@ interface DeliveryState {
   setCarrierFilter: (filter: "available" | "en-route") => void;
   selectOrder: (orderId: string | null) => void;
   selectDriver: (driverId: string | null) => void;
-  assignDriver: (orderId: string, driverId: string) => void;
-  markDelivered: (orderId: string) => void;
-  assignVehicle: (driverId: string, vehicleId: string) => void;
-  unassignVehicle: (driverId: string) => void;
   openVehicleModal: (driverId: string) => void;
   closeVehicleModal: () => void;
-  simulateDriverMovement: () => void;
+  setRestaurantLocation: (coords: { lat: number; lng: number }) => void;
+
+  // ── API Actions ──
+  fetchOrders: () => Promise<void>;
+  fetchDrivers: () => Promise<void>;
+  fetchVehicles: () => Promise<void>;
+  assignDriver: (orderId: string, driverId: string) => Promise<void>;
+  markDelivered: (orderId: string) => Promise<void>;
+  assignVehicle: (driverId: string, vehicleId: string) => Promise<void>;
+  unassignVehicle: (driverId: string) => Promise<void>;
+
+  // ── Real-Time Pusher Actions ──
+  initPusher: () => void;
+  cleanupPusher: () => void;
 }
 
-export const useDeliveryStore = create<DeliveryState>((set, get) => ({
-  // ── Initial Data ──
-  orders: dummyOrders,
-  drivers: dummyDrivers,
-  vehicles: dummyVehicles,
-  restaurantLocation: defaultRestaurant,
+let pusherInstance: Pusher | null = null;
 
-  // ── UI State ──
+export const useDeliveryStore = create<DeliveryState>((set, get) => ({
+  // ── Initial State ──
+  orders: [],
+  drivers: [],
+  vehicles: [],
+  restaurantLocation: {
+    name: "Chicken Delight",
+    coordinates: DEFAULT_RESTAURANT_COORDS,
+  },
   activeTab: "orders",
   activeFilter: "assign",
   carrierFilter: "available",
@@ -106,220 +117,176 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     );
   },
 
-  // ── Actions ──
+  // ── Local UI State Actions ──
   setActiveTab: (tab) => set({ activeTab: tab }),
-
   setActiveFilter: (filter) => set({ activeFilter: filter }),
-
   setCarrierFilter: (filter) => set({ carrierFilter: filter }),
-
   selectOrder: (orderId) => set({ selectedOrderId: orderId }),
-
   selectDriver: (driverId) => set({ selectedDriverId: driverId }),
+  openVehicleModal: (driverId) => set({ vehicleModalOpen: true, selectedDriverId: driverId }),
+  closeVehicleModal: () => set({ vehicleModalOpen: false, selectedDriverId: null }),
+  setRestaurantLocation: (coords) => set((state) => ({ restaurantLocation: { ...state.restaurantLocation, coordinates: coords } })),
 
-  assignDriver: (orderId, driverId) => {
-    set((state) => {
-      const driver = state.drivers.find((d) => d.id === driverId);
-      if (!driver || !driver.assignedVehicle) return state;
-
-      const order = state.orders.find((o) => o.id === orderId);
-      const startLoc =
-        order?.route && order.route.length > 0
-          ? order.route[0]
-          : state.restaurantLocation.coordinates;
-
-      const updatedOrders = state.orders.map((order) =>
-        order.id === orderId
-          ? {
-              ...order,
-              status: "en-route" as const,
-              assignedDriverId: driverId,
-            }
-          : order,
-      );
-
-      const updatedDrivers = state.drivers.map((d) =>
-        d.id === driverId
-          ? {
-              ...d,
-              status: "on-delivery" as const,
-              activeOrders: [...d.activeOrders, orderId],
-              currentLocation: startLoc,
-              routeIndex: 0,
-            }
-          : d,
-      );
-
-      return { orders: updatedOrders, drivers: updatedDrivers };
-    });
+  // ── API Actions ──
+  fetchOrders: async () => {
+    try {
+      const res = await axios.get(`${API_URL}/delivery/orders`);
+      if (res.data.success) {
+        // Map backend properties if needed (backend matches frontend mostly)
+        const mappedOrders = res.data.data.map((o: any) => ({
+          ...o,
+          id: o._id, // map Mongo _id to id
+          coordinates: o.coordinates?.lat ? o.coordinates : DEFAULT_RESTAURANT_COORDS,
+        }));
+        set({ orders: mappedOrders });
+      }
+    } catch (err) {
+      console.error("Error fetching delivery orders:", err);
+    }
   },
 
-  markDelivered: (orderId) => {
-    set((state) => {
-      const order = state.orders.find((o) => o.id === orderId);
-      if (!order) return state;
+  fetchDrivers: async () => {
+    try {
+      const res = await axios.get(`${API_URL}/delivery/drivers`);
+      if (res.data.success) {
+        const mappedDrivers = res.data.data.map((d: any) => ({
+          ...d,
+          id: d._id,
+          currentLocation: d.currentLocation?.lat ? d.currentLocation : null,
+        }));
+        set({ drivers: mappedDrivers });
+      }
+    } catch (err) {
+      console.error("Error fetching drivers:", err);
+    }
+  },
 
-      const updatedOrders = state.orders.map((o) =>
-        o.id === orderId ? { ...o, status: "delivered" as const } : o,
-      );
+  fetchVehicles: async () => {
+    try {
+      const res = await axios.get(`${API_URL}/delivery/vehicles`);
+      if (res.data.success) {
+        const mappedVehicles = res.data.data.map((v: any) => ({
+          ...v,
+          id: v._id,
+        }));
+        set({ vehicles: mappedVehicles });
+      }
+    } catch (err) {
+      console.error("Error fetching vehicles:", err);
+    }
+  },
 
-      const updatedDrivers = state.drivers.map((d) => {
-        if (d.id === order.assignedDriverId) {
-          const newActiveOrders = d.activeOrders.filter((id) => id !== orderId);
-          return {
-            ...d,
-            activeOrders: newActiveOrders,
-            status:
-              newActiveOrders.length === 0 ? ("returning" as const) : d.status,
-          };
-        }
-        return d;
+  assignDriver: async (orderId, driverId) => {
+    try {
+      const res = await axios.post(`${API_URL}/delivery/assign`, {
+        orderId,
+        driverId,
       });
-
-      return { orders: updatedOrders, drivers: updatedDrivers };
-    });
+      if (res.data.success) {
+        // Re-fetch to sync state across dashboard
+        await Promise.all([get().fetchOrders(), get().fetchDrivers()]);
+      }
+    } catch (err) {
+      console.error("Error assigning driver:", err);
+    }
   },
 
-  assignVehicle: (driverId, vehicleId) => {
-    set((state) => {
-      const vehicle = state.vehicles.find((v) => v.id === vehicleId);
-      if (!vehicle || vehicle.isAssigned) return state;
-
-      const updatedVehicles = state.vehicles.map((v) =>
-        v.id === vehicleId
-          ? { ...v, isAssigned: true, assignedDriverId: driverId }
-          : v,
-      );
-
-      const assignedVehicle = {
-        ...vehicle,
-        isAssigned: true,
-        assignedDriverId: driverId,
-      };
-      const updatedDrivers = state.drivers.map((d) =>
-        d.id === driverId ? { ...d, assignedVehicle } : d,
-      );
-
-      return {
-        vehicles: updatedVehicles,
-        drivers: updatedDrivers,
-        vehicleModalOpen: false,
-        selectedDriverId: null,
-      };
-    });
+  markDelivered: async (orderId) => {
+    try {
+      // Find assignment for this order first
+      const resTrack = await axios.get(`${API_URL}/delivery/track/${orderId}`);
+      if (resTrack.data.success && resTrack.data.data.assigned) {
+        const assignmentId = resTrack.data.data.assignmentId;
+        const resDeliver = await axios.patch(`${API_URL}/delivery/driver/deliver/${assignmentId}`);
+        if (resDeliver.data.success) {
+          await Promise.all([get().fetchOrders(), get().fetchDrivers()]);
+        }
+      }
+    } catch (err) {
+      console.error("Error marking delivery delivered:", err);
+    }
   },
 
-  unassignVehicle: (driverId) => {
-    set((state) => {
-      const driver = state.drivers.find((d) => d.id === driverId);
-      if (!driver || !driver.assignedVehicle) return state;
-
-      const updatedVehicles = state.vehicles.map((v) =>
-        v.id === driver.assignedVehicle!.id
-          ? { ...v, isAssigned: false, assignedDriverId: null }
-          : v,
-      );
-
-      const updatedDrivers = state.drivers.map((d) =>
-        d.id === driverId ? { ...d, assignedVehicle: null } : d,
-      );
-
-      return { vehicles: updatedVehicles, drivers: updatedDrivers };
-    });
+  assignVehicle: async (driverId, vehicleId) => {
+    try {
+      const res = await axios.post(`${API_URL}/delivery/vehicles/assign`, {
+        driverId,
+        vehicleId,
+      });
+      if (res.data.success) {
+        await Promise.all([get().fetchDrivers(), get().fetchVehicles()]);
+        set({ vehicleModalOpen: false, selectedDriverId: null });
+      }
+    } catch (err) {
+      console.error("Error assigning vehicle:", err);
+    }
   },
 
-  openVehicleModal: (driverId) =>
-    set({ vehicleModalOpen: true, selectedDriverId: driverId }),
+  unassignVehicle: async (driverId) => {
+    try {
+      const res = await axios.delete(`${API_URL}/delivery/vehicles/unassign/${driverId}`);
+      if (res.data.success) {
+        await Promise.all([get().fetchDrivers(), get().fetchVehicles()]);
+      }
+    } catch (err) {
+      console.error("Error unassigning vehicle:", err);
+    }
+  },
 
-  closeVehicleModal: () =>
-    set({ vehicleModalOpen: false, selectedDriverId: null }),
+  // ── Real-Time Pusher Actions ──
+  initPusher: () => {
+    if (pusherInstance) return;
 
-  simulateDriverMovement: () => {
-    set((state) => {
-      const updatedDrivers = state.drivers.map((driver) => {
-        // Case 1: Driver is returning to the restaurant after delivery
-        if (driver.status === "returning") {
-          const target = state.restaurantLocation.coordinates;
-          const current = driver.currentLocation;
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY || "fc1a170b04cd047c782b";
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "ap2";
 
-          const distLat = target.lat - current.lat;
-          const distLng = target.lng - current.lng;
-          const distance = Math.sqrt(distLat * distLat + distLng * distLng);
+    pusherInstance = new Pusher(key, {
+      cluster,
+      forceTLS: true,
+      authEndpoint: `${API_URL}/delivery/auth`,
+    });
 
-          // If very close to restaurant, mark as available and stop moving
-          if (distance < 0.0003) {
+    const channel = pusherInstance.subscribe("private-restaurant-default");
+
+    // 1. Listen for P2P client-driver-location events (sent directly by driver phone)
+    channel.bind("client-driver-location", (data: any) => {
+      const { driverId, lat, lng, bearing, phase } = data;
+      set((state) => {
+        const updatedDrivers = state.drivers.map((d) => {
+          if (d.id === driverId || d._id === driverId) {
             return {
-              ...driver,
-              status: "available" as const,
-              currentLocation: target,
-              routeIndex: undefined,
+              ...d,
+              currentLocation: { lat, lng },
+              bearing,
+              locationUpdatedAt: Date.now(),
             };
           }
-
-          // Calculate step increment towards restaurant
-          const stepSize = 0.0004; // Slightly faster return speed
-          let nextLat = current.lat;
-          let nextLng = current.lng;
-
-          if (distance > 0) {
-            nextLat += (distLat / distance) * Math.min(stepSize, distance);
-            nextLng += (distLng / distance) * Math.min(stepSize, distance);
-          }
-
-          return {
-            ...driver,
-            currentLocation: { lat: nextLat, lng: nextLng },
-          };
-        }
-
-        // Case 2: Driver is on delivery moving towards customer
-        if (driver.status === "on-delivery" && driver.activeOrders.length > 0) {
-          const activeOrder = state.orders.find(
-            (o) => o.id === driver.activeOrders[0] && o.status === "en-route",
-          );
-          if (
-            !activeOrder ||
-            !activeOrder.route ||
-            activeOrder.route.length === 0
-          )
-            return driver;
-
-          const route = activeOrder.route;
-          const currentIdx = driver.routeIndex ?? 0;
-          const target = route[currentIdx];
-          const current = driver.currentLocation;
-
-          const distLat = target.lat - current.lat;
-          const distLng = target.lng - current.lng;
-          const distance = Math.sqrt(distLat * distLat + distLng * distLng);
-
-          // If very close to current waypoint, advance to next waypoint
-          let nextIdx = currentIdx;
-          if (distance < 0.0003 && currentIdx < route.length - 1) {
-            nextIdx = currentIdx + 1;
-          }
-
-          // Calculate step increment towards waypoint
-          const stepSize = 0.0003; // movement speed per simulation tick
-          let nextLat = current.lat;
-          let nextLng = current.lng;
-
-          if (distance > 0) {
-            nextLat += (distLat / distance) * Math.min(stepSize, distance);
-            nextLng += (distLng / distance) * Math.min(stepSize, distance);
-          }
-
-          return {
-            ...driver,
-            currentLocation: { lat: nextLat, lng: nextLng },
-            routeIndex: nextIdx,
-          };
-        }
-
-        return driver;
+          return d;
+        });
+        return { drivers: updatedDrivers };
       });
-
-      return { drivers: updatedDrivers };
     });
+
+    // 2. Listen for Server-triggered assignment status events
+    channel.bind("delivery-assigned", () => {
+      get().fetchOrders();
+      get().fetchDrivers();
+    });
+
+    channel.bind("delivery-status-update", () => {
+      get().fetchOrders();
+      get().fetchDrivers();
+    });
+
+    channel.bind("driver-status-change", () => {
+      get().fetchDrivers();
+    });
+  },
+
+  cleanupPusher: () => {
+    if (!pusherInstance) return;
+    pusherInstance.unsubscribe("private-restaurant-default");
+    pusherInstance.disconnect();
+    pusherInstance = null;
   },
 }));

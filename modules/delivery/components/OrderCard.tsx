@@ -11,6 +11,7 @@ interface OrderCardProps {
 
 export default function OrderCard({ order }: OrderCardProps) {
   const [showDriverDropdown, setShowDriverDropdown] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const selectOrder = useDeliveryStore((s) => s.selectOrder);
   const selectedOrderId = useDeliveryStore((s) => s.selectedOrderId);
   const assignDriver = useDeliveryStore((s) => s.assignDriver);
@@ -26,9 +27,17 @@ export default function OrderCard({ order }: OrderCardProps) {
     (d) => d.status === 'available' || d.id === order.assignedDriverId
   );
 
-  const handleAssign = (driverId: string) => {
-    assignDriver(order.id, driverId);
-    setShowDriverDropdown(false);
+  const handleAssign = async (driverId: string) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    try {
+      await assignDriver(order.id, driverId);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdating(false);
+      setShowDriverDropdown(false);
+    }
   };
 
   return (
@@ -87,13 +96,18 @@ export default function OrderCard({ order }: OrderCardProps) {
             </span>
             <div className="relative">
               <button
-                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold text-white bg-brand-primary rounded-md hover:bg-brand-primary-hover transition-colors cursor-pointer"
+                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold text-white bg-brand-primary rounded-md hover:bg-brand-primary-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isUpdating}
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowDriverDropdown(!showDriverDropdown);
                 }}
               >
-                Assign Driver {showDriverDropdown ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {isUpdating ? (
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : null}
+                <span>Assign Driver</span>
+                {showDriverDropdown ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
               {showDriverDropdown && (
                 <div className="absolute top-full right-0 mt-1 min-w-[200px] bg-white border border-neutral-200 rounded-xl shadow-lg z-50 overflow-hidden animate-scale-up">
@@ -105,7 +119,8 @@ export default function OrderCard({ order }: OrderCardProps) {
                     availableDrivers.map((driver) => (
                       <button
                         key={driver.id}
-                        className="flex items-center gap-2 w-full px-3.5 py-2.5 text-xs font-medium text-neutral-900 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 cursor-pointer text-left"
+                        disabled={isUpdating}
+                        className="flex items-center gap-2 w-full px-3.5 py-2.5 text-xs font-medium text-neutral-900 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 cursor-pointer text-left disabled:opacity-55"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAssign(driver.id);
@@ -139,13 +154,26 @@ export default function OrderCard({ order }: OrderCardProps) {
               )}
             </div>
             <button
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors cursor-pointer"
-              onClick={(e) => {
+              className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isUpdating}
+              onClick={async (e) => {
                 e.stopPropagation();
-                markDelivered(order.id);
+                setIsUpdating(true);
+                try {
+                  await markDelivered(order.id);
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setIsUpdating(false);
+                }
               }}
             >
-              <Check size={12} /> Delivered
+              {isUpdating ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Check size={12} />
+              )}
+              <span>Delivered</span>
             </button>
           </div>
         )}

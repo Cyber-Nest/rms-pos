@@ -41,6 +41,8 @@ export interface PromoApplied {
 }
 
 export interface Order {
+  deliveryFee: number | undefined;
+  kitchenCleared: any;
   _id?: string;
   orderNumber: string;
   orderType: "takeout" | "delivery" | "drive-through" | "dine-in";
