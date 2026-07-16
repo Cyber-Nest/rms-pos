@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import Pusher from "pusher-js";
 import {
@@ -22,6 +22,11 @@ export default function ReceptionView() {
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
 
+  const ordersRef = useRef(orders);
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
+
   // ── Fetch Active Orders from API ──
   const fetchActiveOrders = useCallback(async () => {
     try {
@@ -35,9 +40,9 @@ export default function ReceptionView() {
         },
       });
       if (res.data.success) {
-        // Filter out completed and cancelled orders
+        // Filter out completed/cancelled or receptionCompleted orders
         const active = (res.data.data as Order[]).filter((o) => {
-          if (o.status === "completed" && o.receptionCompleted === true) {
+          if (o.receptionCompleted === true) {
             return false;
           }
           return ["pending", "preparing", "ready", "completed"].includes(o.status);
@@ -92,6 +97,31 @@ export default function ReceptionView() {
     }
   };
 
+  // ── Hand over delivery order by Cashier ──
+  const handleHandoverDelivery = async (orderId: string) => {
+    setCompletingId(orderId);
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.patch(`${apiUrl}/orders/${orderId}/status`, {
+        status: "ready", // KEEP status as ready
+        note: "Order handed over to delivery driver",
+        receptionCompleted: true, // This clears it from Reception View
+      });
+      if (res.data.success) {
+        toast.success("Handed over to driver!");
+        fetchActiveOrders();
+      } else {
+        toast.error(res.data.message || "Failed to handover order.");
+      }
+    } catch (err) {
+      console.error("Failed to handover order:", err);
+      toast.error("Error handing over order.");
+    } finally {
+      setCompletingId(null);
+    }
+  };
+
   // ── Initial Fetch ──
   useEffect(() => {
     fetchActiveOrders();
@@ -126,6 +156,18 @@ export default function ReceptionView() {
         "Order status update received in Reception View via Pusher:",
         data,
       );
+      const existingOrder = ordersRef.current.find((o) => o._id === data._id);
+      if (existingOrder) {
+        const statusChanged = existingOrder.status !== data.status;
+        const receptionCompletedChanged =
+          !!existingOrder.receptionCompleted !== !!data.receptionCompleted;
+        if (!statusChanged && !receptionCompletedChanged) {
+          console.log(
+            "Ignoring order-updated event in Reception View (no status/reception change)."
+          );
+          return;
+        }
+      }
       fetchActiveOrders();
     });
 
@@ -344,17 +386,21 @@ export default function ReceptionView() {
 
                     {/* Action Column */}
                     <td className="px-6 py-4.5 text-center">
-                      {order.status === "completed" ? (
+                      {order.status === "completed" || (order.orderType === "delivery" && order.status === "ready") ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             if (order._id) {
-                              handleCompleteOrder(order._id);
+                              if (order.orderType === "delivery" && order.status === "ready") {
+                                handleHandoverDelivery(order._id);
+                              } else {
+                                handleCompleteOrder(order._id);
+                              }
                             }
                           }}
                           disabled={completingId === order._id}
                           className="w-7 h-7 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/35 hover:scale-105 active:scale-95 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Complete Order & Handover"
+                          title={order.orderType === "delivery" && order.status === "ready" ? "Hand over to Driver" : "Complete Order & Handover"}
                         >
                           <Check size={14} strokeWidth={3} />
                         </button>

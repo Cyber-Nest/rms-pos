@@ -22,18 +22,20 @@ const defaultIcon = L.icon({
 L.Marker.prototype.options.icon = defaultIcon;
 
 // ─── Custom SVG Icons ───
-function createDriverIcon(color: string, isSelected: boolean = false) {
-  const size = isSelected ? 46 : 40;
+function createDriverIcon(color: string, bearing: number = 0, isReturning: boolean = false) {
+  const size = 40;
   const glowSize = size + 16;
+  const pulseColor = isReturning ? "#8B5CF6" : color;
+  const borderStyle = isReturning ? "dashed" : "solid";
 
   const html = `
-    <div class="driver-marker-wrapper" style="width: ${glowSize}px; height: ${glowSize}px; position: relative;">
+    <div class="driver-marker-wrapper" style="width: ${glowSize}px; height: ${glowSize}px; position: relative; transform: rotate(${bearing}deg); transition: transform 0.4s ease-out;">
       <!-- Animated pulse ring -->
       <div class="driver-pulse-ring" style="
         position: absolute; inset: 0;
         border-radius: 50%;
-        border: 2px solid ${color};
-        opacity: 0.4;
+        border: 2px ${borderStyle} ${pulseColor};
+        opacity: 0.5;
         animation: driverPulse 2s ease-out infinite;
       "></div>
       <!-- Main icon circle -->
@@ -45,10 +47,8 @@ function createDriverIcon(color: string, isSelected: boolean = false) {
         border-radius: 50%;
         background: white;
         border: 3px solid ${color};
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 0 0 ${isSelected ? '4px' : '0px'} ${color}40;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         display: flex; align-items: center; justify-content: center;
-        transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
-        ${isSelected ? 'transform: translate(-50%, -50%) scale(1.1);' : ''}
       ">
         <div style="
           width: 80%; height: 80%;
@@ -169,7 +169,7 @@ function MapBoundsUpdater() {
         // Also include driver if assigned
         if (order.assignedDriverId) {
           const driver = drivers.find((d) => d.id === order.assignedDriverId);
-          if (driver) {
+          if (driver && driver.currentLocation?.lat) {
             points.push([driver.currentLocation.lat, driver.currentLocation.lng]);
           }
         }
@@ -190,6 +190,92 @@ function MapBoundsUpdater() {
   return null;
 }
 
+// ─── Animated Driver Marker ───
+interface AnimatedDriverMarkerProps {
+  driver: any;
+}
+
+function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
+  const [pos, setPos] = useState<[number, number]>([driver.currentLocation.lat, driver.currentLocation.lng]);
+  const prevPosRef = useRef<[number, number]>([driver.currentLocation.lat, driver.currentLocation.lng]);
+
+  useEffect(() => {
+    const targetLat = driver.currentLocation.lat;
+    const targetLng = driver.currentLocation.lng;
+    
+    if (!targetLat || !targetLng) return;
+    
+    const fromLat = prevPosRef.current[0];
+    const fromLng = prevPosRef.current[1];
+    
+    const startTime = performance.now();
+    const duration = 2000; // 2 seconds transition
+
+    let animationFrameId: number;
+
+    const animate = (time: number) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // easeOutCubic easing
+      const eased = 1 - Math.pow(1 - progress, 3);
+      
+      const lat = fromLat + (targetLat - fromLat) * eased;
+      const lng = fromLng + (targetLng - fromLng) * eased;
+      
+      setPos([lat, lng]);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animate);
+      } else {
+        prevPosRef.current = [targetLat, targetLng];
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [driver.currentLocation.lat, driver.currentLocation.lng]);
+
+  const icon = createDriverIcon(driver.color, driver.bearing || 0, driver.status === "returning");
+
+  return (
+    <Marker position={pos} icon={icon}>
+      <Popup className="delivery-popup">
+        <div className="flex flex-col gap-1.5 p-3 px-4 min-w-[180px]">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-full border border-white flex items-center justify-center text-white shrink-0"
+              style={{ backgroundColor: driver.color }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+            </div>
+            <div className="flex flex-col">
+              <strong className="text-[13px] font-bold text-neutral-900">{driver.name}</strong>
+              <span className="text-[10.5px] text-neutral-500 font-medium">
+                {driver.status === 'on-delivery'
+                  ? `Delivering • ${driver.activeOrders?.length || 0} order(s)`
+                  : driver.status === 'returning'
+                  ? 'Returning to base'
+                  : '● Available'}
+              </span>
+            </div>
+          </div>
+          {driver.assignedVehicle && (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] font-semibold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md">
+                🚗 Vehicle #{driver.assignedVehicle.number}
+              </span>
+            </div>
+          )}
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
 // ─── Main Map Component ───
 export default function DeliveryMap() {
   const drivers = useDeliveryStore((s) => s.drivers);
@@ -197,7 +283,6 @@ export default function DeliveryMap() {
   const restaurantLocation = useDeliveryStore((s) => s.restaurantLocation);
   const selectedOrderId = useDeliveryStore((s) => s.selectedOrderId);
   const selectOrder = useDeliveryStore((s) => s.selectOrder);
-  const simulateDriverMovement = useDeliveryStore((s) => s.simulateDriverMovement);
   const mapRef = useRef<L.Map | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -205,14 +290,6 @@ export default function DeliveryMap() {
   // Active orders (en-route)
   const enRouteOrders = orders.filter((o) => o.status === 'en-route');
   const assignCount = orders.filter((o) => o.status === 'assign').length;
-
-  // Simulate driver movement
-  useEffect(() => {
-    const interval = setInterval(() => {
-      simulateDriverMovement();
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [simulateDriverMovement]);
 
   // Fullscreen listener
   useEffect(() => {
@@ -235,21 +312,13 @@ export default function DeliveryMap() {
   const polylines = [
     // 1. Delivery active paths
     ...enRouteOrders.map((order) => {
-      const driver = drivers.find((d) => d.id === order.assignedDriverId);
-      if (!driver) return null;
+      const driver = drivers.find((d) => d.id === order.assignedDriverId || d._id === order.assignedDriverId);
+      if (!driver || !driver.currentLocation?.lat) return null;
 
       const positions: [number, number][] = [
-        [driver.currentLocation.lat, driver.currentLocation.lng]
+        [driver.currentLocation.lat, driver.currentLocation.lng],
+        [order.coordinates.lat, order.coordinates.lng]
       ];
-
-      if (order.route && order.route.length > 0) {
-        const startIdx = driver.routeIndex ?? 0;
-        for (let i = startIdx; i < order.route.length; i++) {
-          positions.push([order.route[i].lat, order.route[i].lng]);
-        }
-      } else {
-        positions.push([order.coordinates.lat, order.coordinates.lng]);
-      }
 
       return {
         id: order.id,
@@ -260,6 +329,7 @@ export default function DeliveryMap() {
     }),
     // 2. Returning paths (purple dashed lines back to restaurant)
     ...drivers.filter((d) => d.status === 'returning').map((driver) => {
+      if (!driver.currentLocation?.lat) return null;
       return {
         id: `returning-${driver.id}`,
         positions: [
@@ -332,42 +402,10 @@ export default function DeliveryMap() {
         </Marker>
 
         {/* Driver Markers */}
-        {activeDrivers.map((driver) => (
-          <Marker
-            key={driver.id}
-            position={[driver.currentLocation.lat, driver.currentLocation.lng]}
-            icon={createDriverIcon(driver.color, false)}
-          >
-            <Popup className="delivery-popup">
-              <div className="flex flex-col gap-1.5 p-3 px-4 min-w-[180px]">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-8 h-8 rounded-full border border-white flex items-center justify-center text-white shrink-0"
-                    style={{ backgroundColor: driver.color }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
-                  </div>
-                  <div className="flex flex-col">
-                    <strong className="text-[13px] font-bold text-neutral-900">{driver.name}</strong>
-                    <span className="text-[10.5px] text-neutral-500 font-medium">
-                      {driver.status === 'on-delivery'
-                        ? `Delivering • ${driver.activeOrders.length} order(s)`
-                        : driver.status === 'returning'
-                        ? 'Returning to base'
-                        : '● Available'}
-                    </span>
-                  </div>
-                </div>
-                {driver.assignedVehicle && (
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] font-semibold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md">
-                      🚗 Vehicle #{driver.assignedVehicle.number}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </Popup>
-          </Marker>
+        {activeDrivers
+          .filter(d => d.currentLocation && d.currentLocation.lat)
+          .map((driver) => (
+          <AnimatedDriverMarker key={driver.id || driver._id} driver={driver} />
         ))}
 
         {/* Delivery Destination Markers */}
