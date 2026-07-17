@@ -35,7 +35,9 @@ export interface Driver {
   activeOrders: string[];
   assignedVehicle: Vehicle | null;
   bearing?: number; // bearing direction (0-360)
+  speed?: number; // speed in km/h from GPS
   locationUpdatedAt?: number; // last updated timestamp
+  lastEventTime?: number; // timestamp of previous event (for adaptive animation)
 }
 
 export interface RestaurantLocation {

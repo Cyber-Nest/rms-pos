@@ -248,9 +248,9 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
     const channel = pusherInstance.subscribe("private-restaurant-default");
 
-    // 1. Listen for Server-relayed driver location events
-    channel.bind("driver-location-update", (data: any) => {
-      const { driverId, lat, lng, bearing, phase } = data;
+    // 1. Listen for Pusher client events (browser-to-browser) for driver location
+    channel.bind("client-driver-location", (data: any) => {
+      const { driverId, lat, lng, bearing, speed } = data;
       set((state) => {
         const updatedDrivers = state.drivers.map((d) => {
           if (d.id === driverId || d._id === driverId) {
@@ -258,6 +258,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
               ...d,
               currentLocation: { lat, lng },
               bearing,
+              speed: speed || 0,
+              lastEventTime: d.locationUpdatedAt || Date.now(),
               locationUpdatedAt: Date.now(),
             };
           }
