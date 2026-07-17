@@ -48,9 +48,11 @@ interface DeliveryState {
   fetchDrivers: () => Promise<void>;
   fetchVehicles: () => Promise<void>;
   assignDriver: (orderId: string, driverId: string) => Promise<void>;
+  unassignDriver: (orderId: string) => Promise<void>;
   markDelivered: (orderId: string) => Promise<void>;
   assignVehicle: (driverId: string, vehicleId: string) => Promise<void>;
   unassignVehicle: (driverId: string) => Promise<void>;
+  markDriverAvailable: (driverId: string) => Promise<void>;
 
   // ── Real-Time Pusher Actions ──
   initPusher: () => void;
@@ -191,6 +193,19 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     }
   },
 
+  unassignDriver: async (orderId) => {
+    try {
+      const res = await axios.post(`${API_URL}/delivery/unassign`, {
+        orderId,
+      });
+      if (res.data.success) {
+        await Promise.all([get().fetchOrders(), get().fetchDrivers()]);
+      }
+    } catch (err) {
+      console.error("Error unassigning driver:", err);
+    }
+  },
+
   markDelivered: async (orderId) => {
     try {
       // Find assignment for this order first
@@ -230,6 +245,17 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
       }
     } catch (err) {
       console.error("Error unassigning vehicle:", err);
+    }
+  },
+
+  markDriverAvailable: async (driverId) => {
+    try {
+      const res = await axios.post(`${API_URL}/delivery/driver/${driverId}/complete-active`);
+      if (res.data.success) {
+        await Promise.all([get().fetchDrivers(), get().fetchOrders()]);
+      }
+    } catch (err) {
+      console.error("Error marking driver available:", err);
     }
   },
 

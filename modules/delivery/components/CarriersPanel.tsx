@@ -14,6 +14,7 @@ export default function CarriersPanel() {
   const unassignVehicle = useDeliveryStore((s) => s.unassignVehicle);
   const selectDriver = useDeliveryStore((s) => s.selectDriver);
   const selectedDriverId = useDeliveryStore((s) => s.selectedDriverId);
+  const markDriverAvailable = useDeliveryStore((s) => s.markDriverAvailable);
 
   const counts = getCarrierCounts();
   const filteredDrivers = getFilteredDrivers();
@@ -147,9 +148,20 @@ export default function CarriersPanel() {
                 )}
 
                 {driver.status === 'returning' && (
-                  <div className="flex items-center gap-1.5 text-[10.5px] text-purple-600 font-semibold animate-pulse">
-                    <MapPin size={11} />
-                    <span>Returning to restaurant...</span>
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-1.5 text-[10.5px] text-purple-600 font-semibold animate-pulse">
+                      <MapPin size={11} />
+                      <span>Returning...</span>
+                    </div>
+                    <button
+                      className="px-2 py-0.5 text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded transition-colors cursor-pointer"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await markDriverAvailable(driver.id);
+                      }}
+                    >
+                      Mark Available
+                    </button>
                   </div>
                 )}
 

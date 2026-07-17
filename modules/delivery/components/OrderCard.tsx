@@ -12,10 +12,14 @@ interface OrderCardProps {
 export default function OrderCard({ order }: OrderCardProps) {
   const [showDriverDropdown, setShowDriverDropdown] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<'assign' | 'unassign' | 'delivered' | 'available' | null>(null);
+
   const selectOrder = useDeliveryStore((s) => s.selectOrder);
   const selectedOrderId = useDeliveryStore((s) => s.selectedOrderId);
   const assignDriver = useDeliveryStore((s) => s.assignDriver);
+  const unassignDriver = useDeliveryStore((s) => s.unassignDriver);
   const markDelivered = useDeliveryStore((s) => s.markDelivered);
+  const markDriverAvailable = useDeliveryStore((s) => s.markDriverAvailable);
   const getDriversWithVehicles = useDeliveryStore((s) => s.getDriversWithVehicles);
   const drivers = useDeliveryStore((s) => s.drivers);
 
@@ -143,45 +147,103 @@ export default function OrderCard({ order }: OrderCardProps) {
         )}
 
         {order.status === 'en-route' && assignedDriver && (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: assignedDriver.color }} />
-              <span>{assignedDriver.name}</span>
+          <div className="flex items-center justify-between w-full mt-1.5 animate-fade-in">
+            {/* Left side: Driver details */}
+            <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700 min-w-0 mr-2">
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: assignedDriver.color }} />
+              <span className="truncate max-w-[85px] font-bold">{assignedDriver.name}</span>
               {assignedDriver.assignedVehicle && (
-                <span className="text-[10px] font-bold text-brand-primary bg-brand-primary-light px-1.5 rounded">
+                <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider">
                   V#{assignedDriver.assignedVehicle.number}
                 </span>
               )}
             </div>
-            <button
-              className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isUpdating}
-              onClick={async (e) => {
-                e.stopPropagation();
-                setIsUpdating(true);
-                try {
-                  await markDelivered(order.id);
-                } catch (err) {
-                  console.error(err);
-                } finally {
-                  setIsUpdating(false);
-                }
-              }}
-            >
-              {isUpdating ? (
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Check size={12} />
-              )}
-              <span>Delivered</span>
-            </button>
+
+            {/* Right side: Unassign & Mark Delivered buttons side-by-side */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                className="px-2.5 py-1.5 text-[10.5px] font-bold text-red-650 bg-red-50 hover:bg-red-100/80 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
+                disabled={isUpdating}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setIsUpdating(true);
+                  setLoadingAction('unassign');
+                  try {
+                    await unassignDriver(order.id);
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setIsUpdating(false);
+                    setLoadingAction(null);
+                  }
+                }}
+              >
+                {loadingAction === 'unassign' && (
+                  <div className="w-2.5 h-2.5 border-[1.5px] border-red-600 border-t-transparent rounded-full animate-spin" />
+                )}
+                <span>Unassign</span>
+              </button>
+
+              <button
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-green-600 hover:bg-green-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm shadow-green-600/10"
+                disabled={isUpdating}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setIsUpdating(true);
+                  setLoadingAction('delivered');
+                  try {
+                    await markDelivered(order.id);
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setIsUpdating(false);
+                    setLoadingAction(null);
+                  }
+                }}
+              >
+                {loadingAction === 'delivered' ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Check size={12} strokeWidth={3} />
+                )}
+                <span>Delivered</span>
+              </button>
+            </div>
           </div>
         )}
 
         {order.status === 'delivered' && (
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
-            <Check size={14} />
-            <span>Delivered</span>
+          <div className="flex items-center justify-between w-full mt-1 animate-fade-in">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
+              <Check size={14} strokeWidth={2.5} />
+              <span>Delivered</span>
+            </div>
+            {assignedDriver && assignedDriver.status === 'returning' && (
+              <button
+                className="px-2.5 py-1 text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-200/60 hover:bg-purple-100 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                disabled={isUpdating}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setIsUpdating(true);
+                  setLoadingAction('available');
+                  try {
+                    await markDriverAvailable(assignedDriver.id);
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setIsUpdating(false);
+                    setLoadingAction(null);
+                  }
+                }}
+              >
+                {loadingAction === 'available' ? (
+                  <div className="w-2.5 h-2.5 border-[1.5px] border-purple-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <MapPin size={10} />
+                )}
+                <span>Mark Driver Available</span>
+              </button>
+            )}
           </div>
         )}
       </div>
