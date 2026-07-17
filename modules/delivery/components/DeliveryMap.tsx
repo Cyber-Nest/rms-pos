@@ -29,7 +29,7 @@ function createDriverIcon(color: string, bearing: number = 0, isReturning: boole
   const borderStyle = isReturning ? "dashed" : "solid";
 
   const html = `
-    <div class="driver-marker-wrapper" style="width: ${glowSize}px; height: ${glowSize}px; position: relative; transform: rotate(${bearing}deg); transition: transform 0.4s ease-out;">
+    <div class="driver-marker-wrapper" style="width: ${glowSize}px; height: ${glowSize}px; position: relative;">
       <!-- Animated pulse ring -->
       <div class="driver-pulse-ring" style="
         position: absolute; inset: 0;
@@ -198,6 +198,7 @@ interface AnimatedDriverMarkerProps {
 function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
   const [pos, setPos] = useState<[number, number]>([driver.currentLocation.lat, driver.currentLocation.lng]);
   const prevPosRef = useRef<[number, number]>([driver.currentLocation.lat, driver.currentLocation.lng]);
+  const lastAnimStartRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const targetLat = driver.currentLocation.lat;
@@ -207,21 +208,31 @@ function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
     
     const fromLat = prevPosRef.current[0];
     const fromLng = prevPosRef.current[1];
+
+    // Skip animation if position hasn't changed (stationary driver)
+    if (Math.abs(targetLat - fromLat) < 0.000001 && Math.abs(targetLng - fromLng) < 0.000001) {
+      return;
+    }
     
-    const startTime = performance.now();
-    const duration = 2000; // 2 seconds transition
+    // ─── Adaptive animation duration ───
+    // Calculate how long since the last event, then fill 85% of that gap with animation.
+    const now = Date.now();
+    const timeSinceLast = now - lastAnimStartRef.current;
+    lastAnimStartRef.current = now;
+
+    // Clamp between 1s min and 8s max for safety
+    const duration = Math.max(1000, Math.min(timeSinceLast * 0.85, 8000));
 
     let animationFrameId: number;
+    const startTime = performance.now();
 
     const animate = (time: number) => {
       const elapsed = time - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
-      // easeOutCubic easing
-      const eased = 1 - Math.pow(1 - progress, 3);
-      
-      const lat = fromLat + (targetLat - fromLat) * eased;
-      const lng = fromLng + (targetLng - fromLng) * eased;
+      // Linear easing for steady, constant-speed movement (like Google Maps)
+      const lat = fromLat + (targetLat - fromLat) * progress;
+      const lng = fromLng + (targetLng - fromLng) * progress;
       
       setPos([lat, lng]);
 
