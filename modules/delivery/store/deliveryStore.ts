@@ -9,7 +9,7 @@ import {
 } from "../types/delivery";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-const DEFAULT_RESTAURANT_COORDS = { lat: 50.0280, lng: -110.6770 };
+const DEFAULT_RESTAURANT_COORDS = { lat: 22.1818, lng: 78.7618 };
 
 interface DeliveryState {
   // ── Data ──
