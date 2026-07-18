@@ -74,7 +74,14 @@ export default function CarriersPanel() {
                 <div className="flex items-center gap-2.5">
                   <div
                     className="w-9 h-9 rounded-full border-[2.5px] bg-neutral-100 flex items-center justify-center text-neutral-500"
-                    style={{ borderColor: driver.color }}
+                    style={{
+                      borderColor:
+                        driver.status === 'available'
+                          ? '#16A34A'
+                          : driver.status === 'returning'
+                          ? '#EA580C'
+                          : '#DC2626'
+                    }}
                   >
                     <User size={16} />
                   </div>

@@ -1,9 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { MapPin, Clock, Phone, ChevronDown, ChevronUp, Check, User } from 'lucide-react';
-import { DeliveryOrder } from '../types/delivery';
-import { useDeliveryStore } from '../store/deliveryStore';
+import React, { useState } from "react";
+import {
+  MapPin,
+  Clock,
+  Phone,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  User,
+} from "lucide-react";
+import { DeliveryOrder } from "../types/delivery";
+import { useDeliveryStore } from "../store/deliveryStore";
 
 interface OrderCardProps {
   order: DeliveryOrder;
@@ -12,26 +20,28 @@ interface OrderCardProps {
 export default function OrderCard({ order }: OrderCardProps) {
   const [showDriverDropdown, setShowDriverDropdown] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [loadingAction, setLoadingAction] = useState<'assign' | 'unassign' | 'delivered' | 'available' | null>(null);
-  const [durationStr, setDurationStr] = useState('');
+  const [loadingAction, setLoadingAction] = useState<
+    "assign" | "unassign" | "delivered" | "available" | null
+  >(null);
+  const [durationStr, setDurationStr] = useState("");
 
   React.useEffect(() => {
     const calculateDuration = () => {
-      if (!order.createdAt) return '0 min';
+      if (!order.createdAt) return "0 min";
       const start = new Date(order.createdAt).getTime();
       let end = Date.now();
-      
-      if (order.status === 'delivered' && order.deliveredAt) {
+
+      if (order.status === "delivered" && order.deliveredAt) {
         end = new Date(order.deliveredAt).getTime();
       }
 
       const diffMins = Math.floor((end - start) / 60000);
-      return diffMins > 0 ? `${diffMins} min` : '0 min';
+      return diffMins > 0 ? `${diffMins} min` : "0 min";
     };
 
     setDurationStr(calculateDuration());
 
-    if (order.status !== 'delivered') {
+    if (order.status !== "delivered") {
       const interval = setInterval(() => {
         setDurationStr(calculateDuration());
       }, 60000);
@@ -45,7 +55,9 @@ export default function OrderCard({ order }: OrderCardProps) {
   const unassignDriver = useDeliveryStore((s) => s.unassignDriver);
   const markDelivered = useDeliveryStore((s) => s.markDelivered);
   const markDriverAvailable = useDeliveryStore((s) => s.markDriverAvailable);
-  const getDriversWithVehicles = useDeliveryStore((s) => s.getDriversWithVehicles);
+  const getDriversWithVehicles = useDeliveryStore(
+    (s) => s.getDriversWithVehicles,
+  );
   const drivers = useDeliveryStore((s) => s.drivers);
 
   const isSelected = selectedOrderId === order.id;
@@ -53,7 +65,7 @@ export default function OrderCard({ order }: OrderCardProps) {
     ? drivers.find((d) => d.id === order.assignedDriverId)
     : null;
   const availableDrivers = getDriversWithVehicles().filter(
-    (d) => d.status === 'available' || d.id === order.assignedDriverId
+    (d) => d.status === "available" || d.id === order.assignedDriverId,
   );
 
   const handleAssign = async (driverId: string) => {
@@ -69,13 +81,35 @@ export default function OrderCard({ order }: OrderCardProps) {
     }
   };
 
+  const getBorderClass = () => {
+    if (order.status !== "assign") {
+      return isSelected
+        ? "border-brand-primary shadow-[0_0_0_1px_#8a1538,0_3px_12px_rgba(138,21,56,0.08)]"
+        : "border-neutral-200 hover:border-neutral-300 hover:shadow-sm";
+    }
+
+    const start = order.createdAt
+      ? new Date(order.createdAt).getTime()
+      : Date.now();
+    const elapsedMins = Math.floor((Date.now() - start) / 60000);
+    const isOver20 = elapsedMins >= 20;
+    const baseBorderColor = isOver20 ? "border-red-500" : "border-green-500";
+
+    if (isSelected) {
+      return isOver20
+        ? "border-red-500 shadow-[0_0_0_1.5px_#ef4444,0_3px_12px_rgba(239,68,68,0.12)]"
+        : "border-green-500 shadow-[0_0_0_1.5px_#22c55e,0_3px_12px_rgba(34,197,94,0.12)]";
+    }
+    return `${baseBorderColor} hover:shadow-sm`;
+  };
+
   return (
     <div
       className={`bg-white border rounded-xl p-3 px-3.5 cursor-pointer transition-all animate-scale-up relative
-        ${showDriverDropdown ? 'z-30' : 'z-10'}
-        ${isSelected ? 'border-brand-primary shadow-[0_0_0_1px_#8a1538,0_3px_12px_rgba(138,21,56,0.08)]' : 'border-neutral-200 hover:border-neutral-300 hover:shadow-sm'}
-        ${order.status === 'en-route' ? 'border-l-[3px] border-l-blue-600' : ''}
-        ${order.status === 'delivered' ? 'border-l-[3px] border-l-green-600 opacity-70' : ''}
+        ${showDriverDropdown ? "z-30" : "z-10"}
+        ${getBorderClass()}
+        ${order.status === "en-route" ? "border-l-[3px] border-l-blue-600" : ""}
+        ${order.status === "delivered" ? "border-l-[3px] border-l-green-600 opacity-70" : ""}
       `}
       onClick={() => selectOrder(order.id)}
     >
@@ -86,7 +120,9 @@ export default function OrderCard({ order }: OrderCardProps) {
             <User size={14} />
           </div>
           <div className="flex flex-col">
-            <span className="text-[13px] font-semibold text-neutral-900 leading-tight">{order.customerName}</span>
+            <span className="text-[13px] font-semibold text-neutral-900 leading-tight">
+              {order.customerName}
+            </span>
             <span className="flex items-center gap-1 text-[11px] text-neutral-500 tabular-nums">
               <Phone size={10} />
               {order.customerPhone}
@@ -108,17 +144,27 @@ export default function OrderCard({ order }: OrderCardProps) {
       <div className="flex gap-3.5 mb-2.5">
         <div className="flex items-center gap-1 text-[10.5px] text-neutral-500">
           <Clock size={11} />
-          <span>Duration: <strong className="text-neutral-700 font-semibold">{durationStr}</strong></span>
+          <span>
+            Duration:{" "}
+            <strong className="text-neutral-700 font-semibold">
+              {durationStr}
+            </strong>
+          </span>
         </div>
         <div className="flex items-center gap-1 text-[10.5px] text-neutral-500">
           <Clock size={11} />
-          <span>Time Ordered: <strong className="text-neutral-700 font-semibold">{order.timeOrdered}</strong></span>
+          <span>
+            Time Ordered:{" "}
+            <strong className="text-neutral-700 font-semibold">
+              {order.timeOrdered}
+            </strong>
+          </span>
         </div>
       </div>
 
       {/* Status / Action Row */}
       <div className="flex items-center">
-        {order.status === 'assign' && (
+        {order.status === "assign" && (
           <div className="flex items-center gap-2 w-full justify-between">
             <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-full uppercase tracking-wide">
               Ready
@@ -136,7 +182,11 @@ export default function OrderCard({ order }: OrderCardProps) {
                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : null}
                 <span>Assign Driver</span>
-                {showDriverDropdown ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {showDriverDropdown ? (
+                  <ChevronUp size={12} />
+                ) : (
+                  <ChevronDown size={12} />
+                )}
               </button>
               {showDriverDropdown && (
                 <div className="absolute top-full right-0 mt-1 min-w-[200px] bg-white border border-neutral-200 rounded-xl shadow-lg z-50 overflow-hidden animate-scale-up">
@@ -155,7 +205,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                           handleAssign(driver.id);
                         }}
                       >
-                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: driver.color }} />
+                        <div className="w-2 h-2 rounded-full shrink-0 bg-green-600" />
                         <span>{driver.name}</span>
                         {driver.assignedVehicle && (
                           <span className="text-[10px] font-bold text-brand-primary bg-brand-primary-light px-1.5 rounded ml-auto">
@@ -171,12 +221,14 @@ export default function OrderCard({ order }: OrderCardProps) {
           </div>
         )}
 
-        {order.status === 'en-route' && assignedDriver && (
+        {order.status === "en-route" && assignedDriver && (
           <div className="flex items-center justify-between w-full mt-1.5 animate-fade-in">
             {/* Left side: Driver details */}
             <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700 min-w-0 mr-2">
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: assignedDriver.color }} />
-              <span className="truncate max-w-[85px] font-bold">{assignedDriver.name}</span>
+              <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-red-600" />
+              <span className="truncate max-w-[85px] font-bold">
+                {assignedDriver.name}
+              </span>
               {assignedDriver.assignedVehicle && (
                 <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider">
                   V#{assignedDriver.assignedVehicle.number}
@@ -192,7 +244,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                 onClick={async (e) => {
                   e.stopPropagation();
                   setIsUpdating(true);
-                  setLoadingAction('unassign');
+                  setLoadingAction("unassign");
                   try {
                     await unassignDriver(order.id);
                   } catch (err) {
@@ -203,7 +255,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                   }
                 }}
               >
-                {loadingAction === 'unassign' && (
+                {loadingAction === "unassign" && (
                   <div className="w-2.5 h-2.5 border-[1.5px] border-red-600 border-t-transparent rounded-full animate-spin" />
                 )}
                 <span>Unassign</span>
@@ -215,7 +267,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                 onClick={async (e) => {
                   e.stopPropagation();
                   setIsUpdating(true);
-                  setLoadingAction('delivered');
+                  setLoadingAction("delivered");
                   try {
                     await markDelivered(order.id);
                   } catch (err) {
@@ -226,7 +278,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                   }
                 }}
               >
-                {loadingAction === 'delivered' ? (
+                {loadingAction === "delivered" ? (
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Check size={12} strokeWidth={3} />
@@ -237,38 +289,40 @@ export default function OrderCard({ order }: OrderCardProps) {
           </div>
         )}
 
-        {order.status === 'delivered' && (
+        {order.status === "delivered" && (
           <div className="flex items-center justify-between w-full mt-1 animate-fade-in">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
               <Check size={14} strokeWidth={2.5} />
               <span>Delivered</span>
             </div>
-            {order.assignmentStatus === 'delivered' && assignedDriver && assignedDriver.status === 'returning' && (
-              <button
-                className="px-2.5 py-1 text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-200/60 hover:bg-purple-100 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
-                disabled={isUpdating}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setIsUpdating(true);
-                  setLoadingAction('available');
-                  try {
-                    await markDriverAvailable(assignedDriver.id);
-                  } catch (err) {
-                    console.error(err);
-                  } finally {
-                    setIsUpdating(false);
-                    setLoadingAction(null);
-                  }
-                }}
-              >
-                {loadingAction === 'available' ? (
-                  <div className="w-2.5 h-2.5 border-[1.5px] border-purple-600 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <MapPin size={10} />
-                )}
-                <span>Mark Driver Available</span>
-              </button>
-            )}
+            {order.assignmentStatus === "delivered" &&
+              assignedDriver &&
+              assignedDriver.status === "returning" && (
+                <button
+                  className="px-2.5 py-1 text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-200/60 hover:bg-purple-100 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                  disabled={isUpdating}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setIsUpdating(true);
+                    setLoadingAction("available");
+                    try {
+                      await markDriverAvailable(assignedDriver.id);
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setIsUpdating(false);
+                      setLoadingAction(null);
+                    }
+                  }}
+                >
+                  {loadingAction === "available" ? (
+                    <div className="w-2.5 h-2.5 border-[1.5px] border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <MapPin size={10} />
+                  )}
+                  <span>Mark Driver Available</span>
+                </button>
+              )}
           </div>
         )}
       </div>

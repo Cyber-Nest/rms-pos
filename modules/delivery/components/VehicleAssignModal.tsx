@@ -46,7 +46,14 @@ export default function VehicleAssignModal() {
             <span className="text-sm font-semibold text-neutral-900">{driver.name}</span>
             <div
               className="w-[38px] h-[38px] rounded-full border-[2.5px] bg-neutral-100 flex items-center justify-center text-neutral-500"
-              style={{ borderColor: driver.color }}
+              style={{
+                borderColor:
+                  driver.status === 'available'
+                    ? '#16A34A'
+                    : driver.status === 'returning'
+                    ? '#EA580C'
+                    : '#DC2626'
+              }}
             >
               <User size={20} />
             </div>

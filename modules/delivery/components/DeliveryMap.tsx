@@ -8,6 +8,7 @@ import {
   Popup,
   Polyline,
   useMap,
+  Tooltip,
 } from "react-leaflet";
 import L from "leaflet";
 import { useDeliveryStore } from "../store/deliveryStore";
@@ -295,20 +296,30 @@ function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
     };
   }, [driver.currentLocation.lat, driver.currentLocation.lng]);
 
+  let carColor = "#16A34A"; // Green (Available)
+  if (driver.status === "on-delivery") {
+    carColor = "#DC2626"; // Red
+  } else if (driver.status === "returning") {
+    carColor = "#EA580C"; // Orange
+  }
+
   const icon = createDriverIcon(
-    driver.color,
+    carColor,
     driver.bearing || 0,
     driver.status === "returning",
   );
 
   return (
     <Marker position={pos} icon={icon}>
+      <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>
+        <div className="font-semibold text-xs px-1">{driver.name}</div>
+      </Tooltip>
       <Popup className="delivery-popup">
         <div className="flex flex-col gap-1.5 p-3 px-4 min-w-[180px]">
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-full border border-white flex items-center justify-center text-white shrink-0"
-              style={{ backgroundColor: driver.color }}
+              style={{ backgroundColor: carColor }}
             >
               <Car size={14} strokeWidth={2.5} />
             </div>
@@ -391,11 +402,11 @@ export default function DeliveryMap() {
       return {
         id: order.id,
         positions,
-        color: driver.color,
+        color: "#DC2626", // Red for active paths
         isReturning: false,
       };
     }),
-    // 2. Returning paths (purple dashed lines back to restaurant)
+    // 2. Returning paths (orange dashed lines back to restaurant)
     ...drivers
       .filter((d) => d.status === "returning")
       .map((driver) => {
@@ -412,7 +423,7 @@ export default function DeliveryMap() {
               restaurantLocation.coordinates.lng,
             ] as [number, number],
           ],
-          color: "#8B5CF6", // Purple line for returning
+          color: "#EA580C", // Orange line for returning
           isReturning: true,
         };
       }),
@@ -512,9 +523,14 @@ export default function DeliveryMap() {
 
         {/* Delivery Destination Markers */}
         {deliveryMarkers.map((order) => {
-          const assignedDriver = order.assignedDriverId
-            ? drivers.find((d) => d.id === order.assignedDriverId)
-            : null;
+          const getOrderPinColor = () => {
+            if (!order.createdAt) return "#16A34A";
+            const start = new Date(order.createdAt).getTime();
+            const diffMins = Math.floor((Date.now() - start) / 60000);
+            return diffMins >= 20 ? "#DC2626" : "#16A34A";
+          };
+          const pinColor = getOrderPinColor();
+
           return (
             <Marker
               key={order.id}
@@ -522,7 +538,7 @@ export default function DeliveryMap() {
               icon={createDeliveryIcon(
                 order.orderNumber,
                 selectedOrderId === order.id,
-                assignedDriver?.color,
+                pinColor,
               )}
               eventHandlers={{
                 click: () => selectOrder(order.id),
@@ -688,27 +704,28 @@ export default function DeliveryMap() {
           </div>
 
           {/* Drivers */}
-          {activeDrivers.map((driver) => (
-            <div key={driver.id} className="flex items-center gap-2.5 mb-1.5">
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm border border-white"
-                style={{ backgroundColor: driver.color }}
-              >
-                <Car size={10} strokeWidth={2.5} />
-              </div>
-              <div className="flex items-center gap-1.5">
+          {activeDrivers.map((driver) => {
+            let driverStatusColor = "#16A34A"; // Green (Available)
+            if (driver.status === "on-delivery") {
+              driverStatusColor = "#DC2626"; // Red
+            } else if (driver.status === "returning") {
+              driverStatusColor = "#EA580C"; // Orange
+            }
+
+            return (
+              <div key={driver.id} className="flex items-center gap-2.5 mb-1.5">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm border border-white"
+                  style={{ backgroundColor: driverStatusColor }}
+                >
+                  <Car size={10} strokeWidth={2.5} />
+                </div>
                 <span className="text-[11px] font-semibold text-neutral-700">
                   {driver.name}
                 </span>
-                {driver.status === "on-delivery" && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                )}
-                {driver.status === "returning" && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Delivery Points */}
           <div className="flex items-center gap-2.5 mt-1 pt-1.5 border-t border-neutral-100">
