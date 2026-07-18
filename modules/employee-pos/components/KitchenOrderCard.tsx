@@ -59,7 +59,10 @@ export default function KitchenOrderCard({
 
   useEffect(() => {
     const updateElapsed = () => {
-      const createdTime = new Date(order.createdAt).getTime();
+      let createdTime = new Date(order.createdAt).getTime();
+      if (order.orderTiming === 'later' && order.scheduledAt) {
+        createdTime = new Date(order.scheduledAt).getTime() - 45 * 60000;
+      }
       const diffMs = Date.now() - createdTime;
       const diffMins = Math.max(0, Math.floor(diffMs / 60000));
       setElapsedMins(diffMins);

@@ -12,6 +12,8 @@ export interface DeliveryOrder {
   duration: string;
   timeOrdered: string;
   createdAt?: string;
+  orderTiming?: string;
+  scheduledAt?: string | null;
   deliveredAt?: string | null;
   items: string[];
   total: number;

@@ -360,9 +360,28 @@ export default function DeliveryMap() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const visibleOrders = React.useMemo(() => {
+    return orders.filter((o) => {
+      if (o.orderTiming === 'later' && o.scheduledAt) {
+        const schedTime = new Date(o.scheduledAt).getTime();
+        if (schedTime - currentTime > 45 * 60 * 1000) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [orders, currentTime]);
+
   // Active orders (en-route)
-  const enRouteOrders = orders.filter((o) => o.status === "en-route");
-  const assignCount = orders.filter((o) => o.status === "assign").length;
+  const enRouteOrders = visibleOrders.filter((o) => o.status === "en-route");
+  const assignCount = visibleOrders.filter((o) => o.status === "assign").length;
 
   // Fullscreen listener
   useEffect(() => {
@@ -430,7 +449,7 @@ export default function DeliveryMap() {
   ].filter(Boolean);
 
   // Delivery destination markers
-  const deliveryMarkers = orders.filter(
+  const deliveryMarkers = visibleOrders.filter(
     (o) => o.status === "en-route" || o.status === "assign",
   );
 
@@ -524,10 +543,15 @@ export default function DeliveryMap() {
         {/* Delivery Destination Markers */}
         {deliveryMarkers.map((order) => {
           const getOrderPinColor = () => {
-            if (!order.createdAt) return "#16A34A";
-            const start = new Date(order.createdAt).getTime();
-            const diffMins = Math.floor((Date.now() - start) / 60000);
-            return diffMins >= 20 ? "#DC2626" : "#16A34A";
+            let elapsedMins = 0;
+            if (order.orderTiming === 'later' && order.scheduledAt) {
+              const showUpTime = new Date(order.scheduledAt).getTime() - 45 * 60000;
+              elapsedMins = Math.floor((Date.now() - showUpTime) / 60000);
+            } else {
+              const start = order.createdAt ? new Date(order.createdAt).getTime() : Date.now();
+              elapsedMins = Math.floor((Date.now() - start) / 60000);
+            }
+            return elapsedMins >= 20 ? "#DC2626" : "#262626"; // Red if >= 20 mins, otherwise Black
           };
           const pinColor = getOrderPinColor();
 

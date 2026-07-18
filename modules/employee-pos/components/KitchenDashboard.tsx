@@ -23,6 +23,7 @@ export default function KitchenDashboard() {
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'chicken' | 'pizza'>('chicken');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [startIndex, setStartIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   const ordersRef = useRef(orders);
   useEffect(() => {
@@ -65,9 +66,11 @@ export default function KitchenDashboard() {
     }
   }, []);
 
-  // ── Initial Fetch ────────────────────────────────────────────
+  // ── Initial Fetch & Timer ────────────────────────────────────
   useEffect(() => {
     fetchOrders();
+    const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
+    return () => clearInterval(interval);
   }, [fetchOrders]);
 
   // ── Pusher Real-time Listener ────────────────────────────────
@@ -240,7 +243,15 @@ export default function KitchenDashboard() {
         matchesType = o.orderType === typeFilter && o.orderSource === 'pos';
       }
 
-      if (matchesStatus && matchesType) {
+      let isVisibleTime = true;
+      if (o.orderTiming === 'later' && o.scheduledAt) {
+        const schedTime = new Date(o.scheduledAt).getTime();
+        if (schedTime - currentTime > 45 * 60 * 1000) {
+          isVisibleTime = false;
+        }
+      }
+
+      if (matchesStatus && matchesType && isVisibleTime) {
         candidates.push(o);
       }
     });
@@ -273,7 +284,7 @@ export default function KitchenDashboard() {
 
     // Sort strictly by createdAt (oldest first)
     return categoryFiltered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }, [orders, draftCart, statusFilter, typeFilter, categoryFilter]);
+  }, [orders, draftCart, statusFilter, typeFilter, categoryFilter, currentTime]);
 
   // Category counts (based on status+type filtered orders, before category filter)
   const categoryCountData = React.useMemo(() => {
@@ -290,7 +301,16 @@ export default function KitchenDashboard() {
       if (typeFilter === 'all') matchesType = true;
       else if (typeFilter === 'online') matchesType = o.orderSource === 'online';
       else matchesType = o.orderType === typeFilter && o.orderSource === 'pos';
-      if (matchesStatus && matchesType) candidates.push(o);
+      
+      let isVisibleTime = true;
+      if (o.orderTiming === 'later' && o.scheduledAt) {
+        const schedTime = new Date(o.scheduledAt).getTime();
+        if (schedTime - currentTime > 45 * 60 * 1000) {
+          isVisibleTime = false;
+        }
+      }
+
+      if (matchesStatus && matchesType && isVisibleTime) candidates.push(o);
     });
     const pizzaCount = candidates.filter((o) =>
       o.items?.some((item: any) => item.kitchenLabel === 'pizza')
@@ -299,7 +319,7 @@ export default function KitchenDashboard() {
       o.items?.some((item: any) => item.kitchenLabel !== 'pizza')
     ).length;
     return { all: candidates.length, pizza: pizzaCount, chicken: chickenCount };
-  }, [orders, draftCart, statusFilter, typeFilter]);
+  }, [orders, draftCart, statusFilter, typeFilter, currentTime]);
 
   const visibleOrders = filteredOrders.slice(startIndex, startIndex + 4);
 

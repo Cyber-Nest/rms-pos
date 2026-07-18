@@ -28,7 +28,10 @@ export default function OrderCard({ order }: OrderCardProps) {
   React.useEffect(() => {
     const calculateDuration = () => {
       if (!order.createdAt) return "0 min";
-      const start = new Date(order.createdAt).getTime();
+      let start = new Date(order.createdAt).getTime();
+      if (order.orderTiming === 'later' && order.scheduledAt) {
+        start = new Date(order.scheduledAt).getTime() - 45 * 60000;
+      }
       let end = Date.now();
 
       if (order.status === "delivered" && order.deliveredAt) {
@@ -68,6 +71,18 @@ export default function OrderCard({ order }: OrderCardProps) {
     (d) => d.status === "available" || d.id === order.assignedDriverId,
   );
 
+  let elapsedMinsFromAppearance = 0;
+  if (order.status === "assign") {
+    if (order.orderTiming === 'later' && order.scheduledAt) {
+      const showUpTime = new Date(order.scheduledAt).getTime() - 45 * 60000;
+      elapsedMinsFromAppearance = Math.floor((Date.now() - showUpTime) / 60000);
+    } else {
+      const start = order.createdAt ? new Date(order.createdAt).getTime() : Date.now();
+      elapsedMinsFromAppearance = Math.floor((Date.now() - start) / 60000);
+    }
+  }
+  const isDelayed = order.status === "assign" && elapsedMinsFromAppearance >= 20;
+
   const handleAssign = async (driverId: string) => {
     if (isUpdating) return;
     setIsUpdating(true);
@@ -88,24 +103,20 @@ export default function OrderCard({ order }: OrderCardProps) {
         : "border-neutral-200 hover:border-neutral-300 hover:shadow-sm";
     }
 
-    const start = order.createdAt
-      ? new Date(order.createdAt).getTime()
-      : Date.now();
-    const elapsedMins = Math.floor((Date.now() - start) / 60000);
-    const isOver20 = elapsedMins >= 20;
-    const baseBorderColor = isOver20 ? "border-red-500" : "border-green-500";
+    const baseBorderColor = isDelayed ? "border-red-500" : "border-neutral-800";
 
     if (isSelected) {
-      return isOver20
+      return isDelayed
         ? "border-red-500 shadow-[0_0_0_1.5px_#ef4444,0_3px_12px_rgba(239,68,68,0.12)]"
-        : "border-green-500 shadow-[0_0_0_1.5px_#22c55e,0_3px_12px_rgba(34,197,94,0.12)]";
+        : "border-neutral-800 shadow-[0_0_0_1px_#262626,0_3px_12px_rgba(38,38,38,0.08)]";
     }
-    return `${baseBorderColor} hover:shadow-sm`;
+    return baseBorderColor + " hover:shadow-sm";
   };
 
   return (
-    <div
-      className={`bg-white border rounded-xl p-3 px-3.5 cursor-pointer transition-all animate-scale-up relative
+    <>
+      <div
+        className={`bg-white border rounded-xl p-3 px-3.5 cursor-pointer transition-all animate-scale-up relative
         ${showDriverDropdown ? "z-30" : "z-10"}
         ${getBorderClass()}
         ${order.status === "en-route" ? "border-l-[3px] border-l-blue-600" : ""}
@@ -142,11 +153,11 @@ export default function OrderCard({ order }: OrderCardProps) {
 
       {/* Meta Row */}
       <div className="flex gap-3.5 mb-2.5">
-        <div className="flex items-center gap-1 text-[10.5px] text-neutral-500">
+        <div className={`flex items-center gap-1 text-[10.5px] ${isDelayed ? "text-red-500" : "text-neutral-500"}`}>
           <Clock size={11} />
           <span>
             Duration:{" "}
-            <strong className="text-neutral-700 font-semibold">
+            <strong className={`font-semibold ${isDelayed ? "text-red-600" : "text-neutral-700"}`}>
               {durationStr}
             </strong>
           </span>
@@ -327,5 +338,6 @@ export default function OrderCard({ order }: OrderCardProps) {
         )}
       </div>
     </div>
+    </>
   );
 }

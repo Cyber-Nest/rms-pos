@@ -1,29 +1,31 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Truck, Clock, ArrowLeft, Menu, Power } from 'lucide-react';
-import { useDeliveryStore } from '../store/deliveryStore';
+import React, { useState, useEffect } from "react";
+import { Truck, Clock, ArrowLeft, Menu, Power } from "lucide-react";
+import { useDeliveryStore } from "../store/deliveryStore";
 
 interface DeliveryNavbarProps {
   onToggleSidebar?: () => void;
 }
 
-export default function DeliveryNavbar({ onToggleSidebar }: DeliveryNavbarProps) {
+export default function DeliveryNavbar({
+  onToggleSidebar,
+}: DeliveryNavbarProps) {
   const orders = useDeliveryStore((s) => s.orders);
-  const [currentTime, setCurrentTime] = useState('');
+  const [currentTime, setCurrentTime] = useState("");
 
-  const deliveryCount = orders.filter((o) => o.status !== 'delivered').length;
+  const deliveryCount = orders.filter((o) => o.status !== "delivered").length;
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       setCurrentTime(
-        now.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
+        now.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
           hour12: true,
-        })
+        }),
       );
     };
     updateTime();
@@ -47,8 +49,12 @@ export default function DeliveryNavbar({ onToggleSidebar }: DeliveryNavbarProps)
             <Truck size={20} />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-[13px] font-bold tracking-tight text-white">Chicken Delight</span>
-            <span className="text-[10px] font-medium text-white/50 uppercase tracking-widest">Dispatch System</span>
+            <span className="text-[13px] font-bold tracking-tight text-white">
+              Chicken Delight
+            </span>
+            <span className="text-[10px] font-medium text-white/50 uppercase tracking-widest">
+              Dispatch System
+            </span>
           </div>
         </div>
       </div>
@@ -76,7 +82,9 @@ export default function DeliveryNavbar({ onToggleSidebar }: DeliveryNavbarProps)
         <div className="flex items-center gap-2.5">
           <div className="text-right leading-none">
             <p className="text-[12px] font-700 text-white">Hi, Manager</p>
-            <span className="text-[10px] font-600 text-brand-primary leading-tight uppercase tracking-wide">Manager</span>
+            <span className="text-[10px] font-600 text-brand-primary leading-tight uppercase tracking-wide">
+              Manager
+            </span>
           </div>
           <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center text-[11px] font-800 text-white shadow-sm border border-brand-primary-hover/30">
             MG
@@ -96,7 +104,9 @@ export default function DeliveryNavbar({ onToggleSidebar }: DeliveryNavbarProps)
 
         {/* Exit/Logout Button */}
         <button
-          onClick={() => { if (confirm('Exit the system?')) window.close(); }}
+          onClick={() => {
+            if (confirm("Exit the system?")) window.close();
+          }}
           className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all cursor-pointer"
           title="Exit POS"
         >
