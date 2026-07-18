@@ -1,19 +1,35 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import { useDeliveryStore } from '../store/deliveryStore';
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Maximize2, Minimize2, Plus, Minus, LocateFixed,
-  Truck, MapPin, Package, Navigation
-} from 'lucide-react';
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+} from "react-leaflet";
+import L from "leaflet";
+import { useDeliveryStore } from "../store/deliveryStore";
+import {
+  Maximize2,
+  Minimize2,
+  Plus,
+  Minus,
+  LocateFixed,
+  Truck,
+  MapPin,
+  Package,
+  Navigation,
+  Car,
+} from "lucide-react";
 
 // ─── Fix default marker icons for webpack/next.js ───
 const defaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -22,7 +38,11 @@ const defaultIcon = L.icon({
 L.Marker.prototype.options.icon = defaultIcon;
 
 // ─── Custom SVG Icons ───
-function createDriverIcon(color: string, bearing: number = 0, isReturning: boolean = false) {
+function createDriverIcon(
+  color: string,
+  bearing: number = 0,
+  isReturning: boolean = false,
+) {
   const size = 40;
   const glowSize = size + 16;
   const pulseColor = isReturning ? "#8B5CF6" : color;
@@ -51,17 +71,12 @@ function createDriverIcon(color: string, bearing: number = 0, isReturning: boole
         display: flex; align-items: center; justify-content: center;
       ">
         <div style="
-          width: 80%; height: 80%;
+          width: 90%; height: 90%;
           border-radius: 50%;
           background: ${color};
           display: flex; align-items: center; justify-content: center;
         ">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 55%; height: 55%;">
-            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-            <circle cx="7" cy="17" r="2" fill="white" />
-            <path d="M9 17h6" />
-            <circle cx="17" cy="17" r="2" fill="white" />
-          </svg>
+          <img src="/car1.png" style="width: 105%; height: 105%; object-fit: contain;" />
         </div>
       </div>
     </div>
@@ -71,7 +86,7 @@ function createDriverIcon(color: string, bearing: number = 0, isReturning: boole
     iconSize: [glowSize, glowSize],
     iconAnchor: [glowSize / 2, glowSize / 2],
     popupAnchor: [0, -(glowSize / 2)],
-    className: '',
+    className: "",
   });
 }
 
@@ -115,23 +130,31 @@ function createRestaurantIcon() {
     iconSize: [48, 58],
     iconAnchor: [24, 58],
     popupAnchor: [0, -58],
-    className: '',
+    className: "",
   });
 }
 
-function createDeliveryIcon(orderNumber: string, isSelected: boolean = false, driverColor?: string) {
-  const digits = orderNumber.replace(/\D/g, '') || orderNumber;
+function createDeliveryIcon(
+  orderNumber: string,
+  isSelected: boolean = false,
+  driverColor?: string,
+) {
+  const digits = orderNumber.replace(/\D/g, "") || orderNumber;
   const size = isSelected ? 44 : 38;
-  const color = driverColor || '#16A34A'; // default green if no driver is assigned
+  const color = driverColor || "#16A34A"; // default green if no driver is assigned
 
   const html = `
     <div style="width: ${size}px; height: ${size + 10}px; position: relative; filter: drop-shadow(0 4px 10px ${color}40);">
-      ${isSelected ? `<div style="
+      ${
+        isSelected
+          ? `<div style="
         position: absolute; inset: -6px; border-radius: 50%;
         border: 2.5px solid ${color};
         opacity: 0.5;
         animation: driverPulse 1.5s ease-out infinite;
-      "></div>` : ''}
+      "></div>`
+          : ""
+      }
       <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 10}" viewBox="0 0 40 50" style="width: 100%; height: 100%;">
         <path d="M20 0C9 0 0 9 0 20c0 14 20 30 20 30s20-16 20-30C40 9 31 0 20 0z" fill="${color}" stroke="white" stroke-width="2.5"/>
         <text x="20" y="24" fill="white" font-size="12" font-weight="900" text-anchor="middle" font-family="'Inter', system-ui, sans-serif" letter-spacing="-0.03em">${digits}</text>
@@ -143,7 +166,7 @@ function createDeliveryIcon(orderNumber: string, isSelected: boolean = false, dr
     iconSize: [size, size + 10],
     iconAnchor: [size / 2, size + 10],
     popupAnchor: [0, -(size + 10)],
-    className: '',
+    className: "",
   });
 }
 
@@ -170,11 +193,17 @@ function MapBoundsUpdater() {
         if (order.assignedDriverId) {
           const driver = drivers.find((d) => d.id === order.assignedDriverId);
           if (driver && driver.currentLocation?.lat) {
-            points.push([driver.currentLocation.lat, driver.currentLocation.lng]);
+            points.push([
+              driver.currentLocation.lat,
+              driver.currentLocation.lng,
+            ]);
           }
         }
         // Include restaurant
-        points.push([restaurantLocation.coordinates.lat, restaurantLocation.coordinates.lng]);
+        points.push([
+          restaurantLocation.coordinates.lat,
+          restaurantLocation.coordinates.lng,
+        ]);
 
         const bounds = L.latLngBounds(points);
         map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
@@ -185,7 +214,14 @@ function MapBoundsUpdater() {
     if (!selectedOrderId) {
       prevSelectedRef.current = null;
     }
-  }, [selectedOrderId, selectedDriverId, map, orders, drivers, restaurantLocation]);
+  }, [
+    selectedOrderId,
+    selectedDriverId,
+    map,
+    orders,
+    drivers,
+    restaurantLocation,
+  ]);
 
   return null;
 }
@@ -196,24 +232,33 @@ interface AnimatedDriverMarkerProps {
 }
 
 function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
-  const [pos, setPos] = useState<[number, number]>([driver.currentLocation.lat, driver.currentLocation.lng]);
-  const prevPosRef = useRef<[number, number]>([driver.currentLocation.lat, driver.currentLocation.lng]);
+  const [pos, setPos] = useState<[number, number]>([
+    driver.currentLocation.lat,
+    driver.currentLocation.lng,
+  ]);
+  const prevPosRef = useRef<[number, number]>([
+    driver.currentLocation.lat,
+    driver.currentLocation.lng,
+  ]);
   const lastAnimStartRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const targetLat = driver.currentLocation.lat;
     const targetLng = driver.currentLocation.lng;
-    
+
     if (!targetLat || !targetLng) return;
-    
+
     const fromLat = prevPosRef.current[0];
     const fromLng = prevPosRef.current[1];
 
     // Skip animation if position hasn't changed (stationary driver)
-    if (Math.abs(targetLat - fromLat) < 0.000001 && Math.abs(targetLng - fromLng) < 0.000001) {
+    if (
+      Math.abs(targetLat - fromLat) < 0.000001 &&
+      Math.abs(targetLng - fromLng) < 0.000001
+    ) {
       return;
     }
-    
+
     // ─── Adaptive animation duration ───
     // Calculate how long since the last event, then fill 85% of that gap with animation.
     const now = Date.now();
@@ -229,11 +274,11 @@ function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
     const animate = (time: number) => {
       const elapsed = time - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Linear easing for steady, constant-speed movement (like Google Maps)
       const lat = fromLat + (targetLat - fromLat) * progress;
       const lng = fromLng + (targetLng - fromLng) * progress;
-      
+
       setPos([lat, lng]);
 
       if (progress < 1) {
@@ -250,7 +295,11 @@ function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
     };
   }, [driver.currentLocation.lat, driver.currentLocation.lng]);
 
-  const icon = createDriverIcon(driver.color, driver.bearing || 0, driver.status === "returning");
+  const icon = createDriverIcon(
+    driver.color,
+    driver.bearing || 0,
+    driver.status === "returning",
+  );
 
   return (
     <Marker position={pos} icon={icon}>
@@ -261,16 +310,18 @@ function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
               className="w-8 h-8 rounded-full border border-white flex items-center justify-center text-white shrink-0"
               style={{ backgroundColor: driver.color }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+              <Car size={14} strokeWidth={2.5} />
             </div>
             <div className="flex flex-col">
-              <strong className="text-[13px] font-bold text-neutral-900">{driver.name}</strong>
+              <strong className="text-[13px] font-bold text-neutral-900">
+                {driver.name}
+              </strong>
               <span className="text-[10.5px] text-neutral-500 font-medium">
-                {driver.status === 'on-delivery'
+                {driver.status === "on-delivery"
                   ? `Delivering • ${driver.activeOrders?.length || 0} order(s)`
-                  : driver.status === 'returning'
-                  ? 'Returning to base'
-                  : '● Available'}
+                  : driver.status === "returning"
+                    ? "Returning to base"
+                    : "● Available"}
               </span>
             </div>
           </div>
@@ -299,14 +350,14 @@ export default function DeliveryMap() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Active orders (en-route)
-  const enRouteOrders = orders.filter((o) => o.status === 'en-route');
-  const assignCount = orders.filter((o) => o.status === 'assign').length;
+  const enRouteOrders = orders.filter((o) => o.status === "en-route");
+  const assignCount = orders.filter((o) => o.status === "assign").length;
 
   // Fullscreen listener
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
   const center: [number, number] = [
@@ -316,19 +367,25 @@ export default function DeliveryMap() {
 
   // Get active drivers (on-delivery, returning or available)
   const activeDrivers = drivers.filter(
-    (d) => d.status === 'on-delivery' || d.status === 'available' || d.status === 'returning'
+    (d) =>
+      d.status === "on-delivery" ||
+      d.status === "available" ||
+      d.status === "returning",
   );
 
   // Build polylines (driver → delivery destination OR driver → restaurant)
   const polylines = [
     // 1. Delivery active paths
     ...enRouteOrders.map((order) => {
-      const driver = drivers.find((d) => d.id === order.assignedDriverId || d._id === order.assignedDriverId);
+      const driver = drivers.find(
+        (d) =>
+          d.id === order.assignedDriverId || d._id === order.assignedDriverId,
+      );
       if (!driver || !driver.currentLocation?.lat) return null;
 
       const positions: [number, number][] = [
         [driver.currentLocation.lat, driver.currentLocation.lng],
-        [order.coordinates.lat, order.coordinates.lng]
+        [order.coordinates.lat, order.coordinates.lng],
       ];
 
       return {
@@ -339,23 +396,31 @@ export default function DeliveryMap() {
       };
     }),
     // 2. Returning paths (purple dashed lines back to restaurant)
-    ...drivers.filter((d) => d.status === 'returning').map((driver) => {
-      if (!driver.currentLocation?.lat) return null;
-      return {
-        id: `returning-${driver.id}`,
-        positions: [
-          [driver.currentLocation.lat, driver.currentLocation.lng] as [number, number],
-          [restaurantLocation.coordinates.lat, restaurantLocation.coordinates.lng] as [number, number]
-        ],
-        color: '#8B5CF6', // Purple line for returning
-        isReturning: true,
-      };
-    })
+    ...drivers
+      .filter((d) => d.status === "returning")
+      .map((driver) => {
+        if (!driver.currentLocation?.lat) return null;
+        return {
+          id: `returning-${driver.id}`,
+          positions: [
+            [driver.currentLocation.lat, driver.currentLocation.lng] as [
+              number,
+              number,
+            ],
+            [
+              restaurantLocation.coordinates.lat,
+              restaurantLocation.coordinates.lng,
+            ] as [number, number],
+          ],
+          color: "#8B5CF6", // Purple line for returning
+          isReturning: true,
+        };
+      }),
   ].filter(Boolean);
 
   // Delivery destination markers
   const deliveryMarkers = orders.filter(
-    (o) => o.status === 'en-route' || o.status === 'assign'
+    (o) => o.status === "en-route" || o.status === "assign",
   );
 
   const handleZoomIn = () => mapRef.current?.zoomIn();
@@ -374,7 +439,11 @@ export default function DeliveryMap() {
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full relative" style={{ background: '#f8fafc' }}>
+    <div
+      ref={containerRef}
+      className="w-full h-full relative"
+      style={{ background: "#f8fafc" }}
+    >
       <MapContainer
         center={center}
         zoom={13}
@@ -401,11 +470,30 @@ export default function DeliveryMap() {
             <div className="flex flex-col gap-1.5 p-3 px-4">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-brand-primary/15 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a1538" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#8a1538"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
+                    <path d="M2 7h20" />
+                  </svg>
                 </div>
                 <div className="flex flex-col">
-                  <strong className="text-[13px] font-bold text-neutral-900">{restaurantLocation.name}</strong>
-                  <span className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">Base Station</span>
+                  <strong className="text-[13px] font-bold text-neutral-900">
+                    {restaurantLocation.name}
+                  </strong>
+                  <span className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
+                    Base Station
+                  </span>
                 </div>
               </div>
             </div>
@@ -414,21 +502,28 @@ export default function DeliveryMap() {
 
         {/* Driver Markers */}
         {activeDrivers
-          .filter(d => d.currentLocation && d.currentLocation.lat)
+          .filter((d) => d.currentLocation && d.currentLocation.lat)
           .map((driver) => (
-          <AnimatedDriverMarker key={driver.id || driver._id} driver={driver} />
-        ))}
+            <AnimatedDriverMarker
+              key={driver.id || driver._id}
+              driver={driver}
+            />
+          ))}
 
         {/* Delivery Destination Markers */}
         {deliveryMarkers.map((order) => {
-          const assignedDriver = order.assignedDriverId 
+          const assignedDriver = order.assignedDriverId
             ? drivers.find((d) => d.id === order.assignedDriverId)
             : null;
           return (
             <Marker
               key={order.id}
               position={[order.coordinates.lat, order.coordinates.lng]}
-              icon={createDeliveryIcon(order.orderNumber, selectedOrderId === order.id, assignedDriver?.color)}
+              icon={createDeliveryIcon(
+                order.orderNumber,
+                selectedOrderId === order.id,
+                assignedDriver?.color,
+              )}
               eventHandlers={{
                 click: () => selectOrder(order.id),
               }}
@@ -436,19 +531,29 @@ export default function DeliveryMap() {
               <Popup className="delivery-popup">
                 <div className="flex flex-col gap-1 p-3 px-4 min-w-[200px]">
                   <div className="flex items-center justify-between mb-0.5">
-                    <strong className="text-[13px] font-bold text-neutral-900">{order.orderNumber}</strong>
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
-                      order.status === 'en-route' 
-                        ? 'bg-blue-50 text-blue-600 border border-blue-200' 
-                        : 'bg-amber-50 text-amber-600 border border-amber-200'
-                    }`}>
-                      {order.status === 'en-route' ? 'En Route' : 'Pending'}
+                    <strong className="text-[13px] font-bold text-neutral-900">
+                      {order.orderNumber}
+                    </strong>
+                    <span
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
+                        order.status === "en-route"
+                          ? "bg-blue-50 text-blue-600 border border-blue-200"
+                          : "bg-amber-50 text-amber-600 border border-amber-200"
+                      }`}
+                    >
+                      {order.status === "en-route" ? "En Route" : "Pending"}
                     </span>
                   </div>
-                  <span className="text-[11px] text-neutral-600 leading-snug">{order.deliveryAddress}</span>
+                  <span className="text-[11px] text-neutral-600 leading-snug">
+                    {order.deliveryAddress}
+                  </span>
                   <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-neutral-100">
-                    <span className="text-[11px] text-neutral-500">{order.customerName}</span>
-                    <span className="text-[11.5px] font-bold text-neutral-800">${order.total.toFixed(2)}</span>
+                    <span className="text-[11px] text-neutral-500">
+                      {order.customerName}
+                    </span>
+                    <span className="text-[11.5px] font-bold text-neutral-800">
+                      ${order.total.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </Popup>
@@ -516,7 +621,11 @@ export default function DeliveryMap() {
           className="w-9 h-9 rounded-xl bg-white/90 backdrop-blur-md text-neutral-700 flex items-center justify-center hover:bg-white hover:text-neutral-955 hover:shadow-md transition-all cursor-pointer border border-neutral-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
           title="Toggle fullscreen"
         >
-          {isFullscreen ? <Minimize2 size={15} strokeWidth={2.5} /> : <Maximize2 size={15} strokeWidth={2.5} />}
+          {isFullscreen ? (
+            <Minimize2 size={15} strokeWidth={2.5} />
+          ) : (
+            <Maximize2 size={15} strokeWidth={2.5} />
+          )}
         </button>
       </div>
 
@@ -530,7 +639,9 @@ export default function DeliveryMap() {
           <div className="w-px h-4 bg-neutral-200" />
           <div className="flex items-center gap-1.5 text-[11px] text-neutral-600">
             <Navigation size={11} className="text-blue-500" />
-            <span className="font-bold text-neutral-800">{enRouteOrders.length}</span>
+            <span className="font-bold text-neutral-800">
+              {enRouteOrders.length}
+            </span>
             <span>En Route</span>
           </div>
           <div className="w-px h-4 bg-neutral-200" />
@@ -554,9 +665,26 @@ export default function DeliveryMap() {
           {/* Restaurant */}
           <div className="flex items-center gap-2.5 mb-2">
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-brand-primary to-[#6b0f28] flex items-center justify-center text-white shrink-0 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
+                <path d="M2 7h20" />
+              </svg>
             </div>
-            <span className="text-[11px] font-semibold text-neutral-700">Chicken Delight</span>
+            <span className="text-[11px] font-semibold text-neutral-700">
+              Chicken Delight
+            </span>
           </div>
 
           {/* Drivers */}
@@ -566,14 +694,16 @@ export default function DeliveryMap() {
                 className="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm border border-white"
                 style={{ backgroundColor: driver.color }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+                <Car size={10} strokeWidth={2.5} />
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-neutral-700">{driver.name}</span>
-                {driver.status === 'on-delivery' && (
+                <span className="text-[11px] font-semibold text-neutral-700">
+                  {driver.name}
+                </span>
+                {driver.status === "on-delivery" && (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 )}
-                {driver.status === 'returning' && (
+                {driver.status === "returning" && (
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
                 )}
               </div>
@@ -583,9 +713,24 @@ export default function DeliveryMap() {
           {/* Delivery Points */}
           <div className="flex items-center gap-2.5 mt-1 pt-1.5 border-t border-neutral-100">
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white shrink-0 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
             </div>
-            <span className="text-[11px] font-semibold text-neutral-700">Delivery Points</span>
+            <span className="text-[11px] font-semibold text-neutral-700">
+              Delivery Points
+            </span>
           </div>
         </div>
       </div>
@@ -595,7 +740,13 @@ export default function DeliveryMap() {
         <div className="bg-white/90 backdrop-blur-md rounded-xl px-3.5 py-2 border border-neutral-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.08)] flex items-center gap-2">
           <Truck size={14} className="text-brand-primary" />
           <span className="text-[11px] font-bold text-neutral-700">
-            {activeDrivers.filter(d => d.status === 'on-delivery').length} Driver{activeDrivers.filter(d => d.status === 'on-delivery').length !== 1 ? 's' : ''} Active
+            {activeDrivers.filter((d) => d.status === "on-delivery").length}{" "}
+            Driver
+            {activeDrivers.filter((d) => d.status === "on-delivery").length !==
+            1
+              ? "s"
+              : ""}{" "}
+            Active
           </span>
         </div>
       </div>
