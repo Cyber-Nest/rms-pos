@@ -219,7 +219,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                         <div className="w-2 h-2 rounded-full shrink-0 bg-green-600" />
                         <span>{driver.name}</span>
                         {driver.assignedVehicle && (
-                          <span className="text-[10px] font-bold text-brand-primary bg-brand-primary-light px-1.5 rounded ml-auto">
+                          <span className="text-[9px] font-bold text-brand-primary bg-brand-primary-light px-1.5 py-0.5 rounded ml-auto whitespace-nowrap shrink-0">
                             V#{driver.assignedVehicle.number}
                           </span>
                         )}
