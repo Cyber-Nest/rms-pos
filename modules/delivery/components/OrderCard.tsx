@@ -13,6 +13,31 @@ export default function OrderCard({ order }: OrderCardProps) {
   const [showDriverDropdown, setShowDriverDropdown] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [loadingAction, setLoadingAction] = useState<'assign' | 'unassign' | 'delivered' | 'available' | null>(null);
+  const [durationStr, setDurationStr] = useState('');
+
+  React.useEffect(() => {
+    const calculateDuration = () => {
+      if (!order.createdAt) return '0 min';
+      const start = new Date(order.createdAt).getTime();
+      let end = Date.now();
+      
+      if (order.status === 'delivered' && order.deliveredAt) {
+        end = new Date(order.deliveredAt).getTime();
+      }
+
+      const diffMins = Math.floor((end - start) / 60000);
+      return diffMins > 0 ? `${diffMins} min` : '0 min';
+    };
+
+    setDurationStr(calculateDuration());
+
+    if (order.status !== 'delivered') {
+      const interval = setInterval(() => {
+        setDurationStr(calculateDuration());
+      }, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [order.createdAt, order.status, order.deliveredAt]);
 
   const selectOrder = useDeliveryStore((s) => s.selectOrder);
   const selectedOrderId = useDeliveryStore((s) => s.selectedOrderId);
@@ -83,7 +108,7 @@ export default function OrderCard({ order }: OrderCardProps) {
       <div className="flex gap-3.5 mb-2.5">
         <div className="flex items-center gap-1 text-[10.5px] text-neutral-500">
           <Clock size={11} />
-          <span>Duration: <strong className="text-neutral-700 font-semibold">{order.duration}</strong></span>
+          <span>Duration: <strong className="text-neutral-700 font-semibold">{durationStr}</strong></span>
         </div>
         <div className="flex items-center gap-1 text-[10.5px] text-neutral-500">
           <Clock size={11} />
@@ -218,7 +243,7 @@ export default function OrderCard({ order }: OrderCardProps) {
               <Check size={14} strokeWidth={2.5} />
               <span>Delivered</span>
             </div>
-            {assignedDriver && assignedDriver.status === 'returning' && (
+            {order.assignmentStatus === 'delivered' && assignedDriver && assignedDriver.status === 'returning' && (
               <button
                 className="px-2.5 py-1 text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-200/60 hover:bg-purple-100 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
                 disabled={isUpdating}

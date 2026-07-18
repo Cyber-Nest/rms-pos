@@ -680,7 +680,8 @@ export default function KitchenDetailModal({
               disabled={updating}
               className="bg-brand-primary text-white text-[12px] font-800 px-4 py-2 rounded-full hover:bg-brand-primary-hover shadow-sm transition-all cursor-pointer disabled:opacity-50"
             >
-              Hand over to Driver
+              {/* Hand over to Driver */}
+              Complete Order
             </button>
           );
         }
