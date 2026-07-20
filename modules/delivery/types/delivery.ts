@@ -7,9 +7,14 @@ export interface DeliveryOrder {
   deliveryAddress: string;
   coordinates: { lat: number; lng: number };
   status: 'assign' | 'en-route' | 'delivered';
+  assignmentStatus?: string | null;
   assignedDriverId: string | null;
   duration: string;
   timeOrdered: string;
+  createdAt?: string;
+  orderTiming?: string;
+  scheduledAt?: string | null;
+  deliveredAt?: string | null;
   items: string[];
   total: number;
 }

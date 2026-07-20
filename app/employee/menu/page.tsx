@@ -24,6 +24,7 @@ interface Product {
   badge?: string | null;
   productId?: string;
   isActive?: boolean;
+  isOutOfStock?: boolean;
 }
 
 export default function BranchMenuPage() {
@@ -33,6 +34,7 @@ export default function BranchMenuPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,6 +88,33 @@ export default function BranchMenuPage() {
       toast.error(err.response?.data?.message || 'Error updating product status');
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const handleToggleStock = async (product: Product) => {
+    if (togglingStockId) return;
+    
+    const newStatus = product.isOutOfStock !== true ? true : false;
+    setTogglingStockId(product._id);
+    
+    try {
+      const res = await axios.patch(`${apiUrl}/menu/products/${product._id}/toggle-stock`, {
+        isOutOfStock: newStatus
+      });
+      
+      if (res.data && res.data.success) {
+        setProducts(prev => 
+          prev.map(p => p._id === product._id ? { ...p, isOutOfStock: newStatus } : p)
+        );
+        toast.success(`"${product.name}" is now ${newStatus ? 'Out of Stock' : 'In Stock'}`);
+      } else {
+        toast.error('Failed to update product stock status');
+      }
+    } catch (err: any) {
+      console.error('Error toggling product stock status:', err);
+      toast.error(err.response?.data?.message || 'Error updating product stock status');
+    } finally {
+      setTogglingStockId(null);
     }
   };
 
@@ -162,6 +191,9 @@ export default function BranchMenuPage() {
             <span className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
               Active: {products.filter(p => p.isActive !== false).length}
             </span>
+            <span className="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+              Out of Stock: {products.filter(p => p.isOutOfStock === true).length}
+            </span>
             <span className="px-2.5 py-1.5 bg-red-50 text-red-750 border border-red-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
               Inactive: {products.filter(p => p.isActive === false).length}
             </span>
@@ -219,6 +251,7 @@ export default function BranchMenuPage() {
                       <th className="px-5 py-3.5 text-center w-28">Product ID</th>
                       <th className="px-5 py-3.5 w-40">Category</th>
                       <th className="px-5 py-3.5 text-right w-28">Price</th>
+                      <th className="px-5 py-3.5 text-center w-36">Stock Status</th>
                       <th className="px-5 py-3.5 text-center w-36">Active Status</th>
                     </tr>
                   </thead>
@@ -274,6 +307,33 @@ export default function BranchMenuPage() {
                         {/* Price */}
                         <td className="px-5 py-3.5 text-right font-750 text-neutral-500 text-[11.5px]">
                           ${product.price.toFixed(2)}
+                        </td>
+
+                        {/* Out of Stock Toggle Button */}
+                        <td className="px-5 py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-3.5">
+                            <span 
+                              className={`text-[9.5px] font-750 uppercase tracking-wider w-20 text-center select-none ${
+                                product.isOutOfStock === true ? 'text-red-650' : 'text-neutral-450'
+                              }`}
+                            >
+                              {product.isOutOfStock === true ? 'Out of Stock' : 'In Stock'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStock(product)}
+                              disabled={togglingStockId === product._id}
+                              className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                                product.isOutOfStock === true ? 'bg-red-600' : 'bg-neutral-300'
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  product.isOutOfStock === true ? 'translate-x-[20px]' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          </div>
                         </td>
 
                         {/* Active/Inactive Toggle Button */}

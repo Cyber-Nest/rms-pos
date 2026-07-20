@@ -9,7 +9,7 @@ import {
 } from "../types/delivery";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-const DEFAULT_RESTAURANT_COORDS = { lat: 50.0280, lng: -110.6770 };
+const DEFAULT_RESTAURANT_COORDS = { lat: 22.1818, lng: 78.7618 };
 
 interface DeliveryState {
   // ── Data ──
@@ -53,6 +53,9 @@ interface DeliveryState {
   assignVehicle: (driverId: string, vehicleId: string) => Promise<void>;
   unassignVehicle: (driverId: string) => Promise<void>;
   markDriverAvailable: (driverId: string) => Promise<void>;
+  addVehicle: (number: string, label: string) => Promise<void>;
+  updateVehicle: (id: string, number: string, label: string) => Promise<void>;
+  deleteVehicle: (id: string) => Promise<void>;
 
   // ── Real-Time Pusher Actions ──
   initPusher: () => void;
@@ -245,6 +248,42 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
       }
     } catch (err) {
       console.error("Error unassigning vehicle:", err);
+    }
+  },
+
+  addVehicle: async (number, label) => {
+    try {
+      const res = await axios.post(`${API_URL}/delivery/vehicles`, { number, label });
+      if (res.data.success) {
+        await get().fetchVehicles();
+      }
+    } catch (err) {
+      console.error("Error adding vehicle:", err);
+      throw err;
+    }
+  },
+
+  updateVehicle: async (id, number, label) => {
+    try {
+      const res = await axios.put(`${API_URL}/delivery/vehicles/${id}`, { number, label });
+      if (res.data.success) {
+        await Promise.all([get().fetchVehicles(), get().fetchDrivers()]);
+      }
+    } catch (err) {
+      console.error("Error updating vehicle:", err);
+      throw err;
+    }
+  },
+
+  deleteVehicle: async (id) => {
+    try {
+      const res = await axios.delete(`${API_URL}/delivery/vehicles/${id}`);
+      if (res.data.success) {
+        await Promise.all([get().fetchVehicles(), get().fetchDrivers()]);
+      }
+    } catch (err) {
+      console.error("Error deleting vehicle:", err);
+      throw err;
     }
   },
 

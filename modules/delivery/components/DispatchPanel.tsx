@@ -15,14 +15,39 @@ export default function DispatchPanel() {
   const getOrderCounts = useDeliveryStore((s) => s.getOrderCounts);
   const orders = useDeliveryStore((s) => s.orders);
 
-  const counts = getOrderCounts();
-  const filteredOrders = getFilteredOrders();
+  const [currentTime, setCurrentTime] = React.useState(Date.now());
+  React.useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const visibleOrdersList = React.useMemo(() => {
+    return orders.filter(o => {
+      if (o.orderTiming === 'later' && o.scheduledAt) {
+        const schedTime = new Date(o.scheduledAt).getTime();
+        if (schedTime - currentTime > 45 * 60 * 1000) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [orders, currentTime]);
+
+  const counts = {
+    assign: visibleOrdersList.filter((o) => o.status === "assign").length,
+    enRoute: visibleOrdersList.filter((o) => o.status === "en-route").length,
+    delivered: visibleOrdersList.filter((o) => o.status === "delivered").length,
+  };
+  
+  const filteredOrders = React.useMemo(() => {
+    return visibleOrdersList.filter(o => o.status === activeFilter);
+  }, [visibleOrdersList, activeFilter]);
 
   // TA (Turnaround) tab dummy stats
-  const deliveredOrders = orders.filter((o) => o.status === 'delivered');
+  const deliveredOrders = visibleOrdersList.filter((o) => o.status === 'delivered');
   const avgDeliveryTime = deliveredOrders.length > 0 ? '18 min' : '--';
   const totalDelivered = deliveredOrders.length;
-  const enRouteCount = orders.filter((o) => o.status === 'en-route').length;
+  const enRouteCount = visibleOrdersList.filter((o) => o.status === 'en-route').length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -151,7 +176,7 @@ export default function DispatchPanel() {
               </div>
               <div className="flex flex-col">
                 <span className="text-[11px] font-semibold text-neutral-500">Total Orders Today</span>
-                <span className="text-xl font-extrabold text-neutral-900 leading-tight tracking-tight">{orders.length}</span>
+                <span className="text-xl font-extrabold text-neutral-900 leading-tight tracking-tight">{visibleOrdersList.length}</span>
               </div>
             </div>
           </div>
