@@ -551,7 +551,10 @@ export default function DeliveryMap() {
               const start = order.createdAt ? new Date(order.createdAt).getTime() : Date.now();
               elapsedMins = Math.floor((Date.now() - start) / 60000);
             }
-            return elapsedMins >= 20 ? "#DC2626" : "#262626"; // Red if >= 20 mins, otherwise Black
+            if (elapsedMins >= 20) {
+              return "#DC2626"; // Red if >= 20 mins
+            }
+            return order.orderTiming === 'later' ? "#262626" : "#16A34A"; // Black for scheduled, Green for instant
           };
           const pinColor = getOrderPinColor();
 

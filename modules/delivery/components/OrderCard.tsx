@@ -103,14 +103,22 @@ export default function OrderCard({ order }: OrderCardProps) {
         : "border-neutral-200 hover:border-neutral-300 hover:shadow-sm";
     }
 
-    const baseBorderColor = isDelayed ? "border-red-500" : "border-neutral-800";
-
-    if (isSelected) {
-      return isDelayed
+    if (isDelayed) {
+      return isSelected
         ? "border-red-500 shadow-[0_0_0_1.5px_#ef4444,0_3px_12px_rgba(239,68,68,0.12)]"
-        : "border-neutral-800 shadow-[0_0_0_1px_#262626,0_3px_12px_rgba(38,38,38,0.08)]";
+        : "border-red-500 hover:shadow-sm";
     }
-    return baseBorderColor + " hover:shadow-sm";
+
+    const isScheduled = order.orderTiming === "later";
+    if (isScheduled) {
+      return isSelected
+        ? "border-neutral-800 shadow-[0_0_0_1px_#262626,0_3px_12px_rgba(38,38,38,0.08)]"
+        : "border-neutral-800 hover:shadow-sm";
+    }
+
+    return isSelected
+      ? "border-green-600 shadow-[0_0_0_1px_#16a34a,0_3px_12px_rgba(22,163,74,0.08)]"
+      : "border-green-600 hover:shadow-sm";
   };
 
   return (
