@@ -361,7 +361,7 @@ export default function DeliveryMap() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [currentTime, setCurrentTime] = useState(Date.now());
-  
+
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
     return () => clearInterval(interval);
@@ -369,7 +369,7 @@ export default function DeliveryMap() {
 
   const visibleOrders = React.useMemo(() => {
     return orders.filter((o) => {
-      if (o.orderTiming === 'later' && o.scheduledAt) {
+      if (o.orderTiming === "later" && o.scheduledAt) {
         const schedTime = new Date(o.scheduledAt).getTime();
         if (schedTime - currentTime > 45 * 60 * 1000) {
           return false;
@@ -406,12 +406,20 @@ export default function DeliveryMap() {
   // Apply radial offset to prevent overlapping markers at the restaurant or identical coordinates
   const jitteredDrivers = React.useMemo(() => {
     const enriched = activeDrivers
-      .filter((d) => (d.currentLocation && d.currentLocation.lat) || d.status === "available")
+      .filter(
+        (d) =>
+          (d.currentLocation && d.currentLocation.lat) ||
+          d.status === "available",
+      )
       .map((driver) => ({
         ...driver,
-        currentLocation: (driver.currentLocation && driver.currentLocation.lat)
-          ? driver.currentLocation
-          : { lat: restaurantLocation.coordinates.lat, lng: restaurantLocation.coordinates.lng }
+        currentLocation:
+          driver.currentLocation && driver.currentLocation.lat
+            ? driver.currentLocation
+            : {
+                lat: restaurantLocation.coordinates.lat,
+                lng: restaurantLocation.coordinates.lng,
+              },
       }));
 
     const coordinateGroups: { [key: string]: typeof enriched } = {};
@@ -432,15 +440,17 @@ export default function DeliveryMap() {
       const group = coordinateGroups[key];
 
       if (group.length > 1) {
-        const index = group.findIndex((d) => (d.id || d._id) === (driver.id || driver._id));
-        const angle = (2 * Math.PI / group.length) * index;
+        const index = group.findIndex(
+          (d) => (d.id || d._id) === (driver.id || driver._id),
+        );
+        const angle = ((2 * Math.PI) / group.length) * index;
         const radius = 0.00015; // Shift by ~15 meters in a circle to de-overlap
         return {
           ...driver,
           currentLocation: {
             lat: lat + radius * Math.sin(angle),
-            lng: lng + radius * Math.cos(angle)
-          }
+            lng: lng + radius * Math.cos(angle),
+          },
         };
       }
       return driver;
@@ -525,10 +535,11 @@ export default function DeliveryMap() {
         zoomControl={false}
         ref={mapRef}
       >
-        {/* Voyager Premium Light Tile Layer */}
+        {/* Google Maps HD Crisp Roadmap Tile Layer */}
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
+          url="https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}"
+          maxZoom={20}
         />
         <MapBoundsUpdater />
 
@@ -576,27 +587,27 @@ export default function DeliveryMap() {
 
         {/* Driver Markers */}
         {jitteredDrivers.map((driver) => (
-          <AnimatedDriverMarker
-            key={driver.id || driver._id}
-            driver={driver}
-          />
+          <AnimatedDriverMarker key={driver.id || driver._id} driver={driver} />
         ))}
 
         {/* Delivery Destination Markers */}
         {deliveryMarkers.map((order) => {
           const getOrderPinColor = () => {
             let elapsedMins = 0;
-            if (order.orderTiming === 'later' && order.scheduledAt) {
-              const showUpTime = new Date(order.scheduledAt).getTime() - 45 * 60000;
+            if (order.orderTiming === "later" && order.scheduledAt) {
+              const showUpTime =
+                new Date(order.scheduledAt).getTime() - 45 * 60000;
               elapsedMins = Math.floor((Date.now() - showUpTime) / 60000);
             } else {
-              const start = order.createdAt ? new Date(order.createdAt).getTime() : Date.now();
+              const start = order.createdAt
+                ? new Date(order.createdAt).getTime()
+                : Date.now();
               elapsedMins = Math.floor((Date.now() - start) / 60000);
             }
             if (elapsedMins >= 20) {
               return "#DC2626"; // Red if >= 20 mins
             }
-            return order.orderTiming === 'later' ? "#262626" : "#16A34A"; // Black for scheduled, Green for instant
+            return order.orderTiming === "later" ? "#262626" : "#16A34A"; // Black for scheduled, Green for instant
           };
           const pinColor = getOrderPinColor();
 
