@@ -234,18 +234,18 @@ interface AnimatedDriverMarkerProps {
 
 function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
   const [pos, setPos] = useState<[number, number]>([
-    driver.currentLocation.lat,
-    driver.currentLocation.lng,
+    driver.currentLocation?.lat || 22.1818,
+    driver.currentLocation?.lng || 78.7618,
   ]);
   const prevPosRef = useRef<[number, number]>([
-    driver.currentLocation.lat,
-    driver.currentLocation.lng,
+    driver.currentLocation?.lat || 22.1818,
+    driver.currentLocation?.lng || 78.7618,
   ]);
   const lastAnimStartRef = useRef<number>(Date.now());
 
   useEffect(() => {
-    const targetLat = driver.currentLocation.lat;
-    const targetLng = driver.currentLocation.lng;
+    const targetLat = driver.currentLocation?.lat || 22.1818;
+    const targetLng = driver.currentLocation?.lng || 78.7618;
 
     if (!targetLat || !targetLng) return;
 
@@ -403,6 +403,50 @@ export default function DeliveryMap() {
       d.status === "returning",
   );
 
+  // Apply radial offset to prevent overlapping markers at the restaurant or identical coordinates
+  const jitteredDrivers = React.useMemo(() => {
+    const enriched = activeDrivers
+      .filter((d) => (d.currentLocation && d.currentLocation.lat) || d.status === "available")
+      .map((driver) => ({
+        ...driver,
+        currentLocation: (driver.currentLocation && driver.currentLocation.lat)
+          ? driver.currentLocation
+          : { lat: restaurantLocation.coordinates.lat, lng: restaurantLocation.coordinates.lng }
+      }));
+
+    const coordinateGroups: { [key: string]: typeof enriched } = {};
+    enriched.forEach((driver) => {
+      const lat = driver.currentLocation.lat;
+      const lng = driver.currentLocation.lng;
+      const key = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+      if (!coordinateGroups[key]) {
+        coordinateGroups[key] = [];
+      }
+      coordinateGroups[key].push(driver);
+    });
+
+    return enriched.map((driver) => {
+      const lat = driver.currentLocation.lat;
+      const lng = driver.currentLocation.lng;
+      const key = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+      const group = coordinateGroups[key];
+
+      if (group.length > 1) {
+        const index = group.findIndex((d) => (d.id || d._id) === (driver.id || driver._id));
+        const angle = (2 * Math.PI / group.length) * index;
+        const radius = 0.00015; // Shift by ~15 meters in a circle to de-overlap
+        return {
+          ...driver,
+          currentLocation: {
+            lat: lat + radius * Math.sin(angle),
+            lng: lng + radius * Math.cos(angle)
+          }
+        };
+      }
+      return driver;
+    });
+  }, [activeDrivers, restaurantLocation.coordinates]);
+
   // Build polylines (driver → delivery destination OR driver → restaurant)
   const polylines = [
     // 1. Delivery active paths
@@ -531,14 +575,12 @@ export default function DeliveryMap() {
         </Marker>
 
         {/* Driver Markers */}
-        {activeDrivers
-          .filter((d) => d.currentLocation && d.currentLocation.lat)
-          .map((driver) => (
-            <AnimatedDriverMarker
-              key={driver.id || driver._id}
-              driver={driver}
-            />
-          ))}
+        {jitteredDrivers.map((driver) => (
+          <AnimatedDriverMarker
+            key={driver.id || driver._id}
+            driver={driver}
+          />
+        ))}
 
         {/* Delivery Destination Markers */}
         {deliveryMarkers.map((order) => {
