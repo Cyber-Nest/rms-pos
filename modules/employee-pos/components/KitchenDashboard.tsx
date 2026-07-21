@@ -9,7 +9,7 @@ import POSSidebarDrawer from './POSSidebarDrawer';
 import { Order } from '../types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import Pusher from 'pusher-js';
+import { getPusherClient } from '../../../lib/pusher';
 import { getLocalTodayStr, getLocalDateStr } from '../utils/timezone';
 
 export default function KitchenDashboard() {
@@ -75,21 +75,7 @@ export default function KitchenDashboard() {
 
   // ── Pusher Real-time Listener ────────────────────────────────
   useEffect(() => {
-    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap2';
-
-    if (!pusherKey) {
-      console.warn('Pusher key is missing. Real-time updates are disabled.');
-      return;
-    }
-
-    // Initialize Pusher Client
-    const pusher = new Pusher(pusherKey, {
-      cluster: pusherCluster,
-      forceTLS: true,
-    });
-
-    // Subscribe to the global 'orders' channel
+    const pusher = getPusherClient();
     const channel = pusher.subscribe('orders');
 
     // Bind to the 'new-order' event
@@ -133,8 +119,7 @@ export default function KitchenDashboard() {
     // Cleanup on unmount
     return () => {
       channel.unbind_all();
-      channel.unsubscribe();
-      pusher.disconnect();
+      pusher.unsubscribe('orders');
     };
   }, [fetchOrders]);
 
