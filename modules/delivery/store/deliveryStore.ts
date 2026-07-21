@@ -323,7 +323,6 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     };
 
     channel.bind("client-driver-location", handleLocationUpdate);
-    channel.bind("driver-location-update", handleLocationUpdate);
 
     // 2. Listen for Server-triggered assignment status events with optimistic state updates (Option B)
     channel.bind("delivery-assigned", (data: any) => {
