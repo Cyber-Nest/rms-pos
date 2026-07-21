@@ -37,7 +37,8 @@ export default function KitchenDashboard() {
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
           status: 'pending,preparing,ready',
-          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared'
+          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared',
+          excludeKitchenCleared: 'true'
         }
       });
       if (res.data.success) {
