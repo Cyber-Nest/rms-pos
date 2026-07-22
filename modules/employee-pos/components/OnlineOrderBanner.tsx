@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Pusher from 'pusher-js';
+import { getPusherClient } from '../../../lib/pusher';
 import { X, ShoppingBag, Calendar } from 'lucide-react';
 
 interface OrderItem {
@@ -60,16 +60,7 @@ export default function OnlineOrderBanner() {
 
   // Subscribe to Pusher
   useEffect(() => {
-    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap2';
-
-    if (!pusherKey) return;
-
-    const pusher = new Pusher(pusherKey, {
-      cluster: pusherCluster,
-      forceTLS: true,
-    });
-
+    const pusher = getPusherClient();
     const channel = pusher.subscribe('orders');
 
     channel.bind('new-order', (data: any) => {
@@ -84,8 +75,7 @@ export default function OnlineOrderBanner() {
 
     return () => {
       channel.unbind_all();
-      channel.unsubscribe();
-      pusher.disconnect();
+      pusher.unsubscribe('orders');
     };
   }, []);
 

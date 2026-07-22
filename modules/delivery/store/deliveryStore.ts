@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import axios from "axios";
-import Pusher from "pusher-js";
+import { getPusherClient } from "../../../lib/pusher";
 import {
   DeliveryOrder,
   Driver,
@@ -61,8 +61,6 @@ interface DeliveryState {
   initPusher: () => void;
   cleanupPusher: () => void;
 }
-
-let pusherInstance: Pusher | null = null;
 
 export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   // ── Initial State ──
@@ -300,21 +298,11 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   // ── Real-Time Pusher Actions ──
   initPusher: () => {
-    if (pusherInstance) return;
+    const pusher = getPusherClient();
+    const channel = pusher.subscribe("private-restaurant-default");
 
-    const key = process.env.NEXT_PUBLIC_PUSHER_KEY || "fc1a170b04cd047c782b";
-    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "ap2";
-
-    pusherInstance = new Pusher(key, {
-      cluster,
-      forceTLS: true,
-      authEndpoint: `${API_URL}/delivery/auth`,
-    });
-
-    const channel = pusherInstance.subscribe("private-restaurant-default");
-
-    // 1. Listen for Pusher client events (browser-to-browser) for driver location
-    channel.bind("client-driver-location", (data: any) => {
+    // 1. Listen for Pusher location events (both client events & server-relay fallback)
+    const handleLocationUpdate = (data: any) => {
       const { driverId, lat, lng, bearing, speed } = data;
       set((state) => {
         const updatedDrivers = state.drivers.map((d) => {
@@ -332,28 +320,144 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
         });
         return { drivers: updatedDrivers };
       });
+    };
+
+    channel.bind("client-driver-location", handleLocationUpdate);
+
+    // 2. Listen for Server-triggered assignment status events with optimistic state updates (Option B)
+    channel.bind("delivery-assigned", (data: any) => {
+      if (!data || !data.orderId) {
+        get().fetchOrders();
+        get().fetchDrivers();
+        return;
+      }
+
+      set((state) => {
+        const updatedOrders = state.orders.map((o) => {
+          if (o.id === data.orderId || o._id === data.orderId) {
+            if (data.unassigned) {
+              return {
+                ...o,
+                status: "assign" as const,
+                assignedDriverId: null,
+                assignmentStatus: null,
+              };
+            }
+            return {
+              ...o,
+              status: "en-route" as const,
+              assignedDriverId: data.driverId || o.assignedDriverId,
+              assignmentStatus: "assigned",
+            };
+          }
+          return o;
+        });
+
+        const updatedDrivers = state.drivers.map((d) => {
+          if (data.driverId && (d.id === data.driverId || d._id === data.driverId)) {
+            if (data.unassigned) {
+              const activeOrders = (d.activeOrders || []).filter(
+                (oid) => oid !== data.orderId
+              );
+              return {
+                ...d,
+                activeOrders,
+                status: activeOrders.length === 0 ? ("available" as const) : d.status,
+              };
+            }
+            const activeOrders = Array.from(
+              new Set([...(d.activeOrders || []), data.orderId])
+            );
+            return {
+              ...d,
+              status: "on-delivery" as const,
+              activeOrders,
+            };
+          }
+          return d;
+        });
+
+        return { orders: updatedOrders, drivers: updatedDrivers };
+      });
+
+      // Fallback: If order or driver was not present in local state, fetch from server
+      const { orders, drivers } = get();
+      const hasOrder = orders.some((o) => o.id === data.orderId || o._id === data.orderId);
+      const hasDriver = data.driverId ? drivers.some((d) => d.id === data.driverId || d._id === data.driverId) : true;
+      if (!hasOrder || !hasDriver) {
+        get().fetchOrders();
+        get().fetchDrivers();
+      }
     });
 
-    // 2. Listen for Server-triggered assignment status events
-    channel.bind("delivery-assigned", () => {
-      get().fetchOrders();
-      get().fetchDrivers();
+    channel.bind("delivery-status-update", (data: any) => {
+      if (!data || !data.orderId) {
+        get().fetchOrders();
+        get().fetchDrivers();
+        return;
+      }
+
+      set((state) => {
+        const updatedOrders = state.orders.map((o) => {
+          if (o.id === data.orderId || o._id === data.orderId) {
+            const isDeliveredOrCompleted =
+              data.status === "delivered" || data.status === "completed";
+            return {
+              ...o,
+              status: isDeliveredOrCompleted ? ("delivered" as const) : ("en-route" as const),
+              assignmentStatus: data.status,
+              deliveredAt: isDeliveredOrCompleted ? data.timestamp || new Date().toISOString() : o.deliveredAt,
+            };
+          }
+          return o;
+        });
+
+        const updatedDrivers = state.drivers.map((d) => {
+          if (data.driverId && (d.id === data.driverId || d._id === data.driverId)) {
+            const activeOrders = (d.activeOrders || []).filter((oid) => oid !== data.orderId);
+            let nextStatus = d.status;
+            if (data.status === "delivered") {
+              nextStatus = activeOrders.length === 0 ? "returning" : "on-delivery";
+            } else if (data.status === "completed") {
+              nextStatus = activeOrders.length === 0 ? "available" : "on-delivery";
+            }
+            return {
+              ...d,
+              activeOrders,
+              status: nextStatus,
+            };
+          }
+          return d;
+        });
+
+        return { orders: updatedOrders, drivers: updatedDrivers };
+      });
     });
 
-    channel.bind("delivery-status-update", () => {
-      get().fetchOrders();
-      get().fetchDrivers();
-    });
+    channel.bind("driver-status-change", (data: any) => {
+      if (!data || !data.driverId) {
+        get().fetchDrivers();
+        return;
+      }
 
-    channel.bind("driver-status-change", () => {
-      get().fetchDrivers();
+      set((state) => {
+        const updatedDrivers = state.drivers.map((d) => {
+          if (d.id === data.driverId || d._id === data.driverId) {
+            return {
+              ...d,
+              status: data.status,
+              activeOrders: data.status === "available" ? [] : d.activeOrders,
+            };
+          }
+          return d;
+        });
+        return { drivers: updatedDrivers };
+      });
     });
   },
 
   cleanupPusher: () => {
-    if (!pusherInstance) return;
-    pusherInstance.unsubscribe("private-restaurant-default");
-    pusherInstance.disconnect();
-    pusherInstance = null;
+    const pusher = getPusherClient();
+    pusher.unsubscribe("private-restaurant-default");
   },
 }));

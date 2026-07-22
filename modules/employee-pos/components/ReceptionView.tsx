@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
-import Pusher from "pusher-js";
+import { getPusherClient } from "../../../lib/pusher";
 import {
   Store,
   Smartphone,
@@ -129,19 +129,7 @@ export default function ReceptionView() {
 
   // ── Pusher Real-time Listener ──
   useEffect(() => {
-    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "ap2";
-
-    if (!pusherKey) {
-      console.warn("Pusher key is missing. Real-time updates are disabled.");
-      return;
-    }
-
-    const pusher = new Pusher(pusherKey, {
-      cluster: pusherCluster,
-      forceTLS: true,
-    });
-
+    const pusher = getPusherClient();
     const channel = pusher.subscribe("orders");
 
     // Listen for new orders
@@ -173,8 +161,7 @@ export default function ReceptionView() {
 
     return () => {
       channel.unbind_all();
-      channel.unsubscribe();
-      pusher.disconnect();
+      pusher.unsubscribe("orders");
     };
   }, [fetchActiveOrders]);
 
