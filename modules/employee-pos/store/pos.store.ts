@@ -766,9 +766,10 @@ export const usePosStore = create<PosState>((set, get) => ({
         });
       }
     } catch {
-      const { categories: staticCats } = require("../data/categories");
-      const { menuItems: staticItems } = require("../data/menuItems");
-      set({ categories: staticCats, menuItems: staticItems });
+      //dummy data when backend data is unavailable
+      // const { categories: staticCats } = require("../data/categories");
+      // const { menuItems: staticItems } = require("../data/menuItems");
+      // set({ categories: staticCats, menuItems: staticItems });
     } finally {
       set({ loadingMenu: false });
     }
