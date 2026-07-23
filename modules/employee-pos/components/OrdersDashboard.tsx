@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import OrdersNavbar from "./OrdersNavbar";
+import PosNavbar from "./PosNavbar";
 import DashboardView from "./DashboardView";
 import SalesSummaryView from "./SalesSummaryView";
 import ReportsView from "./ReportsView";
@@ -135,12 +135,26 @@ export default function OrdersDashboard() {
     if (!isReady) return;
     setLoading(true);
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== "undefined") {
+        const rawBranch = localStorage.getItem("rms_branch");
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
       if (activeSubTab === "dashboard") {
         const res = await axios.get(`${apiUrl}/orders/dashboard-metrics`, {
-          params: { date: singleDate },
+          params: {
+            date: singleDate,
+            ...(branchId ? { branchId } : {}),
+          },
         });
         if (res.data.success) {
           setDashboardMetrics(res.data.data);
@@ -155,7 +169,8 @@ export default function OrdersDashboard() {
             fields: "orderNumber,customer,subtotal,total,orderType,orderSource,paymentStatus,status,createdAt,orderTiming,scheduledAt,dueAt",
             page: currentPage,
             limit: entriesPerPage,
-            search: searchKeyword || undefined
+            search: searchKeyword || undefined,
+            ...(branchId ? { branchId } : {}),
           },
         });
         if (res.data.success) {
@@ -424,7 +439,7 @@ export default function OrdersDashboard() {
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar Header */}
-      <OrdersNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
+      <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* ── Secondary Control Bar (Dashboard / Orders / Sales tabs + Filters) ── */}
       <div className="bg-white border-b border-neutral-200 px-6 py-3.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 shadow-sm flex-shrink-0 select-none">

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import KitchenNavbar from './KitchenNavbar';
+import PosNavbar from './PosNavbar';
 import KitchenOrderCard from './KitchenOrderCard';
 import KitchenDetailModal from './KitchenDetailModal';
 import POSSidebarDrawer from './POSSidebarDrawer';
@@ -24,7 +24,6 @@ export default function KitchenDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [startIndex, setStartIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState(Date.now());
-
   const ordersRef = useRef(orders);
   useEffect(() => {
     ordersRef.current = orders;
@@ -33,12 +32,24 @@ export default function KitchenDashboard() {
   // ── Fetch DB Orders ──────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
           status: 'pending,preparing,ready',
-          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared',
-          excludeKitchenCleared: 'true'
+          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared,branchId,branchName,branchCode',
+          excludeKitchenCleared: 'true',
+          ...(branchId ? { branchId } : {})
         }
       });
       if (res.data.success) {
@@ -76,8 +87,20 @@ export default function KitchenDashboard() {
 
   // ── Pusher Real-time Listener ────────────────────────────────
   useEffect(() => {
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
     const pusher = getPusherClient();
-    const channel = pusher.subscribe('orders');
+    const channelName = branchId ? `orders-${branchId}` : 'orders';
+    const channel = pusher.subscribe(channelName);
 
     // Bind to the 'new-order' event
     channel.bind('new-order', (data: any) => {
@@ -120,7 +143,7 @@ export default function KitchenDashboard() {
     // Cleanup on unmount
     return () => {
       channel.unbind_all();
-      pusher.unsubscribe('orders');
+      pusher.unsubscribe(channelName);
     };
   }, [fetchOrders]);
 
@@ -312,11 +335,7 @@ export default function KitchenDashboard() {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar */}
-      <KitchenNavbar 
-        activePendingCount={activeDraftCount} 
-        activeConfirmedCount={countConfirmed} 
-        onToggleSidebar={() => setIsSidebarOpen(true)} 
-      />
+      <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* ── Filter Controls Section (Premium Low-Profile Segmented Controls) ── */}
       <div className="bg-white border-b border-neutral-200 px-6 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-xs flex-shrink-0 select-none">

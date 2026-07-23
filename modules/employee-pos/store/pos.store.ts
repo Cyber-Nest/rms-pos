@@ -633,9 +633,27 @@ export const usePosStore = create<PosState>((set, get) => ({
       : (manualDiscountType ?? "none");
     const promoCode = appliedPromo ? appliedPromo.code : "";
 
+    let branchId: string | undefined = undefined;
+    let branchName: string | undefined = undefined;
+    let branchCode: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+          branchName = b.name;
+          branchCode = b.code;
+        } catch (e) {}
+      }
+    }
+
     const payload = {
       orderType,
       orderSource,
+      branchId: branchId || undefined,
+      branchName: branchName || "Main Branch",
+      branchCode: branchCode || "MAIN",
       items: cartItems.map((item) => ({
         menuItemId: item.menuItemId,
         name: item.name,
@@ -718,9 +736,22 @@ export const usePosStore = create<PosState>((set, get) => ({
     set({ loadingMenu: true });
     get().fetchNextOrderNumber(); // Load next order number on startup
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-      const res = await axios.get(`${apiUrl}/menu/pos-feed`);
+      const res = await axios.get(`${apiUrl}/menu/pos-feed`, {
+        params: branchId ? { branchId } : {}
+      });
       if (res.data.success) {
         const allCategory: Category = {
           id: "all",
@@ -746,11 +777,28 @@ export const usePosStore = create<PosState>((set, get) => ({
   // ── Fetch Next Order Number ──────────────────────────────────
   fetchNextOrderNumber: async () => {
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const { orderType } = get();
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.get(
-        `${apiUrl}/orders/next-number?type=${orderType}`,
+        `${apiUrl}/orders/next-number`,
+        {
+          params: {
+            type: orderType,
+            ...(branchId ? { branchId } : {})
+          }
+        }
       );
       if (res.data.success) {
         set({ nextOrderNumber: res.data.data });
