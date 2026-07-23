@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import axios from 'axios';
 import { Search, Bell, ChefHat, LayoutGrid, Menu, TrendingUp, ClipboardList, LogOut } from 'lucide-react';
 import { usePosStore } from '../store/pos.store';
 import { usePathname, useRouter } from 'next/navigation';
@@ -14,22 +15,84 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { search, setSearch, orders } = usePosStore();
-  const [branchInfo, setBranchInfo] = React.useState<{ name: string; code: string } | null>(null);
+  const [branchInfo, setBranchInfo] = React.useState<{ name: string; code: string; _id?: string } | null>(null);
+  const [loadingBranchInfo, setLoadingBranchInfo] = React.useState(true);
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    let isMounted = true;
+    const loadBranchSession = async () => {
+      if (typeof window === 'undefined') return;
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const raw = localStorage.getItem('rms_branch');
+      let token = '';
+
       if (raw) {
         try {
           const b = JSON.parse(raw);
-          setBranchInfo({ name: b.name, code: b.code });
+          token = b.token || '';
+          if (isMounted && b.name && b.code) {
+            setBranchInfo({ name: b.name, code: b.code, _id: b._id });
+          }
         } catch (e) {}
       }
-    }
-  }, []);
 
-  const handleLogout = () => {
+      // Try fetching fresh branch profile from backend
+      try {
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await axios.get(`${API_URL}/branches/me`, {
+          withCredentials: true,
+          headers,
+        });
+
+        if (res.data.success && res.data.data) {
+          const freshData = res.data.data;
+          if (isMounted) {
+            setBranchInfo({ name: freshData.name, code: freshData.code, _id: freshData._id });
+          }
+          // Sync localStorage
+          if (raw) {
+            try {
+              const existing = JSON.parse(raw);
+              localStorage.setItem('rms_branch', JSON.stringify({ ...existing, ...freshData }));
+            } catch (e) {}
+          }
+        }
+      } catch (err: any) {
+        // If unauthenticated or branch inactive, force redirect to login
+        if (err.response?.status === 401) {
+          localStorage.removeItem('rms_branch');
+          document.cookie = 'rms_branch_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          document.cookie = 'rms_branch_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          router.push('/login');
+          return;
+        }
+      } finally {
+        if (isMounted) setLoadingBranchInfo(false);
+      }
+
+      // If no branch info found at all, redirect to login
+      if (!raw) {
+        router.push('/login');
+      }
+    };
+
+    loadBranchSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  const handleLogout = async () => {
     if (confirm('Are you sure you want to log out of the branch terminal?')) {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        await axios.post(`${API_URL}/branches/logout`, {}, { withCredentials: true });
+      } catch (e) {}
+
       if (typeof window !== 'undefined') {
         localStorage.removeItem('rms_branch');
         localStorage.removeItem('rms_draft_cart');
@@ -66,14 +129,21 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         <div className="h-7 w-px bg-neutral-200" />
 
         {/* Active Branch Badge */}
-        <div className="flex items-center gap-2 bg-orange-50/80 border border-orange-200 rounded-xl px-3 py-1.5 shadow-xs">
-          <span className="px-1.5 py-0.5 bg-brand-primary text-white text-[9px] font-900 rounded uppercase flex-shrink-0">
-            {branchInfo?.code || "MAIN"}
-          </span>
-          <span className="text-[12px] font-800 text-neutral-800 whitespace-nowrap">
-            {branchInfo?.name || "Main Branch"}
-          </span>
-        </div>
+        {loadingBranchInfo && !branchInfo ? (
+          <div className="flex items-center gap-2 bg-orange-50/60 border border-orange-200/60 rounded-xl px-3 py-1.5 shadow-xs animate-pulse">
+            <div className="w-8 h-4 bg-orange-200/80 rounded" />
+            <div className="w-24 h-4 bg-orange-200/50 rounded" />
+          </div>
+        ) : branchInfo ? (
+          <div className="flex items-center gap-2 bg-orange-50/80 border border-orange-200 rounded-xl px-3 py-1.5 shadow-xs">
+            <span className="px-1.5 py-0.5 bg-brand-primary text-white text-[9px] font-900 rounded uppercase flex-shrink-0">
+              {branchInfo.code}
+            </span>
+            <span className="text-[12px] font-800 text-neutral-800 whitespace-nowrap">
+              {branchInfo.name}
+            </span>
+          </div>
+        ) : null}
 
         {/* Divider */}
         <div className="h-5 w-px bg-neutral-200 hidden lg:block" />
@@ -134,19 +204,23 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         <div className="h-7 w-px bg-neutral-200" />
 
         {/* Staff Profile */}
-        <div className="flex items-center gap-2">
-          <div className="text-right hidden sm:block">
-            <p className="text-[12px] font-800 text-neutral-900 leading-tight">
-              {branchInfo?.code || "Branch"} Staff
-            </p>
-            <span className="text-[9px] font-700 text-brand-primary leading-tight uppercase tracking-wider">
-              Terminal
-            </span>
+        {loadingBranchInfo && !branchInfo ? (
+          <div className="w-24 h-8 bg-neutral-100 animate-pulse rounded-xl" />
+        ) : branchInfo ? (
+          <div className="flex items-center gap-2">
+            <div className="text-right hidden sm:block">
+              <p className="text-[12px] font-800 text-neutral-900 leading-tight">
+                {branchInfo.code} Staff
+              </p>
+              <span className="text-[9px] font-700 text-brand-primary leading-tight uppercase tracking-wider">
+                Terminal
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center text-[11px] font-900 text-white shadow-xs">
+              {branchInfo.code.slice(0, 2)}
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center text-[11px] font-900 text-white shadow-xs">
-            {branchInfo?.code?.slice(0, 2) || "ST"}
-          </div>
-        </div>
+        ) : null}
 
         {/* Logout Button */}
         <button
