@@ -36,6 +36,12 @@ interface PosState {
   discount: number;
   total: number;
   currentOrderSeq: number;
+  branchTaxFees: {
+    deliveryFee: number;
+    gstTaxRate: number;
+    pstTaxRate: number;
+    hstTaxRate: number;
+  };
 
   // ── Checkout Modal ───────────────────────────────────────────
   checkoutOpen: boolean;
@@ -99,7 +105,9 @@ interface PosState {
   addSplitPayment: (payment: SplitPayment) => void;
   updateSplitPayment: (index: number, payment: SplitPayment) => void;
   removeSplitPayment: (index: number) => void;
-  setOrderSource: (source: "pos" | "online" | "doordash" | "skip" | "ubereats") => void;
+  setOrderSource: (
+    source: "pos" | "online" | "doordash" | "skip" | "ubereats",
+  ) => void;
   setOrderTiming: (timing: "now" | "later") => void;
   setScheduledAt: (date: string | null) => void;
   setOrderNotes: (notes: string) => void;
@@ -178,6 +186,12 @@ export const usePosStore = create<PosState>((set, get) => ({
   discount: 0,
   total: 0,
   currentOrderSeq: 124,
+  branchTaxFees: {
+    deliveryFee: 4.99,
+    gstTaxRate: 5,
+    pstTaxRate: 0,
+    hstTaxRate: 0,
+  },
   categories: [],
   menuItems: [],
   loadingMenu: true,
@@ -280,7 +294,7 @@ export const usePosStore = create<PosState>((set, get) => ({
         quantity,
         totalPrice: roundToTwo(itemUnitCost * quantity),
         note,
-        kitchenLabel: menuItem.kitchenLabel || 'chicken',
+        kitchenLabel: menuItem.kitchenLabel || "chicken",
       };
       updatedCartItems.push(newItem);
     }
@@ -424,8 +438,14 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   calculateTotals: () => {
-    const { cartItems, appliedPromo, manualDiscountType, manualDiscountValue } =
-      get();
+    const {
+      cartItems,
+      appliedPromo,
+      manualDiscountType,
+      manualDiscountValue,
+      orderType,
+      branchTaxFees,
+    } = get();
     const subtotal = roundToTwo(
       cartItems.reduce((sum, item) => sum + item.totalPrice, 0),
     );
@@ -440,9 +460,24 @@ export const usePosStore = create<PosState>((set, get) => ({
     }
     discount = roundToTwo(discount);
 
+    const gst = Number(branchTaxFees?.gstTaxRate ?? 5);
+    const pst = Number(branchTaxFees?.pstTaxRate ?? 0);
+    const hst = Number(branchTaxFees?.hstTaxRate ?? 0);
+    const totalTaxRatePercent =
+      (isNaN(gst) ? 5 : gst) + (isNaN(pst) ? 0 : pst) + (isNaN(hst) ? 0 : hst);
+    const effectiveTaxRate = totalTaxRatePercent / 100;
+
+    const rawDeliveryFee = Number(branchTaxFees?.deliveryFee ?? 4.99);
+    const deliveryFee =
+      orderType === "delivery"
+        ? isNaN(rawDeliveryFee)
+          ? 4.99
+          : rawDeliveryFee
+        : 0;
+
     const taxableAmount = Math.max(0, subtotal - discount);
-    const tax = roundToTwo(taxableAmount * TAX_RATE);
-    const total = roundToTwo(taxableAmount + tax);
+    const tax = roundToTwo(taxableAmount * effectiveTaxRate);
+    const total = roundToTwo(taxableAmount + tax + deliveryFee);
 
     set({ subtotal, tax, discount, total });
   },
@@ -636,12 +671,12 @@ export const usePosStore = create<PosState>((set, get) => ({
     let branchId: string | undefined = undefined;
     let branchName: string | undefined = undefined;
     let branchCode: string | undefined = undefined;
-    if (typeof window !== 'undefined') {
-      const rawBranch = localStorage.getItem('rms_branch');
+    if (typeof window !== "undefined") {
+      const rawBranch = localStorage.getItem("rms_branch");
       if (rawBranch) {
         try {
           const b = JSON.parse(rawBranch);
-          branchId = b._id;
+          branchId = b._id || b.id || b.branchId;
           branchName = b.name;
           branchCode = b.code;
         } catch (e) {}
@@ -663,7 +698,7 @@ export const usePosStore = create<PosState>((set, get) => ({
         quantity: item.quantity,
         totalPrice: item.totalPrice,
         note: item.note || "",
-        kitchenLabel: item.kitchenLabel || 'chicken',
+        kitchenLabel: item.kitchenLabel || "chicken",
       })),
       subtotal,
       taxRate: TAX_RATE,
@@ -681,8 +716,8 @@ export const usePosStore = create<PosState>((set, get) => ({
         orderSource === "skip"
           ? { name: skipLastDigits, phone: "", email: "" }
           : selectedCustomer &&
-            selectedCustomer.name &&
-            selectedCustomer.name.trim()
+              selectedCustomer.name &&
+              selectedCustomer.name.trim()
             ? selectedCustomer
             : { name: "No Name", phone: "", email: "" },
       notes: orderNotes,
@@ -737,8 +772,8 @@ export const usePosStore = create<PosState>((set, get) => ({
     get().fetchNextOrderNumber(); // Load next order number on startup
     try {
       let branchId: string | undefined = undefined;
-      if (typeof window !== 'undefined') {
-        const rawBranch = localStorage.getItem('rms_branch');
+      if (typeof window !== "undefined") {
+        const rawBranch = localStorage.getItem("rms_branch");
         if (rawBranch) {
           try {
             const b = JSON.parse(rawBranch);
@@ -749,8 +784,33 @@ export const usePosStore = create<PosState>((set, get) => ({
 
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+      // Also load branch settings for tax and delivery fee calculation
+      if (branchId) {
+        axios
+          .get(`${apiUrl}/branches/settings`, { params: { branchId } })
+          .then((settingsRes) => {
+            if (
+              settingsRes.data?.success &&
+              settingsRes.data?.data?.taxFeesSettings
+            ) {
+              const tf = settingsRes.data.data.taxFeesSettings;
+              set({
+                branchTaxFees: {
+                  deliveryFee: Number(tf.deliveryFee ?? 4.99),
+                  gstTaxRate: Number(tf.gstTaxRate ?? 5),
+                  pstTaxRate: Number(tf.pstTaxRate ?? 0),
+                  hstTaxRate: Number(tf.hstTaxRate ?? 0),
+                },
+              });
+              get().calculateTotals();
+            }
+          })
+          .catch(() => {});
+      }
+
       const res = await axios.get(`${apiUrl}/menu/pos-feed`, {
-        params: branchId ? { branchId } : {}
+        params: branchId ? { branchId } : {},
       });
       if (res.data.success) {
         const allCategory: Category = {
@@ -779,8 +839,8 @@ export const usePosStore = create<PosState>((set, get) => ({
   fetchNextOrderNumber: async () => {
     try {
       let branchId: string | undefined = undefined;
-      if (typeof window !== 'undefined') {
-        const rawBranch = localStorage.getItem('rms_branch');
+      if (typeof window !== "undefined") {
+        const rawBranch = localStorage.getItem("rms_branch");
         if (rawBranch) {
           try {
             const b = JSON.parse(rawBranch);
@@ -792,15 +852,12 @@ export const usePosStore = create<PosState>((set, get) => ({
       const { orderType } = get();
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-      const res = await axios.get(
-        `${apiUrl}/orders/next-number`,
-        {
-          params: {
-            type: orderType,
-            ...(branchId ? { branchId } : {})
-          }
-        }
-      );
+      const res = await axios.get(`${apiUrl}/orders/next-number`, {
+        params: {
+          type: orderType,
+          ...(branchId ? { branchId } : {}),
+        },
+      });
       if (res.data.success) {
         set({ nextOrderNumber: res.data.data });
       }

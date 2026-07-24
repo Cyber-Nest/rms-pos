@@ -1,17 +1,46 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Clock, Printer, Trash2, Plus, Minus, RefreshCw } from "lucide-react";
+import {
+  X,
+  Clock,
+  Printer,
+  Trash2,
+  Plus,
+  Minus,
+  RefreshCw,
+} from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Order } from "../types";
 import ThermalReceipt from "./ThermalReceipt";
 
+// Read defaultTimeMinutes from saved branch settings (localStorage)
+const getBranchDefaultPrepTime = (): number => {
+  try {
+    if (typeof window === "undefined") return 15;
+    const raw = localStorage.getItem("rms_branch_settings");
+    if (raw) {
+      const s = JSON.parse(raw);
+      const mins = Number(s?.mainSettings?.defaultTimeMinutes);
+      if (mins > 0) return mins;
+    }
+    // Fallback: read from branch object itself
+    const rawBranch = localStorage.getItem("rms_branch");
+    if (rawBranch) {
+      const b = JSON.parse(rawBranch);
+      const mins = Number(b?.settings?.mainSettings?.defaultTimeMinutes);
+      if (mins > 0) return mins;
+    }
+  } catch (e) {}
+  return 15;
+};
+
 interface KitchenDetailModalProps {
   order: Order | null;
   onClose: () => void;
   onStatusChange: () => void;
-  categoryFilter?: 'all' | 'chicken' | 'pizza';
+  categoryFilter?: "all" | "chicken" | "pizza";
 }
 
 interface GroupedModifier {
@@ -60,7 +89,7 @@ export default function KitchenDetailModal({
   order,
   onClose,
   onStatusChange,
-  categoryFilter = 'all',
+  categoryFilter = "all",
 }: KitchenDetailModalProps) {
   const [updating, setUpdating] = useState(false);
   const [showPrintReceipt, setShowPrintReceipt] = useState(false);
@@ -71,9 +100,9 @@ export default function KitchenDetailModal({
   const [editItems, setEditItems] = useState<any[]>([]);
 
   const isItemVisible = (item: any) => {
-    if (!categoryFilter || categoryFilter === 'all') return true;
-    if (categoryFilter === 'pizza') return item.kitchenLabel === 'pizza';
-    if (categoryFilter === 'chicken') return item.kitchenLabel !== 'pizza';
+    if (!categoryFilter || categoryFilter === "all") return true;
+    if (categoryFilter === "pizza") return item.kitchenLabel === "pizza";
+    if (categoryFilter === "chicken") return item.kitchenLabel !== "pizza";
     return true;
   };
 
@@ -90,10 +119,11 @@ export default function KitchenDetailModal({
           ? new Date(localOrder.scheduledAt)
           : new Date(localOrder.createdAt);
 
-      // If it has no dueAt (older order), default it to baseTime + 15 mins
+      // If it has no dueAt (older order), default it to baseTime + configured prep time
+      const prepMins = getBranchDefaultPrepTime();
       const currentDue = localOrder.dueAt
         ? baseTime
-        : new Date(baseTime.getTime() + 15 * 60000);
+        : new Date(baseTime.getTime() + prepMins * 60000);
       setDueDate(currentDue);
     } else {
       setDueDate(null);
@@ -318,7 +348,7 @@ export default function KitchenDetailModal({
           </div>
         </div>
       ),
-      { duration: 10000 }
+      { duration: 10000 },
     );
   };
 
@@ -597,23 +627,30 @@ export default function KitchenDetailModal({
     if (isPrinting || !localOrder) return;
     setIsPrinting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const response = await axios.get(`${apiUrl}/orders/${localOrder._id}/pdf`, {
-        responseType: 'blob',
-      });
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const response = await axios.get(
+        `${apiUrl}/orders/${localOrder._id}/pdf`,
+        {
+          responseType: "blob",
+        },
+      );
 
-      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `invoice-${localOrder.orderNumber.replace('#', '')}.pdf`);
+      link.setAttribute(
+        "download",
+        `invoice-${localOrder.orderNumber.replace("#", "")}.pdf`,
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success('Invoice PDF downloaded successfully!');
+      toast.success("Invoice PDF downloaded successfully!");
     } catch (err: any) {
-      toast.error('Failed to download invoice PDF');
+      toast.error("Failed to download invoice PDF");
     } finally {
       setIsPrinting(false);
     }
@@ -702,7 +739,13 @@ export default function KitchenDetailModal({
   };
 
   const getSubtotal = () => {
-    return localOrder.items.reduce((sum, item) => sum + ((item.totalPrice as number | undefined) ?? (item.basePrice * item.quantity)), 0);
+    return localOrder.items.reduce(
+      (sum, item) =>
+        sum +
+        ((item.totalPrice as number | undefined) ??
+          item.basePrice * item.quantity),
+      0,
+    );
   };
 
   return (
@@ -714,7 +757,10 @@ export default function KitchenDetailModal({
           <div className="flex items-center gap-3">
             {/* Customer Button */}
             <span className="bg-white/10 text-white text-[11px] font-600 px-3.5 py-1.5 rounded-lg border border-white/15 select-none">
-              Customer: <span className="font-800 text-orange-300">{localOrder.customer?.name || "N/A"}</span>
+              Customer:{" "}
+              <span className="font-800 text-orange-300">
+                {localOrder.customer?.name || "N/A"}
+              </span>
             </span>
             <span className="text-[12px] font-500 text-neutral-300">
               Placed By :{" "}
@@ -898,99 +944,99 @@ export default function KitchenDetailModal({
                             key={idx}
                             className="p-4 border-b border-neutral-100 last:border-b-0"
                           >
-                          <div className="flex items-start">
-                            <div className="flex-1">
-                              <h4 className="font-700 text-[15.5px] text-brand-primary leading-tight">
-                                {item.name}
-                              </h4>
+                            <div className="flex items-start">
+                              <div className="flex-1">
+                                <h4 className="font-700 text-[15.5px] text-brand-primary leading-tight">
+                                  {item.name}
+                                </h4>
 
-                              {item.selectedModifiers &&
-                                item.selectedModifiers.length > 0 && (
-                                  <div className="pl-3 mt-1.5 border-l-2 border-neutral-200 flex flex-col gap-1 text-[13px] font-sans">
-                                    {getGroupedModifiers(
-                                      item.selectedModifiers,
-                                    ).map((mod, modIdx) => (
-                                      <div
-                                        key={modIdx}
-                                        className="flex flex-col text-neutral-600"
-                                      >
-                                        {mod.isRoot ? (
-                                          <>
-                                            <span className="text-neutral-450 font-700 text-[11px] uppercase tracking-wider mt-1 select-none">
-                                              {mod.groupName}
-                                            </span>
-                                            <div className="flex justify-between items-baseline text-neutral-700 font-600 pl-0.5">
+                                {item.selectedModifiers &&
+                                  item.selectedModifiers.length > 0 && (
+                                    <div className="pl-3 mt-1.5 border-l-2 border-neutral-200 flex flex-col gap-1 text-[13px] font-sans">
+                                      {getGroupedModifiers(
+                                        item.selectedModifiers,
+                                      ).map((mod, modIdx) => (
+                                        <div
+                                          key={modIdx}
+                                          className="flex flex-col text-neutral-600"
+                                        >
+                                          {mod.isRoot ? (
+                                            <>
+                                              <span className="text-neutral-450 font-700 text-[11px] uppercase tracking-wider mt-1 select-none">
+                                                {mod.groupName}
+                                              </span>
+                                              <div className="flex justify-between items-baseline text-neutral-700 font-600 pl-0.5">
+                                                <span>{mod.optionName}</span>
+                                                {mod.quantity > 1 && (
+                                                  <span className="font-700 text-neutral-850 ml-1 text-[11.5px]">
+                                                    x{mod.quantity}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <div className="flex justify-between items-baseline text-neutral-555 font-500 text-[12px] pl-2 italic">
                                               <span>{mod.optionName}</span>
                                               {mod.quantity > 1 && (
-                                                <span className="font-700 text-neutral-850 ml-1 text-[11.5px]">
+                                                <span className="font-600 text-neutral-600 ml-1 text-[10.5px]">
                                                   x{mod.quantity}
                                                 </span>
                                               )}
                                             </div>
-                                          </>
-                                        ) : (
-                                          <div className="flex justify-between items-baseline text-neutral-555 font-500 text-[12px] pl-2 italic">
-                                            <span>{mod.optionName}</span>
-                                            {mod.quantity > 1 && (
-                                              <span className="font-600 text-neutral-600 ml-1 text-[10.5px]">
-                                                x{mod.quantity}
-                                              </span>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
 
-                              <input
-                                type="text"
-                                placeholder="Add item note..."
-                                value={item.note || ""}
-                                onChange={(e) =>
-                                  handleUpdateItemNote(idx, e.target.value)
-                                }
-                                className="mt-2 px-2.5 py-1 text-[11px] border border-neutral-200 rounded-lg w-full focus:outline-none focus:border-brand-primary transition-colors bg-neutral-50/50"
-                              />
-                            </div>
+                                <input
+                                  type="text"
+                                  placeholder="Add item note..."
+                                  value={item.note || ""}
+                                  onChange={(e) =>
+                                    handleUpdateItemNote(idx, e.target.value)
+                                  }
+                                  className="mt-2 px-2.5 py-1 text-[11px] border border-neutral-200 rounded-lg w-full focus:outline-none focus:border-brand-primary transition-colors bg-neutral-50/50"
+                                />
+                              </div>
 
-                            <div className="w-24 flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateQty(idx, -1)}
-                                className="w-6 h-6 rounded-full bg-neutral-50 hover:bg-neutral-100 flex items-center justify-center font-800 text-[11px] text-neutral-600 transition-all border border-neutral-200 cursor-pointer"
-                              >
-                                -
-                              </button>
-                              <span className="font-700 text-[12px] min-w-[14px] text-center">
-                                {item.quantity}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateQty(idx, 1)}
-                                className="w-6 h-6 rounded-full bg-neutral-50 hover:bg-neutral-100 flex items-center justify-center font-800 text-[11px] text-neutral-600 transition-all border border-neutral-200 cursor-pointer"
-                              >
-                                +
-                              </button>
-                            </div>
+                              <div className="w-24 flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateQty(idx, -1)}
+                                  className="w-6 h-6 rounded-full bg-neutral-50 hover:bg-neutral-100 flex items-center justify-center font-800 text-[11px] text-neutral-600 transition-all border border-neutral-200 cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="font-700 text-[12px] min-w-[14px] text-center">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateQty(idx, 1)}
+                                  className="w-6 h-6 rounded-full bg-neutral-50 hover:bg-neutral-100 flex items-center justify-center font-800 text-[11px] text-neutral-600 transition-all border border-neutral-200 cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
 
-                            <div className="w-24 text-right flex items-center justify-end font-700 text-[13px] text-neutral-800">
-                              <span>
-                                ${(item.quantity * item.basePrice).toFixed(2)}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(idx)}
-                                className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg transition-all ml-2 cursor-pointer"
-                                title="Remove Item"
-                              >
-                                <X size={13} />
-                              </button>
+                              <div className="w-24 text-right flex items-center justify-end font-700 text-[13px] text-neutral-800">
+                                <span>
+                                  ${(item.quantity * item.basePrice).toFixed(2)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(idx)}
+                                  className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg transition-all ml-2 cursor-pointer"
+                                  title="Remove Item"
+                                >
+                                  <X size={13} />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )
-                    })
+                        );
+                      })
                     : localOrder.items.map((item, idx) => {
                         if (!isItemVisible(item)) return null;
                         return (
@@ -998,70 +1044,74 @@ export default function KitchenDetailModal({
                             key={idx}
                             className="px-4 py-3 border-b border-neutral-100 last:border-b-0"
                           >
-                          <div className="flex items-center">
-                            <div className="flex-1 pr-4">
-                              <h4 className="font-700 text-[15.5px] text-neutral-800 leading-tight">
-                                {item.name}
-                              </h4>
+                            <div className="flex items-center">
+                              <div className="flex-1 pr-4">
+                                <h4 className="font-700 text-[15.5px] text-neutral-800 leading-tight">
+                                  {item.name}
+                                </h4>
 
-                              {item.selectedModifiers &&
-                                item.selectedModifiers.length > 0 && (
-                                  <div className="pl-2.5 mt-1 border-l-2 border-neutral-200 flex flex-col gap-0.5 text-[13px] font-sans">
-                                    {getGroupedModifiers(
-                                      item.selectedModifiers,
-                                    ).map((mod, modIdx) => (
-                                      <div
-                                        key={modIdx}
-                                        className="flex flex-col text-neutral-500"
-                                      >
-                                        {mod.isRoot ? (
-                                          <div className="mt-0.5">
-                                            <span className="text-neutral-400 font-750 text-[11px] uppercase tracking-wider select-none">
-                                              {mod.groupName}
-                                            </span>
-                                            <div className="flex justify-between items-baseline text-neutral-600 font-600 pl-0.5">
+                                {item.selectedModifiers &&
+                                  item.selectedModifiers.length > 0 && (
+                                    <div className="pl-2.5 mt-1 border-l-2 border-neutral-200 flex flex-col gap-0.5 text-[13px] font-sans">
+                                      {getGroupedModifiers(
+                                        item.selectedModifiers,
+                                      ).map((mod, modIdx) => (
+                                        <div
+                                          key={modIdx}
+                                          className="flex flex-col text-neutral-500"
+                                        >
+                                          {mod.isRoot ? (
+                                            <div className="mt-0.5">
+                                              <span className="text-neutral-400 font-750 text-[11px] uppercase tracking-wider select-none">
+                                                {mod.groupName}
+                                              </span>
+                                              <div className="flex justify-between items-baseline text-neutral-600 font-600 pl-0.5">
+                                                <span>{mod.optionName}</span>
+                                                {mod.quantity > 1 && (
+                                                  <span className="font-700 text-neutral-800 ml-1 text-[11.5px]">
+                                                    x{mod.quantity}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="flex justify-between items-baseline text-neutral-500 font-500 text-[12px] pl-1.5 italic">
                                               <span>{mod.optionName}</span>
                                               {mod.quantity > 1 && (
-                                                <span className="font-700 text-neutral-800 ml-1 text-[11.5px]">
+                                                <span className="font-650 text-neutral-600 ml-1 text-[10.5px]">
                                                   x{mod.quantity}
                                                 </span>
                                               )}
                                             </div>
-                                          </div>
-                                        ) : (
-                                          <div className="flex justify-between items-baseline text-neutral-500 font-500 text-[12px] pl-1.5 italic">
-                                            <span>{mod.optionName}</span>
-                                            {mod.quantity > 1 && (
-                                              <span className="font-650 text-neutral-600 ml-1 text-[10.5px]">
-                                                x{mod.quantity}
-                                              </span>
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                {item.note && (
+                                  <p className="text-[9.5px] text-amber-805 font-600 italic mt-1.5 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/40 inline-block">
+                                    Note: {item.note}
+                                  </p>
                                 )}
-                              {item.note && (
-                                <p className="text-[9.5px] text-amber-805 font-600 italic mt-1.5 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/40 inline-block">
-                                  Note: {item.note}
-                                </p>
-                              )}
-                            </div>
+                              </div>
 
-                            <div className="w-16 text-center">
-                              <span className="px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-700 text-[13px]">
-                                {item.quantity}
-                              </span>
-                            </div>
+                              <div className="w-16 text-center">
+                                <span className="px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-700 text-[13px]">
+                                  {item.quantity}
+                                </span>
+                              </div>
 
-                            <div className="w-24 text-right font-700 text-[12.5px] text-neutral-800 font-mono">
-                              ${((item.totalPrice as number | undefined) ?? (item.basePrice * item.quantity)).toFixed(2)}
+                              <div className="w-24 text-right font-700 text-[12.5px] text-neutral-800 font-mono">
+                                $
+                                {(
+                                  (item.totalPrice as number | undefined) ??
+                                  item.basePrice * item.quantity
+                                ).toFixed(2)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                 </div>
               </div>
             </div>
@@ -1090,7 +1140,10 @@ export default function KitchenDetailModal({
                   <div className="flex justify-between">
                     <span>Discount:</span>
                     <span className="text-[#DC2626] font-mono">
-                      -${((localOrder.discount as number | undefined) ?? 0).toFixed(2)}
+                      -$
+                      {(
+                        (localOrder.discount as number | undefined) ?? 0
+                      ).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between border-t border-dashed border-neutral-200 pt-2 text-neutral-800">
@@ -1104,7 +1157,7 @@ export default function KitchenDetailModal({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>GST (5%):</span>
+                    <span>GST:</span>
                     <span className="text-neutral-800 font-mono">
                       $
                       {(isEditing
@@ -1123,7 +1176,8 @@ export default function KitchenDetailModal({
                       ).toFixed(2)}
                     </span>
                   </div>
-                  {((localOrder.deliveryFee as number | undefined) ?? 0) > 0 && (
+                  {((localOrder.deliveryFee as number | undefined) ?? 0) >
+                    0 && (
                     <div className="flex justify-between">
                       <span>Delivery Fee:</span>
                       <span className="text-neutral-800 font-mono">
@@ -1147,9 +1201,11 @@ export default function KitchenDetailModal({
                       $
                       {Math.max(
                         0,
-                        (isEditing ? getEditTotals().total : ((localOrder.total as number | undefined) ?? 0)) -
+                        (isEditing
+                          ? getEditTotals().total
+                          : ((localOrder.total as number | undefined) ?? 0)) -
                           paymentsTotal,
-                       ).toFixed(2)}
+                      ).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -1181,19 +1237,25 @@ export default function KitchenDetailModal({
                 </h4>
                 <div className="flex flex-col text-neutral-600 gap-1.5">
                   <div className="flex justify-between py-1.5 border-b border-neutral-50 last:border-b-0 items-center">
-                    <span className="text-neutral-450 font-500">Order Date:</span>
+                    <span className="text-neutral-450 font-500">
+                      Order Date:
+                    </span>
                     <span className="text-neutral-800 font-800 bg-neutral-100/80 px-2 py-0.5 rounded border border-neutral-200/50 font-mono">
                       {new Date(localOrder.createdAt).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-neutral-50 last:border-b-0 items-center">
-                    <span className="text-neutral-450 font-500">Order Due Date:</span>
+                    <span className="text-neutral-450 font-500">
+                      Order Due Date:
+                    </span>
                     <span className="text-brand-primary font-900 bg-orange-50/50 px-2 py-0.5 rounded border border-orange-100/60 font-mono">
                       {dueDate ? dueDate.toLocaleString() : "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-neutral-50 last:border-b-0 items-center">
-                    <span className="text-neutral-450 font-500">Report Date:</span>
+                    <span className="text-neutral-450 font-500">
+                      Report Date:
+                    </span>
                     <span className="text-neutral-800 font-800 bg-neutral-100/80 px-2 py-0.5 rounded border border-neutral-200/50 font-mono">
                       {new Date(localOrder.createdAt).toLocaleDateString()}
                     </span>
@@ -1225,16 +1287,23 @@ export default function KitchenDetailModal({
                       </div>
                       {localOrder.promoCode && (
                         <div className="flex justify-between py-1 border-b border-neutral-50 last:border-b-0">
-                          <span className="text-neutral-450 font-500">Promo Code:</span>
+                          <span className="text-neutral-450 font-500">
+                            Promo Code:
+                          </span>
                           <span className="text-neutral-700 font-600 font-mono">
                             {localOrder.promoCode}
                           </span>
                         </div>
                       )}
                       <div className="flex justify-between py-1 border-b border-neutral-50 last:border-b-0">
-                        <span className="text-neutral-450 font-500">Discount Amount:</span>
+                        <span className="text-neutral-450 font-500">
+                          Discount Amount:
+                        </span>
                         <span className="text-[#DC2626] font-750">
-                          -${((localOrder.discount as number | undefined) ?? 0).toFixed(2)}
+                          -$
+                          {(
+                            (localOrder.discount as number | undefined) ?? 0
+                          ).toFixed(2)}
                         </span>
                       </div>
                     </>

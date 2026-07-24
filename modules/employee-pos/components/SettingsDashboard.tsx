@@ -1,12 +1,12 @@
-'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 import PosNavbar from './PosNavbar';
 import POSSidebarDrawer from './POSSidebarDrawer';
 
 // Split Tab Components
 import MainSettingsTab from './settings-components/MainSettingsTab';
+import TaxFeesTab from './settings-components/TaxFeesTab';
 import TerminalSetupTab from './settings-components/TerminalSetupTab';
 import TillSetupTab from './settings-components/TillSetupTab';
 import StoreTimingsTab from './settings-components/StoreTimingsTab';
@@ -14,16 +14,18 @@ import StoreTimingsUpdateTab from './settings-components/StoreTimingsUpdateTab';
 import HolidaysTab from './settings-components/HolidaysTab';
 
 // Shared Types
-import { TabType, Terminal, Till, StoreTiming, TimingUpdate, Holiday } from './settings-components/settingsTypes';
+import { TabType, Terminal, Till, StoreTiming, TimingUpdate, Holiday, TaxFeesSettings } from './settings-components/settingsTypes';
 
 export default function SettingsDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('main_settings');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // ── 1. Main Settings State ──
   const [mainSettings, setMainSettings] = useState({
     timezone: 'Mountain Standard Time (MST) - America/Edmonton',
-    defaultTime: '15',
+    defaultTimeMinutes: '15',
     reportingStartTime: '12:00 AM',
     reportingEndTime: '12:00 AM',
     latitude: '51.05643',
@@ -35,13 +37,21 @@ export default function SettingsDashboard() {
     backgroundColor: '#000000'
   });
 
-  // ── 2. Terminal Setup State ──
+  // ── 2. Tax & Fees Settings State ──
+  const [taxFeesSettings, setTaxFeesSettings] = useState<TaxFeesSettings>({
+    deliveryFee: '4.99',
+    gstTaxRate: '5.00',
+    pstTaxRate: '0.00',
+    hstTaxRate: '0.00',
+  });
+
+  // ── 3. Terminal Setup State ──
   const [terminals, setTerminals] = useState<Terminal[]>([]);
 
-  // ── 3. Till Setup State ──
+  // ── 4. Till Setup State ──
   const [tills, setTills] = useState<Till[]>([]);
 
-  // ── 4. Store Timings State ──
+  // ── 5. Store Timings State ──
   const [storeTimings, setStoreTimings] = useState<StoreTiming[]>([
     { day: 'Sunday', startTime: '10:00 AM', endTime: '08:00 PM', isHoliday: 'No' },
     { day: 'Monday', startTime: '10:00 AM', endTime: '09:00 PM', isHoliday: 'No' },
@@ -52,22 +62,158 @@ export default function SettingsDashboard() {
     { day: 'Saturday', startTime: '10:00 AM', endTime: '10:00 PM', isHoliday: 'No' },
   ]);
 
-  // ── 5. Store Timings Update State ──
+  // ── 6. Store Timings Update State ──
   const [timingsUpdates, setTimingsUpdates] = useState<TimingUpdate[]>([]);
 
-  // ── 6. Holidays State ──
+  // ── 7. Holidays State ──
   const [holidays, setHolidays] = useState<Holiday[]>([]);
+
+  // ── Get Active Branch ID ──
+  const getBranchId = () => {
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          return b._id;
+        } catch (e) {}
+      }
+    }
+    return undefined;
+  };
+
+  // ── Load Branch Settings from Backend ──
+  const fetchSettings = useCallback(async () => {
+    const branchId = getBranchId();
+    if (!branchId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.get(`${apiUrl}/branches/settings`, {
+        params: { branchId }
+      });
+      if (res.data?.success && res.data?.data) {
+        const s = res.data.data;
+        // Persist to localStorage so KitchenDetailModal can read defaultTimeMinutes
+        try { localStorage.setItem('rms_branch_settings', JSON.stringify(s)); } catch (e) {}
+
+        if (s.mainSettings) {
+          // Convert numeric fields to string for input compatibility
+          const ms = s.mainSettings;
+          setMainSettings(prev => ({
+            ...prev,
+            ...ms,
+            defaultTimeMinutes: String(ms.defaultTimeMinutes ?? prev.defaultTimeMinutes),
+            latitude: String(ms.latitude ?? prev.latitude),
+            longitude: String(ms.longitude ?? prev.longitude),
+            commission: String(ms.commission ?? prev.commission),
+          }));
+        }
+        if (s.taxFeesSettings) {
+          const tf = s.taxFeesSettings;
+          setTaxFeesSettings(prev => ({
+            ...prev,
+            ...tf,
+            deliveryFee: String(tf.deliveryFee ?? prev.deliveryFee),
+            gstTaxRate: String(tf.gstTaxRate ?? prev.gstTaxRate),
+            pstTaxRate: String(tf.pstTaxRate ?? prev.pstTaxRate),
+            hstTaxRate: String(tf.hstTaxRate ?? prev.hstTaxRate),
+          }));
+        }
+        if (s.storeTimings && s.storeTimings.length > 0) setStoreTimings(s.storeTimings);
+        if (s.storeTimingsUpdates) setTimingsUpdates(s.storeTimingsUpdates);
+        if (s.holidays) setHolidays(s.holidays);
+        if (s.terminals) setTerminals(s.terminals);
+        if (s.tills) setTills(s.tills);
+      }
+    } catch (err) {
+      console.warn('Could not load branch settings from backend');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  // ── Save Settings to Backend ──
+  const saveSettingsToBackend = async (payload: any, successMessage: string) => {
+    const branchId = getBranchId();
+    if (!branchId) {
+      toast.error('Branch session invalid');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      await axios.patch(`${apiUrl}/branches/settings`, {
+        branchId,
+        ...payload
+      });
+      toast.success(successMessage);
+    } catch (err: any) {
+      console.error('Failed to save settings:', err);
+      toast.error(err.response?.data?.message || 'Failed to save settings to database');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // ── Main Settings Submit Handler ──
   const handleMainSettingsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Main Settings updated successfully!');
+    saveSettingsToBackend({ mainSettings }, 'Main Settings updated successfully!');
+  };
+
+  // ── Tax & Fees Submit Handler ──
+  const handleTaxFeesSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveSettingsToBackend({ taxFeesSettings }, 'Tax & Fees Settings updated successfully!');
   };
 
   // ── Store Timings Submit Handler ──
   const handleStoreTimingsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Store Timings updated successfully!');
+    saveSettingsToBackend({ storeTimings }, 'Store Timings updated successfully!');
+  };
+
+  const handleUpdateTimingsUpdates = (newVal: React.SetStateAction<TimingUpdate[]>) => {
+    setTimingsUpdates((prev) => {
+      const updated = typeof newVal === 'function' ? newVal(prev) : newVal;
+      saveSettingsToBackend({ storeTimingsUpdates: updated }, 'Store Timings Update saved!');
+      return updated;
+    });
+  };
+
+  const handleUpdateHolidays = (newVal: React.SetStateAction<Holiday[]>) => {
+    setHolidays((prev) => {
+      const updated = typeof newVal === 'function' ? newVal(prev) : newVal;
+      saveSettingsToBackend({ holidays: updated }, 'Holidays saved!');
+      return updated;
+    });
+  };
+
+  const handleUpdateTerminals = (newVal: React.SetStateAction<Terminal[]>) => {
+    setTerminals((prev) => {
+      const updated = typeof newVal === 'function' ? newVal(prev) : newVal;
+      saveSettingsToBackend({ terminals: updated }, 'Terminals saved!');
+      return updated;
+    });
+  };
+
+  const handleUpdateTills = (newVal: React.SetStateAction<Till[]>) => {
+    setTills((prev) => {
+      const updated = typeof newVal === 'function' ? newVal(prev) : newVal;
+      saveSettingsToBackend({ tills: updated }, 'Till registers saved!');
+      return updated;
+    });
   };
 
   return (
@@ -93,6 +239,17 @@ export default function SettingsDashboard() {
               }`}
             >
               Main Settings
+            </button>
+
+            <button
+              onClick={() => setActiveTab('tax_fees')}
+              className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                activeTab === 'tax_fees'
+                  ? 'bg-brand-primary text-white shadow-sm'
+                  : 'text-neutral-500 hover:text-brand-primary'
+              }`}
+            >
+              Tax & Fees
             </button>
 
             <button
@@ -156,48 +313,69 @@ export default function SettingsDashboard() {
         {/* Tab Panel View Container */}
         <div className="bg-white border border-[#E7E5E4] rounded-2xl shadow-xs p-6">
           
-          {activeTab === 'main_settings' && (
-            <MainSettingsTab
-              mainSettings={mainSettings}
-              setMainSettings={setMainSettings}
-              onSubmit={handleMainSettingsSubmit}
-            />
-          )}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3 text-neutral-500 font-sans">
+              <div className="w-8 h-8 border-3 border-brand-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs font-700 uppercase tracking-wider text-neutral-600">
+                Loading Branch Settings...
+              </span>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'main_settings' && (
+                <MainSettingsTab
+                  mainSettings={mainSettings}
+                  setMainSettings={setMainSettings}
+                  onSubmit={handleMainSettingsSubmit}
+                  saving={saving}
+                />
+              )}
 
-          {activeTab === 'terminal_setup' && (
-            <TerminalSetupTab
-              terminals={terminals}
-              setTerminals={setTerminals}
-            />
-          )}
+              {activeTab === 'tax_fees' && (
+                <TaxFeesTab
+                  taxFeesSettings={taxFeesSettings}
+                  setTaxFeesSettings={setTaxFeesSettings}
+                  onSubmit={handleTaxFeesSubmit}
+                  saving={saving}
+                />
+              )}
 
-          {activeTab === 'till_setup' && (
-            <TillSetupTab
-              tills={tills}
-              setTills={setTills}
-            />
-          )}
+              {activeTab === 'terminal_setup' && (
+                <TerminalSetupTab
+                  terminals={terminals}
+                  setTerminals={handleUpdateTerminals}
+                />
+              )}
 
-          {activeTab === 'store_timings' && (
-            <StoreTimingsTab
-              storeTimings={storeTimings}
-              setStoreTimings={setStoreTimings}
-              onSubmit={handleStoreTimingsSubmit}
-            />
-          )}
+              {activeTab === 'till_setup' && (
+                <TillSetupTab
+                  tills={tills}
+                  setTills={handleUpdateTills}
+                />
+              )}
 
-          {activeTab === 'store_timings_update' && (
-            <StoreTimingsUpdateTab
-              timingsUpdates={timingsUpdates}
-              setTimingsUpdates={setTimingsUpdates}
-            />
-          )}
+              {activeTab === 'store_timings' && (
+                <StoreTimingsTab
+                  storeTimings={storeTimings}
+                  setStoreTimings={setStoreTimings}
+                  onSubmit={handleStoreTimingsSubmit}
+                />
+              )}
 
-          {activeTab === 'holidays' && (
-            <HolidaysTab
-              holidays={holidays}
-              setHolidays={setHolidays}
-            />
+              {activeTab === 'store_timings_update' && (
+                <StoreTimingsUpdateTab
+                  timingsUpdates={timingsUpdates}
+                  setTimingsUpdates={handleUpdateTimingsUpdates}
+                />
+              )}
+
+              {activeTab === 'holidays' && (
+                <HolidaysTab
+                  holidays={holidays}
+                  setHolidays={handleUpdateHolidays}
+                />
+              )}
+            </>
           )}
 
         </div>

@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 interface MainSettings {
   timezone: string;
-  defaultTime: string;
+  defaultTimeMinutes: string;
   reportingStartTime: string;
   reportingEndTime: string;
   latitude: string;
@@ -22,16 +22,20 @@ interface MainSettingsTabProps {
   mainSettings: MainSettings;
   setMainSettings: React.Dispatch<React.SetStateAction<MainSettings>>;
   onSubmit: (e: React.FormEvent) => void;
+  saving?: boolean;
 }
 
 export default function MainSettingsTab({
   mainSettings,
   setMainSettings,
-  onSubmit
+  onSubmit,
+  saving = false,
 }: MainSettingsTabProps) {
+  const [isEditing, setIsEditing] = React.useState(false);
 
   // Helper to fetch coordinates via Geolocation API
   const handleFetchGPS = () => {
+    if (!isEditing) return;
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
       return;
@@ -54,8 +58,14 @@ export default function MainSettingsTab({
     );
   };
 
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSubmit(e);
+    setIsEditing(false);
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={handleFormSubmit} className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         
         {/* Timezone */}
@@ -65,15 +75,23 @@ export default function MainSettingsTab({
           </label>
           <div className="relative">
             <select
+              disabled={!isEditing}
               value={mainSettings.timezone}
               onChange={(e) => setMainSettings({ ...mainSettings, timezone: e.target.value })}
-              className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl px-4 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary appearance-none cursor-pointer"
+              className={`w-full border rounded-xl px-4 py-2.5 text-xs font-700 transition-all ${
+                isEditing
+                  ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                  : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+              } appearance-none`}
             >
               <option value="Mountain Standard Time (MST) - America/Edmonton">
                 Mountain Standard Time (MST) - America/Edmonton
               </option>
               <option value="Eastern Standard Time (EST) - America/New_York">
                 Eastern Standard Time (EST) - America/New_York
+              </option>
+              <option value="Central Standard Time (CST) - America/Chicago">
+                Central Standard Time (CST) - America/Chicago
               </option>
               <option value="Pacific Standard Time (PST) - America/Los_Angeles">
                 Pacific Standard Time (PST) - America/Los_Angeles
@@ -89,14 +107,18 @@ export default function MainSettingsTab({
         {/* Default Time */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-800 text-neutral-600 uppercase tracking-wider">
-            Default Time (Minutes) <span className="text-red-500">*</span>
+            Default Prep Time (Minutes) <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
-            value={mainSettings.defaultTime}
-            onChange={(e) => setMainSettings({ ...mainSettings, defaultTime: e.target.value })}
-            className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl px-4 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary"
-            placeholder="Enter default time"
+            disabled={!isEditing}
+            value={mainSettings.defaultTimeMinutes || '15'}
+            onChange={(e) => setMainSettings({ ...mainSettings, defaultTimeMinutes: e.target.value })}
+            className={`w-full border rounded-xl px-4 py-2.5 text-xs font-700 transition-all ${
+              isEditing
+                ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+            }`}
           />
         </div>
 
@@ -107,10 +129,14 @@ export default function MainSettingsTab({
           </label>
           <input
             type="text"
+            disabled={!isEditing}
             value={mainSettings.reportingStartTime}
             onChange={(e) => setMainSettings({ ...mainSettings, reportingStartTime: e.target.value })}
-            className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl px-4 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary"
-            placeholder="e.g. 12:00 AM"
+            className={`w-full border rounded-xl px-4 py-2.5 text-xs font-700 transition-all ${
+              isEditing
+                ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+            }`}
           />
         </div>
 
@@ -121,46 +147,62 @@ export default function MainSettingsTab({
           </label>
           <input
             type="text"
+            disabled={!isEditing}
             value={mainSettings.reportingEndTime}
             onChange={(e) => setMainSettings({ ...mainSettings, reportingEndTime: e.target.value })}
-            className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl px-4 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary"
-            placeholder="e.g. 12:00 AM"
+            className={`w-full border rounded-xl px-4 py-2.5 text-xs font-700 transition-all ${
+              isEditing
+                ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+            }`}
           />
         </div>
 
         {/* Latitude */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-800 text-neutral-600 uppercase tracking-wider flex items-center justify-between">
-            <span>Latitude <span className="text-red-500">*</span></span>
+          <label className="text-[11px] font-800 text-neutral-600 uppercase tracking-wider">
+            Latitude <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <input
               type="text"
+              disabled={!isEditing}
               value={mainSettings.latitude}
               onChange={(e) => setMainSettings({ ...mainSettings, latitude: e.target.value })}
-              className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl pl-4 pr-10 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary"
+              className={`w-full border rounded-xl pl-4 pr-10 py-2.5 text-xs font-700 transition-all ${
+                isEditing
+                  ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                  : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+              }`}
             />
-            <button
-              type="button"
-              onClick={handleFetchGPS}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-primary hover:text-[#70102b] cursor-pointer flex items-center justify-center p-1 hover:bg-brand-primary/10 rounded-lg transition-colors"
-              title="Fetch GPS Coordinates"
-            >
-              <MapPin size={15} />
-            </button>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleFetchGPS}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-brand-primary hover:bg-orange-50 rounded-lg transition-colors cursor-pointer"
+                title="Fetch Current Location"
+              >
+                <MapPin size={15} />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Longitude */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-800 text-neutral-600 uppercase tracking-wider flex items-center justify-between">
-            <span>Longitude <span className="text-red-500">*</span></span>
+          <label className="text-[11px] font-800 text-neutral-600 uppercase tracking-wider">
+            Longitude <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
+            disabled={!isEditing}
             value={mainSettings.longitude}
             onChange={(e) => setMainSettings({ ...mainSettings, longitude: e.target.value })}
-            className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl px-4 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary"
+            className={`w-full border rounded-xl px-4 py-2.5 text-xs font-700 transition-all ${
+              isEditing
+                ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+            }`}
           />
         </div>
 
@@ -171,9 +213,14 @@ export default function MainSettingsTab({
           </label>
           <input
             type="text"
+            disabled={!isEditing}
             value={mainSettings.commission}
             onChange={(e) => setMainSettings({ ...mainSettings, commission: e.target.value })}
-            className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl px-4 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary"
+            className={`w-full border rounded-xl px-4 py-2.5 text-xs font-700 transition-all ${
+              isEditing
+                ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+            }`}
           />
         </div>
 
@@ -184,60 +231,55 @@ export default function MainSettingsTab({
           </label>
           <input
             type="text"
+            disabled={!isEditing}
             value={mainSettings.gstNumber}
             onChange={(e) => setMainSettings({ ...mainSettings, gstNumber: e.target.value })}
-            className="w-full bg-neutral-100/80 border border-neutral-200 rounded-xl px-4 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-brand-primary"
+            className={`w-full border rounded-xl px-4 py-2.5 text-xs font-700 transition-all ${
+              isEditing
+                ? 'bg-white border-brand-primary/40 text-neutral-900 focus:outline-none focus:border-brand-primary'
+                : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
+            }`}
           />
         </div>
 
       </div>
 
-      {/* Toggles and Swatch */}
-      <div className="flex flex-wrap items-center gap-10 pt-4 border-t border-neutral-100">
-        
-        {/* Show Menu Item Image */}
-        {/* <div className="flex items-center gap-3">
+      {/* Edit & Submit Actions Bar */}
+      <div className="flex justify-end items-center gap-3 pt-4 border-t border-neutral-100">
+        {!isEditing ? (
           <button
             type="button"
-            onClick={() => setMainSettings({ ...mainSettings, showMenuImage: !mainSettings.showMenuImage })}
-            className={`relative w-12 h-6.5 rounded-full transition-colors duration-250 cursor-pointer flex items-center ${
-              mainSettings.showMenuImage ? 'bg-[#16A34A]' : 'bg-neutral-300'
-            }`}
+            onClick={() => setIsEditing(true)}
+            className="px-8 py-2.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-98"
           >
-            <span className={`text-[8px] font-900 text-white absolute ${mainSettings.showMenuImage ? 'left-2' : 'right-2'}`}>
-              {mainSettings.showMenuImage ? 'ON' : 'OFF'}
-            </span>
-            <span className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-250 ${
-              mainSettings.showMenuImage ? 'translate-x-[26px]' : 'translate-x-[2px]'
-            }`} />
+            Edit Settings
           </button>
-          <span className="text-xs font-700 text-neutral-700">Show Menu Item Image?</span>
-        </div> */}
-
-        {/* Background Color Picker */}
-        {/* <div className="flex items-center gap-3">
-          <span className="text-xs font-700 text-neutral-700">Background Color:</span>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={mainSettings.backgroundColor}
-              onChange={(e) => setMainSettings({ ...mainSettings, backgroundColor: e.target.value })}
-              className="w-8 h-8 rounded-lg border border-neutral-300 cursor-pointer p-0 overflow-hidden"
-            />
-            <span className="text-xs font-800 font-mono text-neutral-800 uppercase">{mainSettings.backgroundColor}</span>
-          </div>
-        </div> */}
-
-      </div>
-
-      {/* Submit Button */}
-      <div className="flex justify-end pt-4">
-        <button
-          type="submit"
-          className="px-8 py-2.5 rounded-full bg-[#8a1538] hover:bg-[#70102b] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-98"
-        >
-          Submit
-        </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              disabled={saving}
+              className="px-6 py-2.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[12px] font-700 transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-8 py-2.5 rounded-full bg-[#8a1538] hover:bg-[#70102b] text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm active:scale-98 disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </button>
+          </>
+        )}
       </div>
 
     </form>
