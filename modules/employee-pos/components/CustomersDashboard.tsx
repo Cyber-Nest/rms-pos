@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { Search, Calendar, X, Edit, Eye, Users, Mail, Phone, MapPin, CalendarRange } from 'lucide-react';
 import toast from 'react-hot-toast';
-import OrdersNavbar from './OrdersNavbar';
+import PosNavbar from './PosNavbar';
 import POSSidebarDrawer from './POSSidebarDrawer';
 import CustomerModal from './CustomerModal';
 import { usePosStore } from '../store/pos.store';
@@ -25,9 +25,7 @@ export default function CustomersDashboard() {
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => {
-    return getLocalTodayStr();
-  });
+  const [selectedDate, setSelectedDate] = useState('');
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,8 +41,23 @@ export default function CustomersDashboard() {
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const res = await axios.get(`${apiUrl}/orders/customers`);
+      const res = await axios.get(`${apiUrl}/orders/customers`, {
+        params: {
+          ...(branchId ? { branchId } : {}),
+        },
+      });
       if (res.data.success) {
         setCustomers(res.data.data);
       }
@@ -138,7 +151,7 @@ export default function CustomersDashboard() {
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar */}
-      <OrdersNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
+      <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* Control Bar */}
       <div className="bg-white border-b border-neutral-200 px-6 py-3.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 shadow-sm flex-shrink-0 select-none">

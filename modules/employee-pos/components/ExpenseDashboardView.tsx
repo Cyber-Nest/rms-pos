@@ -10,7 +10,7 @@ import { getLocalTodayStr } from '../utils/timezone';
 export default function ExpenseDashboardView() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(getLocalTodayStr());
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -33,7 +33,7 @@ export default function ExpenseDashboardView() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.get(`${apiUrl}/expenses`, {
         params: {
-          date: selectedDate,
+          date: selectedDate || undefined,
           employeeName: selectedEmployee || undefined,
           search: searchKeyword || undefined,
           ...(branchId ? { branchId } : {})

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, X, Edit, Trash, Plus, Car } from 'lucide-react';
 import toast from 'react-hot-toast';
-import OrdersNavbar from './OrdersNavbar';
+import PosNavbar from './PosNavbar';
 import POSSidebarDrawer from './POSSidebarDrawer';
 import { useDeliveryStore } from '../../delivery/store/deliveryStore';
 
@@ -211,7 +211,7 @@ export default function VehiclesDashboard() {
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar */}
-      <OrdersNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
+      <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* Control Bar */}
       <div className="bg-white border-b border-neutral-200 px-6 py-3.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 shadow-sm flex-shrink-0 select-none">

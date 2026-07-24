@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import OrdersNavbar from './OrdersNavbar';
+import PosNavbar from './PosNavbar';
 import POSSidebarDrawer from './POSSidebarDrawer';
 
 // Split Tab Components
@@ -74,7 +74,7 @@ export default function SettingsDashboard() {
     <main className="min-h-screen bg-[#F5F4F1] font-sans flex flex-col antialiased">
       
       {/* Navbar Header */}
-      <OrdersNavbar 
+      <PosNavbar 
         onToggleSidebar={() => setIsSidebarOpen(true)} 
       />
 
