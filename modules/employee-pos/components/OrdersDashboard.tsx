@@ -31,7 +31,13 @@ import {
   Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { getLocalTodayStr, getLocalPastDateStr, getLocalPastDateOf, dateToLocalStr, getLocalYear } from "../utils/timezone";
+import {
+  getLocalTodayStr,
+  getLocalPastDateStr,
+  getLocalPastDateOf,
+  dateToLocalStr,
+  getLocalYear,
+} from "../utils/timezone";
 
 const formatDateDisplay = (dateStr: string) => {
   if (!dateStr) return "";
@@ -159,16 +165,31 @@ export default function OrdersDashboard() {
         if (res.data.success) {
           setDashboardMetrics(res.data.data);
         }
-      } else if (activeSubTab === "orders") {
+      } else if (
+        [
+          "orders",
+          "cash_out_summary",
+          "cash_out_report",
+          "failed_transaction",
+          "refund_orders",
+        ].includes(activeSubTab)
+      ) {
+        const isAllLimit = [
+          "cash_out_summary",
+          "cash_out_report",
+          "failed_transaction",
+          "refund_orders",
+        ].includes(activeSubTab);
         const res = await axios.get(`${apiUrl}/orders`, {
           params: {
             startDate: startDate,
             endDate: endDate,
             status: statusFilter || undefined,
             paymentStatus: paymentFilter || undefined,
-            fields: "orderNumber,customer,subtotal,total,orderType,orderSource,paymentStatus,status,createdAt,orderTiming,scheduledAt,dueAt",
-            page: currentPage,
-            limit: entriesPerPage,
+            fields:
+              "orderNumber,customer,subtotal,total,orderType,orderSource,paymentStatus,status,createdAt,orderTiming,scheduledAt,dueAt",
+            page: isAllLimit ? 1 : currentPage,
+            limit: isAllLimit ? 1000 : entriesPerPage,
             search: searchKeyword || undefined,
             ...(branchId ? { branchId } : {}),
           },
@@ -201,7 +222,7 @@ export default function OrdersDashboard() {
     paymentFilter,
     currentPage,
     entriesPerPage,
-    searchKeyword
+    searchKeyword,
   ]);
 
   // ── Reset Page On Filter Change ──
@@ -277,17 +298,41 @@ export default function OrdersDashboard() {
   // ── Sync singleDate to startDate/endDate range ──
   const handleSingleDateChange = (val: string) => {
     setSingleDate(val);
-    if (activeSubTab === "orders" || activeSubTab === "reception_view" || isMoreTabActive || activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard") {
+    if (
+      activeSubTab === "orders" ||
+      activeSubTab === "reception_view" ||
+      isMoreTabActive ||
+      activeSubTab === "hourly_sales" ||
+      activeSubTab === "sales_summary" ||
+      activeSubTab === "dashboard"
+    ) {
       setStartDate(val);
       setEndDate(val);
     }
   };
 
   const handleExport = (format: "pdf" | "excel") => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    let branchId: string | undefined = undefined;
+    if (typeof window !== "undefined") {
+      const rawBranch = localStorage.getItem("rms_branch");
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
+    const apiUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
     let params = `type=${activeSubTab}&format=${format}&startDate=${startDate}&endDate=${endDate}`;
-    if (activeSubTab === "failed_transaction" || activeSubTab === "refund_orders") {
-      if (searchKeyword) params += `&search=${encodeURIComponent(searchKeyword)}`;
+    if (branchId) params += `&branchId=${branchId}`;
+    if (
+      activeSubTab === "failed_transaction" ||
+      activeSubTab === "refund_orders"
+    ) {
+      if (searchKeyword)
+        params += `&search=${encodeURIComponent(searchKeyword)}`;
       if (statusFilter) params += `&status=${encodeURIComponent(statusFilter)}`;
     }
     const downloadUrl = `${apiUrl}/orders/export-report?${params}`;
@@ -310,7 +355,13 @@ export default function OrdersDashboard() {
 
   // ── Apply Quick Date Ranges (Advance Search) ──
   const handleQuickRange = (
-    range: "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month",
+    range:
+      | "today"
+      | "yesterday"
+      | "this_week"
+      | "last_week"
+      | "this_month"
+      | "last_month",
   ) => {
     const todayStr = getLocalTodayStr();
     let startStr = todayStr;
@@ -339,7 +390,9 @@ export default function OrdersDashboard() {
         const today = new Date(todayStr + "T12:00:00");
         const dayOfWeek = today.getDay();
         const thisMonday = new Date(today);
-        thisMonday.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+        thisMonday.setDate(
+          today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1),
+        );
         const lastMonday = new Date(thisMonday);
         lastMonday.setDate(thisMonday.getDate() - 7);
         const lastSunday = new Date(thisMonday);
@@ -357,7 +410,11 @@ export default function OrdersDashboard() {
       }
       case "last_month": {
         const today = new Date(todayStr + "T12:00:00");
-        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthStart = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1,
+        );
         const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
         startStr = dateToLocalStr(lastMonthStart);
         endStr = dateToLocalStr(lastMonthEnd);
@@ -564,7 +621,8 @@ export default function OrdersDashboard() {
                           type="button"
                           onClick={() => {
                             if (tab.key === "cash_out_report") {
-                              window.location.href = "/employee/orders?tab=reports";
+                              window.location.href =
+                                "/employee/orders?tab=reports";
                             } else {
                               setActiveSubTab(tab.key as any);
                               if (
@@ -601,218 +659,226 @@ export default function OrdersDashboard() {
 
         {/* Right Side: Filters (Keyword, Status, Payment, Date, More Search) */}
         <div className="flex flex-wrap items-center gap-3">
-          {!["reports", "update_profile", "change_password", "expense_payout"].includes(activeSubTab) && (
+          {![
+            "reports",
+            "update_profile",
+            "change_password",
+            "expense_payout",
+          ].includes(activeSubTab) && (
             <>
-              {activeSubTab === "hourly_sales" || activeSubTab === "sales_summary" || activeSubTab === "dashboard" ? (
-            <>
-              {/* Date Picker Input (Pill style with calendar icon on right) */}
-              <div className="relative">
-                <input
-                  type="date"
-                  value={singleDate}
-                  onChange={(e) => handleSingleDateChange(e.target.value)}
-                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
-                />
-                <Calendar
-                  size={14}
-                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
-                />
-              </div>
-            </>
-          ) : activeSubTab === "cash_out_summary" ? (
-            <>
-              {/* Start Date Picker Input */}
-              <div className="relative">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
-                />
-                <Calendar
-                  size={14}
-                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-                />
-              </div>
+              {activeSubTab === "hourly_sales" ||
+              activeSubTab === "sales_summary" ||
+              activeSubTab === "dashboard" ? (
+                <>
+                  {/* Date Picker Input (Pill style with calendar icon on right) */}
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={singleDate}
+                      onChange={(e) => handleSingleDateChange(e.target.value)}
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                    />
+                    <Calendar
+                      size={14}
+                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
+                    />
+                  </div>
+                </>
+              ) : activeSubTab === "cash_out_summary" ? (
+                <>
+                  {/* Start Date Picker Input */}
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                    />
+                    <Calendar
+                      size={14}
+                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                    />
+                  </div>
 
-              {/* End Date Picker Input */}
-              <div className="relative">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
-                />
-                <Calendar
-                  size={14}
-                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-                />
-              </div>
+                  {/* End Date Picker Input */}
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                    />
+                    <Calendar
+                      size={14}
+                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                    />
+                  </div>
 
-              {/* More Search Button */}
-              <button
-                onClick={() => setIsAdvanceSearchOpen(true)}
-                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
-              >
-                <Search size={13} />
-                <span>More Search</span>
-              </button>
-            </>
-          ) : activeSubTab === "failed_transaction" || activeSubTab === "refund_orders" ? (
-            <>
-              {/* Date Picker Input (Pill style with calendar icon on right) */}
-              <div className="relative">
-                <input
-                  type="date"
-                  value={singleDate}
-                  onChange={(e) => handleSingleDateChange(e.target.value)}
-                  className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
-                />
-                <Calendar
-                  size={14}
-                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-                />
-              </div>
-
-              {/* Keyword Search Input */}
-              <div className="relative w-[180px] sm:w-[220px]">
-                <input
-                  type="text"
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  placeholder="Search By Order #, Custom"
-                  className="w-full bg-white border border-neutral-300 rounded-full px-5 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-455 focus:outline-none focus:border-brand-primary hover:border-neutral-400 transition-all shadow-sm"
-                />
-                {searchKeyword && (
+                  {/* More Search Button */}
                   <button
-                    onClick={() => setSearchKeyword("")}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                    onClick={() => setIsAdvanceSearchOpen(true)}
+                    className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
                   >
-                    <X size={11} />
+                    <Search size={13} />
+                    <span>More Search</span>
                   </button>
-                )}
-              </div>
+                </>
+              ) : activeSubTab === "failed_transaction" ||
+                activeSubTab === "refund_orders" ? (
+                <>
+                  {/* Date Picker Input (Pill style with calendar icon on right) */}
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={singleDate}
+                      onChange={(e) => handleSingleDateChange(e.target.value)}
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                    />
+                    <Calendar
+                      size={14}
+                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                    />
+                  </div>
 
-              {/* Order Status Select */}
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="appearance-none bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm"
-                >
-                  <option value="">Select Order Status</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="pending">Pending</option>
-                </select>
-                <ChevronDown
-                  size={13}
-                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-                />
-              </div>
+                  {/* Keyword Search Input */}
+                  <div className="relative w-[180px] sm:w-[220px]">
+                    <input
+                      type="text"
+                      value={searchKeyword}
+                      onChange={(e) => setSearchKeyword(e.target.value)}
+                      placeholder="Search By Order #, Custom"
+                      className="w-full bg-white border border-neutral-300 rounded-full px-5 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-455 focus:outline-none focus:border-brand-primary hover:border-neutral-400 transition-all shadow-sm"
+                    />
+                    {searchKeyword && (
+                      <button
+                        onClick={() => setSearchKeyword("")}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
 
-              {/* More Search Button */}
-              <button
-                onClick={() => setIsAdvanceSearchOpen(true)}
-                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
-              >
-                <Search size={13} />
-                <span>More Search</span>
-              </button>
-            </>
-          ) : isMoreTabActive ? (
-            <>
-              {/* Date Display Pill (Clickable to open Advance Search) */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsAdvanceSearchOpen(true)}
-                  className="bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm min-w-[135px] text-left flex items-center min-h-[32px]"
-                >
-                  {startDate === endDate
-                    ? formatDateDisplay(startDate)
-                    : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
-                </button>
-                <Calendar
-                  size={14}
-                  className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
-                />
-              </div>
+                  {/* Order Status Select */}
+                  <div className="relative">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="appearance-none bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm"
+                    >
+                      <option value="">Select Order Status</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="pending">Pending</option>
+                    </select>
+                    <ChevronDown
+                      size={13}
+                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                    />
+                  </div>
 
-              {/* More Search Button */}
-              <button
-                onClick={() => setIsAdvanceSearchOpen(true)}
-                className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
-              >
-                <Search size={13} />
-                <span>More Search</span>
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Date Display Pill (Clickable to open Advance Search) */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsAdvanceSearchOpen(true)}
-                  className="bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all min-w-[120px] text-left flex items-center min-h-[32px]"
-                >
-                  {startDate === endDate
-                    ? formatDateDisplay(startDate)
-                    : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
-                </button>
-                <Calendar
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-                />
-              </div>
-
-              {/* Keyword Search Input */}
-              <div className="relative w-[180px] sm:w-[220px]">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-                />
-                <input
-                  type="text"
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  placeholder="Search by Order #, Cust"
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary hover:border-neutral-350 focus:bg-white transition-all"
-                />
-                {searchKeyword && (
+                  {/* More Search Button */}
                   <button
-                    onClick={() => setSearchKeyword("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                    onClick={() => setIsAdvanceSearchOpen(true)}
+                    className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
                   >
-                    <X size={11} />
+                    <Search size={13} />
+                    <span>More Search</span>
                   </button>
-                )}
-              </div>
+                </>
+              ) : isMoreTabActive ? (
+                <>
+                  {/* Date Display Pill (Clickable to open Advance Search) */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsAdvanceSearchOpen(true)}
+                      className="bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm min-w-[135px] text-left flex items-center min-h-[32px]"
+                    >
+                      {startDate === endDate
+                        ? formatDateDisplay(startDate)
+                        : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
+                    </button>
+                    <Calendar
+                      size={14}
+                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
+                    />
+                  </div>
 
-              {/* Order Status Select */}
-              {activeSubTab === "orders" && (
-                <div className="relative">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-3 pr-8 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+                  {/* More Search Button */}
+                  <button
+                    onClick={() => setIsAdvanceSearchOpen(true)}
+                    className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
                   >
-                    <option value="">Order Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="preparing">In Preparing</option>
-                    <option value="ready">Ready For Pickup</option>
-                    <option value="completed">Order Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                  <ChevronDown
-                    size={13}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
-                  />
-                </div>
-              )}
+                    <Search size={13} />
+                    <span>More Search</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* Date Display Pill (Clickable to open Advance Search) */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsAdvanceSearchOpen(true)}
+                      className="bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all min-w-[120px] text-left flex items-center min-h-[32px]"
+                    >
+                      {startDate === endDate
+                        ? formatDateDisplay(startDate)
+                        : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
+                    </button>
+                    <Calendar
+                      size={14}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                    />
+                  </div>
 
-              {/* Payment Method Select */}
-              {/* {activeSubTab === "orders" && (
+                  {/* Keyword Search Input */}
+                  <div className="relative w-[180px] sm:w-[220px]">
+                    <Search
+                      size={14}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                    />
+                    <input
+                      type="text"
+                      value={searchKeyword}
+                      onChange={(e) => setSearchKeyword(e.target.value)}
+                      placeholder="Search by Order #, Cust"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary hover:border-neutral-350 focus:bg-white transition-all"
+                    />
+                    {searchKeyword && (
+                      <button
+                        onClick={() => setSearchKeyword("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Order Status Select */}
+                  {activeSubTab === "orders" && (
+                    <div className="relative">
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-3 pr-8 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+                      >
+                        <option value="">Order Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="preparing">In Preparing</option>
+                        <option value="ready">Ready For Pickup</option>
+                        <option value="completed">Order Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      <ChevronDown
+                        size={13}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Payment Method Select */}
+                  {/* {activeSubTab === "orders" && (
                 <div className="relative">
                   <select
                     value={paymentFilter}
@@ -830,84 +896,95 @@ export default function OrdersDashboard() {
                 </div>
               )} */}
 
-              {/* Advance Search Button */}
-              {activeSubTab === "orders" && (
-                <button
-                  onClick={() => setIsAdvanceSearchOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 rounded-lg bg-neutral-50 hover:bg-neutral-100 text-[12px] font-600 text-neutral-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
-                >
-                  <SlidersHorizontal size={13} />
-                  <span>Advance Search</span>
-                </button>
-              )}
-
-              {/* Clear Filters Button */}
-              <button
-                onClick={handleClearFilters}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-600 text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer"
-              >
-                <span>Clear</span>
-              </button>
-
-              {/* Manual Refresh Trigger */}
-              {activeSubTab === "orders" && (
-                <button
-                  onClick={fetchOrders}
-                  className={`p-1.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-brand-primary transition-all cursor-pointer ${
-                    loading ? "animate-spin" : ""
-                  }`}
-                  title="Refresh list"
-                >
-                  <RefreshCw size={13} />
-                </button>
-              )}
-
-            </>
-          )}
-          {/* Export Button */}
-          {["item_sales", "hourly_sales", "cash_out_summary", "monthly_sales_summary", "failed_transaction", "refund_orders"].includes(activeSubTab) && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
-                className="flex items-center gap-1.5 px-4 py-1.5 border border-neutral-300 rounded-full bg-white hover:bg-neutral-50 text-[12px] font-800 text-neutral-750 hover:text-brand-primary active:scale-95 transition-all cursor-pointer shadow-sm select-none"
-              >
-                <Download size={13} />
-                <span>Export</span>
-                <ChevronDown size={12} />
-              </button>
-              {isExportDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setIsExportDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-36 bg-white border border-neutral-250 rounded-xl shadow-lg py-1 z-40 animate-scale-up font-sans">
+                  {/* Advance Search Button */}
+                  {activeSubTab === "orders" && (
                     <button
-                      type="button"
-                      onClick={() => {
-                        handleExport("pdf");
-                        setIsExportDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                      onClick={() => setIsAdvanceSearchOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 rounded-lg bg-neutral-50 hover:bg-neutral-100 text-[12px] font-600 text-neutral-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
                     >
-                      Export as PDF
+                      <SlidersHorizontal size={13} />
+                      <span>Advance Search</span>
                     </button>
+                  )}
+
+                  {/* Clear Filters Button */}
+                  <button
+                    onClick={handleClearFilters}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-600 text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer"
+                  >
+                    <span>Clear</span>
+                  </button>
+
+                  {/* Manual Refresh Trigger */}
+                  {activeSubTab === "orders" && (
                     <button
-                      type="button"
-                      onClick={() => {
-                        handleExport("excel");
-                        setIsExportDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                      onClick={fetchOrders}
+                      className={`p-1.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-brand-primary transition-all cursor-pointer ${
+                        loading ? "animate-spin" : ""
+                      }`}
+                      title="Refresh list"
                     >
-                      Export as Excel
+                      <RefreshCw size={13} />
                     </button>
-                  </div>
+                  )}
                 </>
               )}
-            </div>
+              {/* Export Button */}
+              {[
+                "item_sales",
+                "hourly_sales",
+                "cash_out_summary",
+                "monthly_sales_summary",
+                "failed_transaction",
+                "refund_orders",
+              ].includes(activeSubTab) && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setIsExportDropdownOpen(!isExportDropdownOpen)
+                    }
+                    className="flex items-center gap-1.5 px-4 py-1.5 border border-neutral-300 rounded-full bg-white hover:bg-neutral-50 text-[12px] font-800 text-neutral-750 hover:text-brand-primary active:scale-95 transition-all cursor-pointer shadow-sm select-none"
+                  >
+                    <Download size={13} />
+                    <span>Export</span>
+                    <ChevronDown size={12} />
+                  </button>
+                  {isExportDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setIsExportDropdownOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-36 bg-white border border-neutral-250 rounded-xl shadow-lg py-1 z-40 animate-scale-up font-sans">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleExport("pdf");
+                            setIsExportDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                        >
+                          Export as PDF
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleExport("excel");
+                            setIsExportDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                        >
+                          Export as Excel
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
           )}
-          </>
-        )}
-      </div>
+        </div>
       </div>
 
       {/* ── Main View Container ── */}
@@ -980,23 +1057,15 @@ export default function OrdersDashboard() {
                 statusFilter={statusFilter}
                 selectedDate={singleDate}
               />
-            ) : activeSubTab === "cash_out_summary" ? (
+            ) : activeSubTab === "cash_out_summary" ||
+              activeSubTab === "cash_out_report" ? (
               <CashOutSummaryView
                 orders={orders}
                 startDate={startDate}
                 endDate={endDate}
               />
-            ) : [
-                "item_wise_sales",
-                "cash_out_report",
-              ].includes(activeSubTab) ? (
-              <DummyReportView
-                title={
-                  activeSubTab === "item_wise_sales"
-                    ? "Item Wise Sales"
-                    : "Cash Out Report"
-                }
-              />
+            ) : activeSubTab === "item_wise_sales" ? (
+              <DummyReportView title="Item Wise Sales" />
             ) : (
               <OrdersTableView
                 orders={filteredOrders}

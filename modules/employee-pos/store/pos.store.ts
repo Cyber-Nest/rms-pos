@@ -652,8 +652,8 @@ export const usePosStore = create<PosState>((set, get) => ({
       orderType,
       orderSource,
       branchId: branchId || undefined,
-      branchName: branchName || "Main Branch",
-      branchCode: branchCode || "MAIN",
+      branchName: branchName || undefined,
+      branchCode: branchCode || undefined,
       items: cartItems.map((item) => ({
         menuItemId: item.menuItemId,
         name: item.name,

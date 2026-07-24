@@ -88,9 +88,20 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   const fetchSummary = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders/sales-summary`, {
-        params: { date: selectedDate },
+        params: { date: selectedDate, ...(branchId ? { branchId } : {}) },
         timeout: 5000
       });
       if (res.data.success) {
@@ -122,12 +133,24 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
 
   const handleSaveDeposit = async (type: 'cash' | 'card' | 'accountPay') => {
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const payload = {
         date: selectedDate,
         cashAmount: parseFloat(cashDeposit) || 0,
         cardAmount: parseFloat(cardDeposit) || 0,
         accountPayAmount: parseFloat(accountPayDeposit) || 0,
+        ...(branchId ? { branchId } : {})
       };
 
       const res = await axios.post(`${apiUrl}/orders/sales-summary/deposit`, payload);
@@ -146,8 +169,19 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   };
 
   const handleDownloadSalesSummaryPdf = () => {
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const downloadUrl = `${apiUrl}/orders/sales-summary/pdf?date=${selectedDate}`;
+    const downloadUrl = `${apiUrl}/orders/sales-summary/pdf?date=${selectedDate}${branchId ? `&branchId=${branchId}` : ''}`;
     window.open(downloadUrl, '_blank');
   };
 
