@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { 
   X, LogOut, LayoutDashboard, KeyRound, Clock, ShoppingBag, 
   Receipt, ArrowLeftRight, Wallet, Users, UtensilsCrossed, 
-  Settings, UserCheck, Lock, Bell, BarChart3, Power, ChefHat, TrendingUp, Truck, Car
+  Settings, UserCheck, Lock, Bell, BarChart3, Power, ChefHat, TrendingUp, Truck, Car, QrCode
 } from 'lucide-react';
 import CheckInOutModal from './CheckInOutModal';
+import StoreQrModal from './StoreQrModal';
 
 interface POSSidebarDrawerProps {
   isOpen: boolean;
@@ -17,13 +18,15 @@ interface POSSidebarDrawerProps {
 
 export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectTab }: POSSidebarDrawerProps) {
   const [isCheckInOutOpen, setIsCheckInOutOpen] = useState(false);
+  const [isStoreQrOpen, setIsStoreQrOpen] = useState(false);
 
-  if (!isOpen && !isCheckInOutOpen) return null;
+  if (!isOpen && !isCheckInOutOpen && !isStoreQrOpen) return null;
 
   const menuItems = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'login_code', label: 'Login As Code', icon: KeyRound },
     { key: 'check_in_out', label: 'Check-In/Out', icon: Clock },
+    { key: 'store_qr', label: 'Store QR Code', icon: QrCode },
     { key: 'pos', label: 'POS', icon: ShoppingBag },
     { key: 'kitchen', label: 'Kitchen View', icon: ChefHat },
     { key: 'reception_view', label: 'Reception View', icon: TrendingUp },
@@ -91,6 +94,12 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                     onClick={() => {
                       if (item.key === 'check_in_out') {
                         setIsCheckInOutOpen(true);
+                        onClose();
+                        return;
+                      }
+
+                      if (item.key === 'store_qr') {
+                        setIsStoreQrOpen(true);
                         onClose();
                         return;
                       }
@@ -167,6 +176,12 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
         isOpen={isCheckInOutOpen}
         onClose={() => setIsCheckInOutOpen(false)}
         onSuccess={() => {}}
+      />
+
+      {/* Store QR Code Display & Download Modal */}
+      <StoreQrModal
+        isOpen={isStoreQrOpen}
+        onClose={() => setIsStoreQrOpen(false)}
       />
     </>
   );
