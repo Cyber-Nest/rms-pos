@@ -89,8 +89,9 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
         prepaidSales: 111.75,
         cashSales: 18.71,
         cardSales: 148.18,
-        accountPay: 0,
-        cardTip: 37.35,
+        prepaidTip: 13.57,
+        terminalTip: 23.78,
+        totalTip: 37.35,
         totalSales: 315.99,
         driverEarning: 80.85,
         expectedPayout: 62.14
@@ -101,8 +102,9 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
         prepaidSales: 85.00,
         cashSales: 42.50,
         cardSales: 0.00,
-        accountPay: 0,
-        cardTip: 12.00,
+        prepaidTip: 12.00,
+        terminalTip: 0.00,
+        totalTip: 12.00,
         totalSales: 127.50,
         driverEarning: 24.00,
         expectedPayout: -18.50
@@ -795,8 +797,9 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 <th className="py-3 px-4 text-right">Prepaid (Online)</th>
                 <th className="py-3 px-4 text-right">Cash</th>
                 <th className="py-3 px-4 text-right">Card (Terminal)</th>
-                <th className="py-3 px-4 text-right">Account Pay</th>
-                <th className="py-3 px-4 text-right">Card Tip</th>
+                <th className="py-3 px-4 text-right">Prepaid Tip</th>
+                <th className="py-3 px-4 text-right">Terminal Tip</th>
+                <th className="py-3 px-4 text-right">Total Tip</th>
                 <th className="py-3 px-4 text-right">Total Sales</th>
                 <th className="py-3 px-4 text-right">Driver Earning</th>
                 <th className="py-3 px-4 text-right">Expected Payout</th>
@@ -804,25 +807,32 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
             </thead>
             <tbody className="divide-y divide-neutral-200/60 font-650">
               {driverReport && driverReport.length > 0 ? (
-                driverReport.map((drv: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-neutral-50/80 transition-colors text-neutral-800">
-                    <td className="py-3 px-4 font-800 text-neutral-900">{drv.driverName || drv.driver || drv.name}</td>
-                    <td className="py-3 px-4 text-center font-800 bg-neutral-50/80">{drv.deliveryCount ?? drv.deliveries ?? drv.count ?? 0}</td>
-                    <td className="py-3 px-4 text-right font-700 text-blue-700">${Number(drv.prepaidSales || drv.prepaid || 0).toFixed(2)}</td>
-                    <td className="py-3 px-4 text-right font-700 text-emerald-700">${Number(drv.cashSales || drv.cash || 0).toFixed(2)}</td>
-                    <td className="py-3 px-4 text-right font-700 text-purple-700">${Number(drv.cardSales || drv.card || 0).toFixed(2)}</td>
-                    <td className="py-3 px-4 text-right text-neutral-400">${Number(drv.accountPay || 0).toFixed(2)}</td>
-                    <td className="py-3 px-4 text-right font-700 text-amber-700">${Number(drv.cardTip || drv.tips || 0).toFixed(2)}</td>
-                    <td className="py-3 px-4 text-right font-800 text-neutral-900">${Number(drv.totalSales || drv.total || 0).toFixed(2)}</td>
-                    <td className="py-3 px-4 text-right font-800 text-brand-primary">${Number(drv.driverEarning || drv.earning || 0).toFixed(2)}</td>
-                    <td className={`py-3 px-4 text-right font-900 text-sm ${Number(drv.expectedPayout || drv.payout || 0) >= 0 ? 'text-emerald-700 bg-emerald-50/60' : 'text-rose-600 bg-rose-50/60'}`}>
-                      ${Number(drv.expectedPayout || drv.payout || 0).toFixed(2)}
-                    </td>
-                  </tr>
-                ))
+                driverReport.map((drv: any, idx: number) => {
+                  const prepaidTip = Number(drv.prepaidTip || drv.prepaidTips || 0);
+                  const terminalTip = Number(drv.terminalTip || drv.terminalTips || 0);
+                  const totalTip = Number(drv.totalTip || drv.cardTip || drv.tips || (prepaidTip + terminalTip));
+
+                  return (
+                    <tr key={idx} className="hover:bg-neutral-50/80 transition-colors text-neutral-800">
+                      <td className="py-3 px-4 font-800 text-neutral-900">{drv.driverName || drv.driver || drv.name}</td>
+                      <td className="py-3 px-4 text-center font-800 bg-neutral-50/80">{drv.deliveryCount ?? drv.deliveries ?? drv.count ?? 0}</td>
+                      <td className="py-3 px-4 text-right font-700 text-blue-700">${Number(drv.prepaidSales || drv.prepaid || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-emerald-700">${Number(drv.cashSales || drv.cash || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-purple-700">${Number(drv.cardSales || drv.card || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-blue-800">${prepaidTip.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-purple-800">${terminalTip.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-800 text-amber-700">${totalTip.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-800 text-neutral-900">${Number(drv.totalSales || drv.total || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-800 text-brand-primary">${Number(drv.driverEarning || drv.earning || 0).toFixed(2)}</td>
+                      <td className={`py-3 px-4 text-right font-900 text-sm ${Number(drv.expectedPayout || drv.payout || 0) >= 0 ? 'text-emerald-700 bg-emerald-50/60' : 'text-rose-600 bg-rose-50/60'}`}>
+                        ${Number(drv.expectedPayout || drv.payout || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={10} className="py-5 px-4 text-center text-neutral-400 font-600 text-xs">No driver records found for selected date.</td>
+                  <td colSpan={11} className="py-5 px-4 text-center text-neutral-400 font-600 text-xs">No driver records found for selected date.</td>
                 </tr>
               )}
             </tbody>

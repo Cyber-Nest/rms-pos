@@ -114,15 +114,15 @@ export default function ThermalDriverSalesReport({ data }: ThermalDriverSalesRep
           )}
         </div>
 
-        {/* Coupon Reconciliation Section */}
-        <div className="text-center font-800 text-[10.5px] my-1">
+        {/* Coupon Reconciliation Section (Commented out) */}
+        {/* <div className="text-center font-800 text-[10.5px] my-1">
           ------- Coupon Reconciliation -------
-        </div>
+        </div> */}
 
-        {/* Employee Banks / Drops Details */}
-        <div className="text-center font-800 text-[10.5px] my-1">
+        {/* Employee Banks / Drops Details (Commented out) */}
+        {/* <div className="text-center font-800 text-[10.5px] my-1">
           ------- Employee Banks/Drops Details -------
-        </div>
+        </div> */}
 
         {/* Employee Sales Summary (Exact Clean Match with Image 1 Excel Sheet) */}
         <div className="border-t border-dashed border-neutral-800 pt-1.5 mt-2 space-y-1 text-[10px]">

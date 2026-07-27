@@ -65,7 +65,7 @@ const DUMMY_ORDERS_MAP: Record<string, OrderRow[]> = {
 
 export default function DriverDropDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedDriverId, setSelectedDriverId] = useState<string>("6");
+  const [selectedDriverId, setSelectedDriverId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [driverSearchInput, setDriverSearchInput] = useState<string>("");
   
@@ -78,27 +78,54 @@ export default function DriverDropDashboard() {
   const [dropCash, setDropCash] = useState<string>("0.00");
   const [dropCreditCard, setDropCreditCard] = useState<string>("0.00");
   const [dropOther, setDropOther] = useState<string>("0.00");
-  const [dropCheck1, setDropCheck1] = useState<string>("0.00");
-  const [dropCheck2, setDropCheck2] = useState<string>("0.00");
-  const [dropCheck3, setDropCheck3] = useState<string>("0.00");
 
   // ── Payout Confirmation Modal States ──
   const [hasAdditionalCommissionToggle, setHasAdditionalCommissionToggle] = useState<boolean>(true);
   const [additionalCommission, setAdditionalCommission] = useState<string>("1.50");
   const [additionalReason, setAdditionalReason] = useState<string>("Rain Allowance");
 
-  // Active Driver Info
+  // Active Driver Info (Returns null if no driver selected / searched)
   const selectedDriver = useMemo(() => {
-    return DUMMY_DRIVERS.find(d => d.id === selectedDriverId || d.driverId.toLowerCase() === driverSearchInput.toLowerCase()) || DUMMY_DRIVERS[0];
+    if (!selectedDriverId && !driverSearchInput.trim()) return null;
+    return DUMMY_DRIVERS.find(d => 
+      d.id === selectedDriverId || 
+      d.driverId.toLowerCase() === driverSearchInput.trim().toLowerCase() ||
+      d.name.toLowerCase().includes(driverSearchInput.trim().toLowerCase())
+    ) || null;
   }, [selectedDriverId, driverSearchInput]);
 
   // Active Orders
   const orders = useMemo(() => {
+    if (!selectedDriver) return [];
     return DUMMY_ORDERS_MAP[selectedDriver.id] || [];
   }, [selectedDriver]);
 
   // ── Calculation Logic ──
   const calculations = useMemo(() => {
+    if (!selectedDriver) {
+      return {
+        totalOrders: 0,
+        totalCancels: 0,
+        totalSales: 0,
+        prepaidSales: 0,
+        prepaidTips: 0,
+        totalNewSales: 0,
+        terminalSales: 0,
+        terminalTips: 0,
+        cashSales: 0,
+        saleDue: 0,
+        driverBaseCommission: 0,
+        driverAdditionalCommission: 0,
+        driverTotalCommission: 0,
+        totalTipsEarned: 0,
+        totalDriverEarning: 0,
+        netCashPayoutToDriver: 0,
+        totalEnteredDrop: 0,
+        numChecks: 0,
+        ratePerOrder: 6.00,
+      };
+    }
+
     const totalOrders = orders.length;
     const totalCancels = 0;
     const totalSales = orders.reduce((sum, o) => sum + o.total, 0);
@@ -129,8 +156,7 @@ export default function DriverDropDashboard() {
     const numCash = parseFloat(dropCash) || 0;
     const numCard = parseFloat(dropCreditCard) || 0;
     const numOther = parseFloat(dropOther) || 0;
-    const numChecks = (parseFloat(dropCheck1) || 0) + (parseFloat(dropCheck2) || 0) + (parseFloat(dropCheck3) || 0);
-    const totalEnteredDrop = numCash + numCard + numOther + numChecks;
+    const totalEnteredDrop = numCash + numCard + numOther;
 
     // Total Driver Earnings & Net Cash Settlement
     const totalDriverEarning = totalTipsEarned + driverTotalCommission;
@@ -154,19 +180,19 @@ export default function DriverDropDashboard() {
       totalDriverEarning,
       netCashPayoutToDriver,
       totalEnteredDrop,
-      numChecks,
+      numChecks: 0,
       ratePerOrder: 6.00,
     };
-  }, [orders, dropCash, dropCreditCard, dropOther, dropCheck1, dropCheck2, dropCheck3, hasAdditionalCommissionToggle, additionalCommission]);
+  }, [selectedDriver, orders, dropCash, dropCreditCard, dropOther, hasAdditionalCommissionToggle, additionalCommission]);
 
-  // Submit button is disabled ONLY when Sale Due > 0
-  const isSubmitDisabled = calculations.saleDue > 0;
+  // Submit button is disabled if no driver selected OR Sale Due > 0
+  const isSubmitDisabled = !selectedDriver || calculations.saleDue > 0;
 
   // Data for Thermal Sales Report
   const salesReportData: DriverDropSummaryData = useMemo(() => {
     return {
-      employeeId: selectedDriver.id,
-      employeeName: selectedDriver.name,
+      employeeId: selectedDriver ? selectedDriver.id : "0",
+      employeeName: selectedDriver ? selectedDriver.name : "DRIVER",
       reportDate: new Date(selectedDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
       reportTime: "14:23:07",
       orders: orders.map(o => ({
@@ -190,7 +216,7 @@ export default function DriverDropDashboard() {
       cashDropped: parseFloat(dropCash) || 0,
       creditCardDrop: parseFloat(dropCreditCard) || 0,
       otherDrops: parseFloat(dropOther) || 0,
-      checksDropped: calculations.numChecks,
+      checksDropped: 0,
       totalDue: calculations.saleDue,
       totalPrepaidTips: calculations.prepaidTips,
       paidPrepaidTips: 0,
@@ -208,7 +234,7 @@ export default function DriverDropDashboard() {
   // Data for Thermal Commission Slip
   const commissionSlipData: DriverCommissionSlipData = useMemo(() => {
     return {
-      driverName: selectedDriver.name,
+      driverName: selectedDriver ? selectedDriver.name : "DRIVER",
       reportDate: new Date(selectedDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
       reportTime: "14:23:02",
       commissionSales: calculations.totalSales,
@@ -234,6 +260,10 @@ export default function DriverDropDashboard() {
   };
 
   const handleOpenSettlement = () => {
+    if (!selectedDriver) {
+      toast.error("Please select a driver first!");
+      return;
+    }
     if (isSubmitDisabled) {
       toast.error(`Cannot submit settlement while Sale Due is $${calculations.saleDue.toFixed(2)}. Reconciliation must equal $0.00.`);
       return;
@@ -242,6 +272,7 @@ export default function DriverDropDashboard() {
   };
 
   const handleFinalizeSettlement = () => {
+    if (!selectedDriver) return;
     setIsSettlementModalOpen(false);
     toast.success(
       `Drop settlement finalized for ${selectedDriver.name}! Net Cash Payout: $${calculations.netCashPayoutToDriver.toFixed(2)}`
@@ -253,9 +284,6 @@ export default function DriverDropDashboard() {
     setDropCash("0.00");
     setDropCreditCard("0.00");
     setDropOther("0.00");
-    setDropCheck1("0.00");
-    setDropCheck2("0.00");
-    setDropCheck3("0.00");
     setAdditionalCommission("0.00");
     setAdditionalReason("");
     toast("Drop entries reset to 0.00");
@@ -270,17 +298,11 @@ export default function DriverDropDashboard() {
       {/* ── Secondary Control Bar ── */}
       <div className="bg-white border-b border-neutral-200 px-6 py-3.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 shadow-sm flex-shrink-0 select-none">
         
-        {/* Left Side: Title & Sub-tabs */}
+        {/* Left Side: Title */}
         <div className="flex items-center gap-4 flex-wrap">
           <h1 className="text-xl font-900 text-neutral-900 tracking-tight leading-none min-w-[140px] flex items-center gap-2">
             <span>Driver Drop</span>
           </h1>
-
-          <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200">
-            <button className="px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase bg-brand-primary text-white shadow-sm cursor-default">
-              Driver Drop & Settlement
-            </button>
-          </div>
         </div>
 
         {/* Right Side: Date Filter & Action Print Buttons */}
@@ -296,16 +318,34 @@ export default function DriverDropDashboard() {
           </div>
 
           <button 
-            onClick={() => setActivePrintModal("sales")}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
+            onClick={() => {
+              if (!selectedDriver) {
+                toast.error("Please select a driver first!");
+                return;
+              }
+              setActivePrintModal("sales");
+            }}
+            disabled={!selectedDriver}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none ${
+              selectedDriver ? 'bg-[#851532] hover:bg-[#6b0f27] active:scale-95' : 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60'
+            }`}
           >
             <Printer size={13} />
             <span>Sales Report Slip</span>
           </button>
 
           <button 
-            onClick={() => setActivePrintModal("commission")}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
+            onClick={() => {
+              if (!selectedDriver) {
+                toast.error("Please select a driver first!");
+                return;
+              }
+              setActivePrintModal("commission");
+            }}
+            disabled={!selectedDriver}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none ${
+              selectedDriver ? 'bg-[#851532] hover:bg-[#6b0f27] active:scale-95' : 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60'
+            }`}
           >
             <FileText size={13} />
             <span>Commission Slip</span>
@@ -324,7 +364,7 @@ export default function DriverDropDashboard() {
               <span>Driver Selection & Profile</span>
             </span>
             <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">
-              Shift Active
+              {selectedDriver ? "Shift Active" : "No Driver Selected"}
             </span>
           </div>
 
@@ -333,14 +373,14 @@ export default function DriverDropDashboard() {
             {/* Driver Select / Search Column */}
             <div className="lg:col-span-5 space-y-3">
               <label className="text-[10px] font-800 uppercase tracking-wider text-neutral-500 block">
-                Select Driver / Search by ID
+                Select Driver / Search by ID or Name
               </label>
 
               <div className="relative">
                 <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
                 <input 
                   type="text"
-                  placeholder="Enter Driver ID (e.g. 6 or DRV-006)"
+                  placeholder="Enter Driver ID (e.g. 6) or Name..."
                   value={driverSearchInput}
                   onChange={(e) => setDriverSearchInput(e.target.value)}
                   className="w-full bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-2 text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:bg-white transition-all font-600"
@@ -349,13 +389,18 @@ export default function DriverDropDashboard() {
 
               <div className="flex flex-wrap gap-2 pt-1">
                 {DUMMY_DRIVERS.map((d) => {
-                  const isSelected = selectedDriver.id === d.id;
+                  const isSelected = selectedDriver?.id === d.id;
                   return (
                     <button
                       key={d.id}
                       onClick={() => {
-                        setSelectedDriverId(d.id);
-                        setDriverSearchInput("");
+                        if (isSelected) {
+                          setSelectedDriverId("");
+                          setDriverSearchInput("");
+                        } else {
+                          setSelectedDriverId(d.id);
+                          setDriverSearchInput("");
+                        }
                       }}
                       className={`px-3 py-1.5 rounded-lg text-[11px] font-800 uppercase transition-all cursor-pointer border flex items-center gap-2 ${
                         isSelected 
@@ -370,340 +415,361 @@ export default function DriverDropDashboard() {
               </div>
             </div>
 
-            {/* Active Driver Profile Info */}
-            <div className="lg:col-span-7 bg-neutral-50 border border-neutral-200 rounded-xl p-4 flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between border-b border-neutral-200/80 pb-2.5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-primary text-white font-900 text-sm flex items-center justify-center shadow-xs">
-                    #{selectedDriver.id}
+            {/* Active Driver Profile Info OR Empty State Placeholder */}
+            {selectedDriver ? (
+              <div className="lg:col-span-7 bg-neutral-50 border border-neutral-200 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                <div className="flex items-center justify-between border-b border-neutral-200/80 pb-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand-primary text-white font-900 text-sm flex items-center justify-center shadow-xs">
+                      #{selectedDriver.id}
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-900 text-neutral-900 tracking-tight flex items-center gap-2">
+                        {selectedDriver.name}
+                        <span className="text-[10px] font-800 px-2 py-0.5 rounded bg-brand-primary-light text-brand-primary border border-brand-primary-muted uppercase">
+                          ID: {selectedDriver.driverId}
+                        </span>
+                      </h2>
+                      <p className="text-[11px] text-neutral-500 font-600 flex items-center gap-3 mt-0.5">
+                        <span>📞 {selectedDriver.phone}</span>
+                        <span>🚗 {selectedDriver.vehicle}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-sm font-900 text-neutral-900 tracking-tight flex items-center gap-2">
-                      {selectedDriver.name}
-                      <span className="text-[10px] font-800 px-2 py-0.5 rounded bg-brand-primary-light text-brand-primary border border-brand-primary-muted uppercase">
-                        ID: {selectedDriver.driverId}
-                      </span>
-                    </h2>
-                    <p className="text-[11px] text-neutral-500 font-600 flex items-center gap-3 mt-0.5">
-                      <span>📞 {selectedDriver.phone}</span>
-                      <span>🚗 {selectedDriver.vehicle}</span>
-                    </p>
-                  </div>
+
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    {selectedDriver.status}
+                  </span>
                 </div>
 
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  {selectedDriver.status}
+                {/* Quick Stat Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-[11px]">
+                  <div className="bg-white p-2 rounded-lg border border-neutral-200">
+                    <p className="text-[9.5px] font-800 text-neutral-500 uppercase">Deliveries</p>
+                    <p className="font-900 text-neutral-900 text-sm">{calculations.totalOrders}</p>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-neutral-200">
+                    <p className="text-[9.5px] font-800 text-neutral-500 uppercase">Total Sales</p>
+                    <p className="font-900 text-emerald-700 text-sm">${calculations.totalSales.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-neutral-200">
+                    <p className="text-[9.5px] font-800 text-neutral-500 uppercase">DC Earned</p>
+                    <p className="font-900 text-brand-primary text-sm">${calculations.driverTotalCommission.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-neutral-200">
+                    <p className="text-[9.5px] font-800 text-neutral-500 uppercase">Cash Collected</p>
+                    <p className="font-900 text-rose-700 text-sm">${calculations.cashSales.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="lg:col-span-7 bg-neutral-50 border border-dashed border-neutral-300 rounded-xl p-5 flex flex-col items-center justify-center text-center space-y-2">
+                <div className="w-10 h-10 rounded-full bg-neutral-200 text-neutral-500 flex items-center justify-center">
+                  <User size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-900 text-neutral-800 uppercase tracking-wide">No Driver Selected</h3>
+                  <p className="text-[11px] text-neutral-500 max-w-sm font-500 mt-0.5">
+                    Select a driver from the left chips or search by ID/Name to load shift settlement.
+                  </p>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        {/* ── Conditional Lower Dashboard Sections (Only shown when Driver is Selected) ── */}
+        {selectedDriver ? (
+          <>
+            {/* ── Section 2: Two Column Reconciliation Cards ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start animate-fade-in">
+              
+              {/* ==================== LEFT COLUMN: SHIFT SALES RECONCILIATION ==================== */}
+              <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
+                <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
+                  <span>Shift Sales Reconciliation</span>
+                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">Excel Sync</span>
+                </div>
+
+                <table className="w-full text-left text-[12px]">
+                  <tbody className="divide-y divide-neutral-200/60 font-650">
+                    <tr>
+                      <td className="py-2.5 px-4 text-neutral-700">Total orders</td>
+                      <td className="py-2.5 px-4 text-right font-800 text-neutral-900">{calculations.totalOrders}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 px-4 text-neutral-700">Total cancels</td>
+                      <td className="py-2.5 px-4 text-right font-800 text-neutral-900">{calculations.totalCancels}</td>
+                    </tr>
+
+                    <tr className="bg-neutral-100/80 font-800 text-neutral-900 border-t border-neutral-200">
+                      <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Total sales</td>
+                      <td className="py-2.5 px-4 text-right text-emerald-700 font-900">${calculations.totalSales.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-neutral-600 pl-6">Prepaid sales (-)</td>
+                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.prepaidSales.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-neutral-600 pl-6">Prepaid Tips (-)</td>
+                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.prepaidTips.toFixed(2)}</td>
+                    </tr>
+
+                    <tr className="bg-orange-50/60 font-900 text-neutral-900 border-y border-brand-primary/20">
+                      <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Total new sales (=)</td>
+                      <td className="py-2.5 px-4 text-right text-brand-primary font-900">${calculations.totalNewSales.toFixed(2)}</td>
+                    </tr>
+
+                    <tr>
+                      <td className="py-2 px-4 text-neutral-600 pl-6">Terminal sales (-)</td>
+                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.terminalSales.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-neutral-600 pl-6">Terminal Tips (-)</td>
+                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.terminalTips.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-4 text-neutral-600 pl-6">Cash Sales (-)</td>
+                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.cashSales.toFixed(2)}</td>
+                    </tr>
+
+                    <tr className="bg-neutral-900 text-white font-900">
+                      <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Sale Due (=)</td>
+                      <td className="py-2.5 px-4 text-right text-emerald-400 font-900 text-sm">${calculations.saleDue.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ==================== RIGHT COLUMN: DRIVER SETTLEMENT PAYOUT ==================== */}
+              <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
+                    <span>Driver Settlement Payout</span>
+                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">$6.00 / Delivery Order</span>
+                  </div>
+
+                  <table className="w-full text-left text-[12px]">
+                    <tbody className="divide-y divide-neutral-200/60 font-650">
+                      <tr>
+                        <td className="py-2.5 px-4 text-neutral-800 font-700">Driver Base Commission ($6.00 / Order)</td>
+                        <td className="py-2.5 px-4 text-right font-800 text-brand-primary">${calculations.driverBaseCommission.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-4 text-neutral-700">Prepaid Tips</td>
+                        <td className="py-2.5 px-4 text-right font-700 text-neutral-900">${calculations.prepaidTips.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-4 text-neutral-700">Terminal Tips</td>
+                        <td className="py-2.5 px-4 text-right font-700 text-neutral-900">${calculations.terminalTips.toFixed(2)}</td>
+                      </tr>
+
+                      <tr className="bg-orange-50/60 font-900 text-neutral-900 border-y border-brand-primary/20">
+                        <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Total Driver Earnings (Comm + Tips)</td>
+                        <td className="py-2.5 px-4 text-right text-brand-primary font-900">${calculations.totalDriverEarning.toFixed(2)}</td>
+                      </tr>
+
+                      <tr>
+                        <td className="py-2.5 px-4 text-rose-700 font-700">- Less Cash Kept by Driver (Cash Sales)</td>
+                        <td className="py-2.5 px-4 text-right font-800 text-rose-600">-${calculations.cashSales.toFixed(2)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Net Payout Callout Footer Box */}
+                <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-800 uppercase text-neutral-500 tracking-wider">Net Cash Payout to Driver</p>
+                    <p className="text-2xl font-900 text-emerald-700 mt-0.5">${calculations.netCashPayoutToDriver.toFixed(2)}</p>
+                  </div>
+
+                  <button 
+                    onClick={() => setActivePrintModal("both")}
+                    className="px-5 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white font-850 text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95 hover:shadow-sm select-none"
+                  >
+                    <Printer size={14} />
+                    <span>Print Both Slips</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* ── Section 3: Enter the Drop Below Section ── */}
+            <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden animate-fade-in">
+              <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Wallet size={15} />
+                  <span>ENTER THE DROP BELOW</span>
+                </span>
+                <span className="text-[10px] font-700 text-white/80">
+                  Total Drop Entered: <strong className="text-white">${calculations.totalEnteredDrop.toFixed(2)}</strong>
                 </span>
               </div>
 
-              {/* Quick Stat Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-[11px]">
-                <div className="bg-white p-2 rounded-lg border border-neutral-200">
-                  <p className="text-[9.5px] font-800 text-neutral-500 uppercase">Deliveries</p>
-                  <p className="font-900 text-neutral-900 text-sm">{calculations.totalOrders}</p>
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-xs font-700">
+                  
+                  {/* Cash Input */}
+                  <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-1.5">
+                    <label className="text-neutral-700 font-800 uppercase block text-[11px]">Cash</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        value={dropCash}
+                        onChange={(e) => setDropCash(e.target.value)}
+                        className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-left font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-sm shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Credit Card Input */}
+                  <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-1.5">
+                    <label className="text-neutral-700 font-800 uppercase block text-[11px]">Credit Card</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        value={dropCreditCard}
+                        onChange={(e) => setDropCreditCard(e.target.value)}
+                        className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-left font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-sm shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Other Input */}
+                  <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-1.5">
+                    <label className="text-neutral-700 font-800 uppercase block text-[11px]">Other</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
+                      <input 
+                        type="number"
+                        step="0.01"
+                        value={dropOther}
+                        onChange={(e) => setDropOther(e.target.value)}
+                        className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-left font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-sm shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
                 </div>
-                <div className="bg-white p-2 rounded-lg border border-neutral-200">
-                  <p className="text-[9.5px] font-800 text-neutral-500 uppercase">Total Sales</p>
-                  <p className="font-900 text-emerald-700 text-sm">${calculations.totalSales.toFixed(2)}</p>
+
+                {/* Total Due Row */}
+                <div className="bg-neutral-100/70 p-3.5 rounded-xl border border-neutral-200 flex items-center justify-between">
+                  <span className="font-900 text-neutral-900 uppercase text-xs">TOTAL DUE</span>
+                  <span className="font-900 text-brand-primary text-lg font-mono">${calculations.saleDue.toFixed(2)}</span>
                 </div>
-                <div className="bg-white p-2 rounded-lg border border-neutral-200">
-                  <p className="text-[9.5px] font-800 text-neutral-500 uppercase">DC Earned</p>
-                  <p className="font-900 text-brand-primary text-sm">${calculations.driverTotalCommission.toFixed(2)}</p>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-neutral-200">
-                  <p className="text-[9.5px] font-800 text-neutral-500 uppercase">Cash Collected</p>
-                  <p className="font-900 text-rose-700 text-sm">${calculations.cashSales.toFixed(2)}</p>
+
+                {/* Bottom Action Bar */}
+                <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200">
+                  <button 
+                    onClick={handleCancelDropInputs}
+                    className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-800 text-[11px] uppercase rounded-xl transition-all cursor-pointer"
+                  >
+                    CANCEL
+                  </button>
+
+                  <button 
+                    onClick={handleOpenSettlement}
+                    disabled={isSubmitDisabled}
+                    className={`px-6 py-2.5 font-900 text-[12px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-1.5 ${
+                      isSubmitDisabled
+                        ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60'
+                        : 'bg-[#851532] hover:bg-[#6b0f27] text-white cursor-pointer active:scale-95'
+                    }`}
+                  >
+                    {isSubmitDisabled && <Lock size={13} />}
+                    <span>SUBMIT (CLOSE DRIVER)</span>
+                  </button>
                 </div>
               </div>
+
             </div>
 
-          </div>
-        </div>
-
-        {/* ── Section 2: Two Column Reconciliation Cards ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          
-          {/* ==================== LEFT COLUMN: SHIFT SALES RECONCILIATION ==================== */}
-          <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
-            <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
-              <span>Shift Sales Reconciliation</span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">Excel Sync</span>
-            </div>
-
-            <table className="w-full text-left text-[12px]">
-              <tbody className="divide-y divide-neutral-200/60 font-650">
-                <tr>
-                  <td className="py-2.5 px-4 text-neutral-700">Total orders</td>
-                  <td className="py-2.5 px-4 text-right font-800 text-neutral-900">{calculations.totalOrders}</td>
-                </tr>
-                <tr>
-                  <td className="py-2.5 px-4 text-neutral-700">Total cancels</td>
-                  <td className="py-2.5 px-4 text-right font-800 text-neutral-900">{calculations.totalCancels}</td>
-                </tr>
-
-                <tr className="bg-neutral-100/80 font-800 text-neutral-900 border-t border-neutral-200">
-                  <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Total sales</td>
-                  <td className="py-2.5 px-4 text-right text-emerald-700 font-900">${calculations.totalSales.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 text-neutral-600 pl-6">Prepaid sales (-)</td>
-                  <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.prepaidSales.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 text-neutral-600 pl-6">Prepaid Tips (-)</td>
-                  <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.prepaidTips.toFixed(2)}</td>
-                </tr>
-
-                <tr className="bg-orange-50/60 font-900 text-neutral-900 border-y border-brand-primary/20">
-                  <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Total new sales (=)</td>
-                  <td className="py-2.5 px-4 text-right text-brand-primary font-900">${calculations.totalNewSales.toFixed(2)}</td>
-                </tr>
-
-                <tr>
-                  <td className="py-2 px-4 text-neutral-600 pl-6">Terminal sales (-)</td>
-                  <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.terminalSales.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 text-neutral-600 pl-6">Terminal Tips (-)</td>
-                  <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.terminalTips.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 text-neutral-600 pl-6">Cash Sales (-)</td>
-                  <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.cashSales.toFixed(2)}</td>
-                </tr>
-
-                <tr className="bg-neutral-900 text-white font-900">
-                  <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Sale Due (=)</td>
-                  <td className="py-2.5 px-4 text-right text-emerald-400 font-900 text-sm">${calculations.saleDue.toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* ==================== RIGHT COLUMN: DRIVER SETTLEMENT PAYOUT ==================== */}
-          <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
-            <div>
+            {/* ── Section 4: Delivered Orders Breakdown Table ── */}
+            <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden animate-fade-in">
               <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
-                <span>Driver Settlement Payout</span>
-                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">$6.00 / Delivery Order</span>
+                <span>Delivered Orders Breakdown</span>
+                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">{orders.length} Orders</span>
               </div>
 
-              <table className="w-full text-left text-[12px]">
-                <tbody className="divide-y divide-neutral-200/60 font-650">
-                  <tr>
-                    <td className="py-2.5 px-4 text-neutral-800 font-700">Driver Base Commission ($6.00 / Order)</td>
-                    <td className="py-2.5 px-4 text-right font-800 text-brand-primary">${calculations.driverBaseCommission.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 px-4 text-neutral-700">Prepaid Tips</td>
-                    <td className="py-2.5 px-4 text-right font-700 text-neutral-900">${calculations.prepaidTips.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 px-4 text-neutral-700">Terminal Tips</td>
-                    <td className="py-2.5 px-4 text-right font-700 text-neutral-900">${calculations.terminalTips.toFixed(2)}</td>
-                  </tr>
-
-                  <tr className="bg-orange-50/60 font-900 text-neutral-900 border-y border-brand-primary/20">
-                    <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Total Driver Earnings (Comm + Tips)</td>
-                    <td className="py-2.5 px-4 text-right text-brand-primary font-900">${calculations.totalDriverEarning.toFixed(2)}</td>
-                  </tr>
-
-                  <tr>
-                    <td className="py-2.5 px-4 text-rose-700 font-700">- Less Cash Kept by Driver (Cash Sales)</td>
-                    <td className="py-2.5 px-4 text-right font-800 text-rose-600">-${calculations.cashSales.toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Net Payout Callout Footer Box */}
-            <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-800 uppercase text-neutral-500 tracking-wider">Net Cash Payout to Driver</p>
-                <p className="text-2xl font-900 text-emerald-700 mt-0.5">${calculations.netCashPayoutToDriver.toFixed(2)}</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[12px]">
+                  <thead>
+                    <tr className="bg-neutral-100/80 text-neutral-600 font-800 text-[10px] uppercase tracking-wider border-b border-neutral-200/80">
+                      <th className="py-2.5 px-4">Ticket / Order Name</th>
+                      <th className="py-2.5 px-4">Customer & Address</th>
+                      <th className="py-2.5 px-4 text-center">Time</th>
+                      <th className="py-2.5 px-4 text-right">Total ($)</th>
+                      <th className="py-2.5 px-4 text-right">DC ($)</th>
+                      <th className="py-2.5 px-4 text-center">Payment Detail (PD)</th>
+                      <th className="py-2.5 px-4 text-right">Tip ($)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200/60 font-650 text-neutral-800">
+                    {orders.length > 0 ? (
+                      orders.map((o) => (
+                        <tr key={o.id} className="hover:bg-neutral-50/70">
+                          <td className="py-2.5 px-4 font-800 text-neutral-900">{o.ticketName}</td>
+                          <td className="py-2.5 px-4">
+                            <p className="font-700 text-neutral-900">{o.customerName}</p>
+                            <p className="text-[11px] text-neutral-500 font-500">{o.address}</p>
+                          </td>
+                          <td className="py-2.5 px-4 text-center text-neutral-500">{o.time}</td>
+                          <td className="py-2.5 px-4 text-right font-800 text-neutral-900">${o.total.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 text-right font-800 text-brand-primary">${o.dc.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 text-center">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9.5px] font-800 uppercase tracking-wider ${
+                              o.pd === 'PP' 
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                                : o.pd === 'TM'
+                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            }`}>
+                              {o.pd === 'PP' ? 'PP (Prepaid)' : o.pd === 'TM' ? 'TM (Terminal)' : 'CS (Cash)'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-700 text-neutral-700">
+                            ${(o.prepaidTip + o.terminalTip).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="py-6 px-4 text-center text-neutral-400 font-600 text-xs">
+                          No delivered orders found for this driver.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-
-              <button 
-                onClick={() => setActivePrintModal("both")}
-                className="px-5 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white font-850 text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-2 active:scale-95"
-              >
-                <Printer size={14} />
-                <span>Print Both Slips</span>
-              </button>
+            </div>
+          </>
+        ) : (
+          /* Empty State Section when NO Driver is Selected */
+          <div className="bg-white border border-neutral-200 rounded-xl p-12 flex flex-col items-center justify-center text-center space-y-4 shadow-xs">
+            <div className="w-16 h-16 rounded-2xl bg-brand-primary-light text-brand-primary flex items-center justify-center border border-brand-primary-muted shadow-xs">
+              <Truck size={32} />
+            </div>
+            <div className="space-y-1.5 max-w-md">
+              <h2 className="text-base font-900 text-neutral-900 uppercase tracking-wide">Select a Driver to View Shift Drop</h2>
+              <p className="text-xs text-neutral-500 font-500 leading-relaxed">
+                Choose an active driver from the selection panel above or search by Driver ID (e.g. <strong>6</strong> or <strong>DRV-006</strong>) to load shift reconciliation, calculate driver earnings, and perform cash drop settlement.
+              </p>
             </div>
           </div>
-
-        </div>
-
-        {/* ── Section 3: Enter the Drop Below Section ── */}
-        <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
-          <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Wallet size={15} />
-              <span>ENTER THE DROP BELOW</span>
-            </span>
-            <span className="text-[10px] font-700 text-white/80">
-              Total Drop Entered: <strong className="text-white">${calculations.totalEnteredDrop.toFixed(2)}</strong>
-            </span>
-          </div>
-
-          <div className="p-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 text-xs font-700 items-center">
-              
-              {/* Inputs for Cash, Credit Card, Other */}
-              <div className="sm:col-span-6 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-neutral-700 font-800">Cash.......:</span>
-                  <input 
-                    type="number"
-                    step="0.01"
-                    value={dropCash}
-                    onChange={(e) => setDropCash(e.target.value)}
-                    className="w-36 bg-neutral-50 border border-neutral-300 rounded-lg px-3 py-1.5 text-right font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-xs focus:bg-white transition-all"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-neutral-700 font-800">Credit Card .:</span>
-                  <input 
-                    type="number"
-                    step="0.01"
-                    value={dropCreditCard}
-                    onChange={(e) => setDropCreditCard(e.target.value)}
-                    className="w-36 bg-neutral-50 border border-neutral-300 rounded-lg px-3 py-1.5 text-right font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-xs focus:bg-white transition-all"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-neutral-700 font-800">Other.......:</span>
-                  <input 
-                    type="number"
-                    step="0.01"
-                    value={dropOther}
-                    onChange={(e) => setDropOther(e.target.value)}
-                    className="w-36 bg-neutral-50 border border-neutral-300 rounded-lg px-3 py-1.5 text-right font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-xs focus:bg-white transition-all"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3 pt-2 border-t border-neutral-200">
-                  <span className="font-900 text-neutral-900 uppercase">TOTAL DUE....:</span>
-                  <span className="font-900 text-brand-primary text-base font-mono">${calculations.saleDue.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {/* Inputs for Checks */}
-              <div className="sm:col-span-6 space-y-2.5 border-l border-neutral-200 pl-0 sm:pl-5">
-                <span className="text-neutral-700 block text-[11px] font-800 uppercase">CHECKS..:</span>
-                <input 
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={dropCheck1}
-                  onChange={(e) => setDropCheck1(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-3 py-1.5 text-right font-800 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-xs focus:bg-white transition-all"
-                />
-                <input 
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={dropCheck2}
-                  onChange={(e) => setDropCheck2(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-3 py-1.5 text-right font-800 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-xs focus:bg-white transition-all"
-                />
-                <input 
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={dropCheck3}
-                  onChange={(e) => setDropCheck3(e.target.value)}
-                  className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-3 py-1.5 text-right font-800 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-xs focus:bg-white transition-all"
-                />
-              </div>
-
-            </div>
-
-            {/* Bottom Action Bar */}
-            <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200">
-              <button 
-                onClick={handleCancelDropInputs}
-                className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-800 text-[11px] uppercase rounded-xl transition-all cursor-pointer"
-              >
-                CANCEL
-              </button>
-
-              <button 
-                onClick={handleOpenSettlement}
-                disabled={isSubmitDisabled}
-                className={`px-6 py-2.5 font-900 text-[12px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-1.5 ${
-                  isSubmitDisabled
-                    ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60'
-                    : 'bg-[#851532] hover:bg-[#6b0f27] text-white cursor-pointer active:scale-95'
-                }`}
-              >
-                {isSubmitDisabled && <Lock size={13} />}
-                <span>SUBMIT (CLOSE DRIVER)</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── Section 4: Delivered Orders Breakdown Table ── */}
-        <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
-          <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
-            <span>Delivered Orders Breakdown</span>
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">{orders.length} Orders</span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[12px]">
-              <thead>
-                <tr className="bg-neutral-100/80 text-neutral-600 font-800 text-[10px] uppercase tracking-wider border-b border-neutral-200/80">
-                  <th className="py-2.5 px-4">Ticket / Order Name</th>
-                  <th className="py-2.5 px-4">Customer & Address</th>
-                  <th className="py-2.5 px-4 text-center">Time</th>
-                  <th className="py-2.5 px-4 text-right">Total ($)</th>
-                  <th className="py-2.5 px-4 text-right">DC ($)</th>
-                  <th className="py-2.5 px-4 text-center">Payment Detail (PD)</th>
-                  <th className="py-2.5 px-4 text-right">Tip ($)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200/60 font-650 text-neutral-800">
-                {orders.map((o) => (
-                  <tr key={o.id} className="hover:bg-neutral-50/70">
-                    <td className="py-2.5 px-4 font-800 text-neutral-900">{o.ticketName}</td>
-                    <td className="py-2.5 px-4">
-                      <p className="font-700 text-neutral-900">{o.customerName}</p>
-                      <p className="text-[11px] text-neutral-500 font-500">{o.address}</p>
-                    </td>
-                    <td className="py-2.5 px-4 text-center text-neutral-500">{o.time}</td>
-                    <td className="py-2.5 px-4 text-right font-800 text-neutral-900">${o.total.toFixed(2)}</td>
-                    <td className="py-2.5 px-4 text-right font-800 text-brand-primary">${o.dc.toFixed(2)}</td>
-                    <td className="py-2.5 px-4 text-center">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[9.5px] font-800 uppercase tracking-wider ${
-                        o.pd === 'PP' 
-                          ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-                          : o.pd === 'TM'
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                      }`}>
-                        {o.pd === 'PP' ? 'PP (Prepaid)' : o.pd === 'TM' ? 'TM (Terminal)' : 'CS (Cash)'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-right font-700 text-neutral-700">
-                      ${(o.prepaidTip + o.terminalTip).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        )}
 
       </div>
 
       {/* ── 1. SETTLEMENT PAYOUT CONFIRMATION POPUP MODAL ── */}
-      {isSettlementModalOpen && (
+      {isSettlementModalOpen && selectedDriver && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in font-sans select-none">
           <div className="bg-white rounded-2xl max-w-xl w-full border border-neutral-200 shadow-2xl overflow-hidden animate-scale-up">
             
@@ -829,7 +895,7 @@ export default function DriverDropDashboard() {
       )}
 
       {/* ── 2. VIEW SALES DETAILS MODAL ── */}
-      {isSalesDetailsModalOpen && (
+      {isSalesDetailsModalOpen && selectedDriver && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in font-sans">
           <div className="bg-white border border-neutral-200 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-scale-up">
             
@@ -899,13 +965,13 @@ export default function DriverDropDashboard() {
       )}
 
       {/* ── 3. THERMAL PRINT PREVIEW MODAL ── */}
-      {activePrintModal && (
+      {activePrintModal && selectedDriver && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in font-sans">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-scale-up border border-neutral-200">
             <div className="bg-brand-primary text-white px-5 py-3.5 flex items-center justify-between">
               <h3 className="font-800 text-[13px] uppercase tracking-wide flex items-center gap-2">
                 <Printer size={16} />
-                <span>Thermal Slip Preview (80mm Width)</span>
+                <span>Slip Preview</span>
               </h3>
               <button 
                 type="button"
@@ -933,7 +999,7 @@ export default function DriverDropDashboard() {
             </div>
 
             <div className="bg-neutral-50 border-t border-neutral-200 p-4 flex items-center justify-between select-none">
-              <span className="text-[11px] font-600 text-neutral-500">80mm Thermal Slip Printer Ready</span>
+              <span className="text-[11px] font-600 text-neutral-500">Slip Printer Ready</span>
               <div className="flex items-center gap-2.5">
                 <button 
                   type="button"
