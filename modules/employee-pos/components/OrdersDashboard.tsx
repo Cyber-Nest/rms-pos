@@ -19,7 +19,7 @@ import OrderDetailModal from "./OrderDetailModal";
 import FailedTransactionsView from "./FailedTransactionsView";
 import RefundOrdersView from "./RefundOrdersView";
 import CashOutSummaryView from "./CashOutSummaryView";
-import ReceptionView from "./ReceptionView";
+import CheckInOutView from "./CheckInOutView";
 import { Order } from "../types";
 import {
   Search,
@@ -241,6 +241,7 @@ export default function OrdersDashboard() {
           "dashboard",
           "orders",
           "reception_view",
+          "check_in_out",
           "sales_summary",
           "reports",
           "expense_payout",
@@ -1093,6 +1094,7 @@ export default function OrdersDashboard() {
               "dashboard",
               "orders",
               "reception_view",
+              "check_in_out",
               "sales_summary",
               "reports",
               "update_profile",

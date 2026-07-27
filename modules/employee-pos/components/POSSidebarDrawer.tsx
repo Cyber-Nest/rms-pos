@@ -1,11 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, LogOut, LayoutDashboard, KeyRound, Clock, ShoppingBag, 
   Receipt, ArrowLeftRight, Wallet, Users, UtensilsCrossed, 
   Settings, UserCheck, Lock, Bell, BarChart3, Power, ChefHat, TrendingUp, Truck, Car
 } from 'lucide-react';
+import CheckInOutModal from './CheckInOutModal';
 
 interface POSSidebarDrawerProps {
   isOpen: boolean;
@@ -15,7 +16,9 @@ interface POSSidebarDrawerProps {
 }
 
 export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectTab }: POSSidebarDrawerProps) {
-  if (!isOpen) return null;
+  const [isCheckInOutOpen, setIsCheckInOutOpen] = useState(false);
+
+  if (!isOpen && !isCheckInOutOpen) return null;
 
   const menuItems = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -33,6 +36,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     { key: 'customers', label: 'Customers', icon: Users },
     { key: 'menus', label: 'Menus', icon: UtensilsCrossed },
     { key: 'setting', label: 'Setting', icon: Settings },
+    { key: 'employees', label: 'Employee Management', icon: UserCheck },
     { key: 'update_profile', label: 'Update Profile', icon: UserCheck },
     { key: 'change_password', label: 'Change Password', icon: Lock },
     // { key: 'sound_notification', label: 'Sound Notification', icon: Bell },
@@ -41,89 +45,99 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-neutral-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 select-none">
-      
-      {/* Backdrop overlay clickable */}
-      <div className="absolute inset-0" onClick={onClose} />
+    <>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-neutral-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-200 select-none">
+          
+          {/* Backdrop overlay clickable */}
+          <div className="absolute inset-0" onClick={onClose} />
 
-      {/* Drawer Container */}
-      <div className="relative w-72 sm:w-80 bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300">
-        
-        {/* Top Header matching screenshot */}
-        <div className="bg-neutral-900 text-white px-5 py-4 flex items-center justify-between shadow-xs">
-          <div className="flex flex-col">
-            <span className="text-[11px] text-neutral-400 font-600 uppercase tracking-wider">User Account</span>
-            <span className="text-sm font-900 text-white">Hi, Manager</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              className="p-2 rounded-full bg-red-600/90 hover:bg-red-600 text-white transition-colors cursor-pointer"
-              title="Logout"
-            >
-              <Power size={14} />
-            </button>
-            <button 
-              onClick={onClose}
-              className="p-2 rounded-full bg-amber-500 hover:bg-amber-600 text-neutral-900 transition-colors cursor-pointer"
-              title="Close Menu"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        </div>
+          {/* Drawer Container */}
+          <div className="relative w-72 sm:w-80 bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300">
+            
+            {/* Top Header matching screenshot */}
+            <div className="bg-neutral-900 text-white px-5 py-4 flex items-center justify-between shadow-xs">
+              <div className="flex flex-col">
+                <span className="text-[11px] text-neutral-400 font-600 uppercase tracking-wider">User Account</span>
+                <span className="text-sm font-900 text-white">Hi, Manager</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  className="p-2 rounded-full bg-red-600/90 hover:bg-red-600 text-white transition-colors cursor-pointer"
+                  title="Logout"
+                >
+                  <Power size={14} />
+                </button>
+                <button 
+                  onClick={onClose}
+                  className="p-2 rounded-full bg-amber-500 hover:bg-amber-600 text-neutral-900 transition-colors cursor-pointer"
+                  title="Close Menu"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
 
-        {/* Menu List */}
-        <div className="flex-1 overflow-y-auto py-2 px-3 space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.key || 
-                             (item.key === 'transactions' && activeTab === 'orders');
+            {/* Menu List */}
+            <div className="flex-1 overflow-y-auto py-2 px-3 space-y-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.key || 
+                                 (item.key === 'transactions' && activeTab === 'orders');
 
-            return (
-              <button
-                key={item.key}
-                onClick={() => {
-                  if (item.key === 'pos') {
-                    window.location.href = '/employee/pos';
-                  } else if (item.key === 'kitchen') {
-                    window.location.href = '/employee/kitchen';
-                  } else if (item.key === 'reception_view') {
-                    window.location.href = '/employee/reception';
-                  } else if (item.key === 'delivery') {
-                    window.location.href = '/employee/delivery';
-                  } else if (item.key === 'driver_drop') {
-                    window.location.href = '/employee/driver-drop';
-                  } else if (item.key === 'vehicles') {
-                    window.location.href = '/employee/vehicles';
-                  } else if (item.key === 'customers') {
-                    window.location.href = '/employee/customers';
-                  } else if (item.key === 'setting') {
-                    window.location.href = '/employee/settings';
-                  } else if (item.key === 'menus') {
-                    window.location.href = '/employee/menu';
-                  } else if (
-                    item.key === 'orders' || 
-                    item.key === 'dashboard' || 
-                    item.key === 'expense_payout' || 
-                    item.key === 'sales_summary' || 
-                    item.key === 'transactions' ||
-                    item.key === 'reports' ||
-                    item.key === 'update_profile' ||
-                    item.key === 'change_password'
-                  ) {
-                    let targetTab = item.key;
-                    if (item.key === 'transactions') targetTab = 'orders';
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => {
+                      if (item.key === 'check_in_out') {
+                        setIsCheckInOutOpen(true);
+                        onClose();
+                        return;
+                      }
 
-                    if (typeof window !== 'undefined' && !window.location.pathname.includes('/employee/orders')) {
-                      window.location.href = `/employee/orders?tab=${targetTab}`;
-                    } else {
-                      onSelectTab(targetTab);
-                    }
-                  } else {
-                    onSelectTab(item.key);
-                  }
-                  onClose();
-                }}
+                      if (item.key === 'pos') {
+                        window.location.href = '/employee/pos';
+                      } else if (item.key === 'kitchen') {
+                        window.location.href = '/employee/kitchen';
+                      } else if (item.key === 'reception_view') {
+                        window.location.href = '/employee/reception';
+                      } else if (item.key === 'delivery') {
+                        window.location.href = '/employee/delivery';
+                      } else if (item.key === 'driver_drop') {
+                        window.location.href = '/employee/driver-drop';
+                      } else if (item.key === 'vehicles') {
+                        window.location.href = '/employee/vehicles';
+                      } else if (item.key === 'customers') {
+                        window.location.href = '/employee/customers';
+                      } else if (item.key === 'employees') {
+                        window.location.href = '/employee/employees';
+                      } else if (item.key === 'setting') {
+                        window.location.href = '/employee/settings';
+                      } else if (item.key === 'menus') {
+                        window.location.href = '/employee/menu';
+                      } else if (
+                        item.key === 'orders' || 
+                        item.key === 'dashboard' || 
+                        item.key === 'expense_payout' || 
+                        item.key === 'sales_summary' || 
+                        item.key === 'transactions' ||
+                        item.key === 'reports' ||
+                        item.key === 'update_profile' ||
+                        item.key === 'change_password'
+                      ) {
+                        let targetTab = item.key;
+                        if (item.key === 'transactions') targetTab = 'orders';
+
+                        if (typeof window !== 'undefined' && !window.location.pathname.includes('/employee/orders')) {
+                          window.location.href = `/employee/orders?tab=${targetTab}`;
+                        } else {
+                          onSelectTab(targetTab);
+                        }
+                      } else {
+                        onSelectTab(item.key);
+                      }
+                      onClose();
+                    }}
                 className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-800 tracking-wide transition-all cursor-pointer ${
                   isActive 
                     ? 'bg-brand-primary text-white shadow-md' 
@@ -146,5 +160,14 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
 
       </div>
     </div>
+      )}
+
+      {/* Check In / Out Modal Terminal */}
+      <CheckInOutModal
+        isOpen={isCheckInOutOpen}
+        onClose={() => setIsCheckInOutOpen(false)}
+        onSuccess={() => {}}
+      />
+    </>
   );
 }
