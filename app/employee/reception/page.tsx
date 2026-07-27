@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import ReceptionNavbar from "@/modules/employee-pos/components/ReceptionNavbar";
+import PosNavbar from "@/modules/employee-pos/components/PosNavbar";
 import ReceptionView from "@/modules/employee-pos/components/ReceptionView";
 import POSSidebarDrawer from "@/modules/employee-pos/components/POSSidebarDrawer";
 
@@ -11,7 +11,7 @@ export default function ReceptionPage() {
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Top Navbar */}
-      <ReceptionNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
+      <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* Main View Container */}
       <div className="flex-1 overflow-hidden p-6 bg-brand-bg flex flex-col min-h-0">

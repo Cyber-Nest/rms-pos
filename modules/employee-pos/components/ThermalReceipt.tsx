@@ -72,10 +72,10 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
 
         {/* Store Information Box with dashed border matching photo */}
         <div className="border border-dashed border-neutral-400 p-2 text-center text-[10px] space-y-0.5 mb-3 leading-snug">
-          <p className="font-600">231 Edgefield Pl , Strathmore,</p>
-          <p className="font-600">Alberta, T1P 0E8, Canada</p>
-          <p className="font-600">Tel # : (587) 365-5401</p>
-          <p className="font-600">GST# : 123456789</p>
+          <p className="font-600">{(order as any)?.branchAddress || "231 Edgefield Pl , Strathmore,"}</p>
+          <p className="font-600">{(order as any)?.branchCity || "Alberta, T1P 0E8, Canada"}</p>
+          <p className="font-600">Tel # : {(order as any)?.branchPhone || "(587) 365-5401"}</p>
+          <p className="font-600">GST# : {(order as any)?.gstNumber || (order as any)?.branchGst || "11111111"}</p>
         </div>
 
         {/* Order Header */}

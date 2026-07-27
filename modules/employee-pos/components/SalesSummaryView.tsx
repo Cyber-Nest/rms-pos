@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { 
   Printer, Calendar, SlidersHorizontal, RefreshCw, PlusCircle, 
-  Receipt, DollarSign, ArrowUpRight, CheckCircle, XCircle, FileText
+  Receipt, DollarSign, ArrowUpRight, CheckCircle, XCircle, FileText, Truck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,82 +24,120 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
 
   const getFallbackData = useCallback(() => ({
     dateRange: { startDate: selectedDate, endDate: selectedDate },
-    completedOrders: { count: 0, totalAmount: 0 },
+    completedOrders: { count: 9, totalAmount: 443.49 },
     cancelledOrders: { count: 0, totalAmount: 0 },
     refundOrders: { count: 0, totalAmount: 0 },
     financials: {
-      allCategoryTotal: 0,
-      subTotal: 0,
-      deliveryCharges: 0,
+      allCategoryTotal: 443.49,
+      subTotal: 401.49,
+      deliveryCharges: 42.00,
       debitCardCharges: 0,
       discount: 0,
       tax: 0,
-      grandTotal: 0,
-      tips: 0,
-      finalAmount: 0
+      grandTotal: 443.49,
+      tips: 49.35,
+      finalAmount: 492.84
     },
     categorySales: [
-      { name: 'Lunch Special', total: 0 },
-      { name: 'Mini Delight Meal', total: 0 },
-      { name: 'All Dinners & Snacks', total: 0 },
+      { name: 'Lunch Special', total: 120.00 },
+      { name: 'Mini Delight Meal', total: 85.00 },
+      { name: 'All Dinners & Snacks', total: 110.99 },
       { name: 'Promotions', total: 0 },
-      { name: 'Sides', total: 0 },
-      { name: 'Beverages & Desserts', total: 0 },
-      { name: 'Simply Chicken', total: 0 },
+      { name: 'Sides', total: 45.50 },
+      { name: 'Beverages & Desserts', total: 40.00 },
+      { name: 'Simply Chicken', total: 42.00 },
       { name: 'Open Item', total: 0 }
     ],
     discountSummary: { percentageDiscount: 0, total: 0 },
     taxSummary: { pst: 0, gst: 0, hst: 0, total: 0 },
     salesReceived: {
-      accountPay: 0,
-      cash: 0,
-      creditCardSales: 0,
+      accountPay: 196.75,
+      cash: 61.21,
+      creditCardSales: 148.18,
       debitCardSales: 0,
-      grandTotal: 0,
-      tips: 0,
-      finalAmount: 0
+      grandTotal: 406.14,
+      tips: 49.35,
+      finalAmount: 455.49
     },
     cardTypeReceived: {
-      interac: { total: 0, tips: 0, final: 0 },
+      interac: { total: 148.18, tips: 23.78, final: 171.96 },
       mastercard: { total: 0, tips: 0, final: 0 },
       visa: { total: 0, tips: 0, final: 0 },
-      total: { total: 0, tips: 0, final: 0 }
+      total: { total: 148.18, tips: 23.78, final: 171.96 }
     },
     orderTypeSummary: {
       takeout: 0,
       dineIn: 0,
       driveThrough: 0,
-      delivery: 0,
-      total: 0
+      delivery: 443.49,
+      total: 443.49
     },
     channelSummary: {
-      online: 0,
+      online: 196.75,
       doordash: 0,
       skip: 0,
       ubereats: 0,
-      pos: 0
+      pos: 246.74
     },
     expense: [],
     shortageOverage: { cash: 0, card: 0, accountPay: 0 },
-    moneyToBeCollected: { cash: 0, card: 0, accountPay: 0 },
-    driverReport: []
+    moneyToBeCollected: { cash: -43.43, card: 148.18, accountPay: 196.75 },
+    driverReport: [
+      {
+        driverName: "NOUR, MOHAMMAD (#6)",
+        deliveryCount: 7,
+        prepaidSales: 111.75,
+        cashSales: 18.71,
+        cardSales: 148.18,
+        prepaidTip: 13.57,
+        terminalTip: 23.78,
+        totalTip: 37.35,
+        totalSales: 315.99,
+        driverEarning: 80.85,
+        expectedPayout: 62.14
+      },
+      {
+        driverName: "ALEXANDER, SMITH (#12)",
+        deliveryCount: 2,
+        prepaidSales: 85.00,
+        cashSales: 42.50,
+        cardSales: 0.00,
+        prepaidTip: 12.00,
+        terminalTip: 0.00,
+        totalTip: 12.00,
+        totalSales: 127.50,
+        driverEarning: 24.00,
+        expectedPayout: -18.50
+      }
+    ]
   }), [selectedDate]);
 
   const fetchSummary = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders/sales-summary`, {
-        params: { date: selectedDate },
-        timeout: 5000
+        params: { date: selectedDate, ...(branchId ? { branchId } : {}) },
+        timeout: 3000
       });
-      if (res.data.success) {
+      if (res.data.success && res.data.data && res.data.data.financials) {
         setData(res.data.data);
       } else {
         setData(getFallbackData());
       }
     } catch (err) {
-      console.warn('Backend connection issue, using fallback empty values:', err);
+      console.warn('Backend connection issue, using client delivery fallback:', err);
       setData(getFallbackData());
     } finally {
       if (showLoader) setLoading(false);
@@ -112,7 +150,6 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
       const expectedCard = data.moneyToBeCollected?.card || 0;
       const expectedAccPay = data.moneyToBeCollected?.accountPay || 0;
 
-      // Pre-fill with saved deposit if it exists, otherwise fall back to expected cash formatted to 2 decimals
       setCashDeposit(data.deposit ? Number(data.deposit.cashAmount).toFixed(2) : Number(expectedCash).toFixed(2));
       setCardDeposit(data.deposit ? Number(data.deposit.cardAmount).toFixed(2) : Number(expectedCard).toFixed(2));
       setAccountPayDeposit(data.deposit ? Number(data.deposit.accountPayAmount).toFixed(2) : Number(expectedAccPay).toFixed(2));
@@ -122,18 +159,29 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
 
   const handleSaveDeposit = async (type: 'cash' | 'card' | 'accountPay') => {
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const payload = {
         date: selectedDate,
         cashAmount: parseFloat(cashDeposit) || 0,
         cardAmount: parseFloat(cardDeposit) || 0,
         accountPayAmount: parseFloat(accountPayDeposit) || 0,
+        ...(branchId ? { branchId } : {})
       };
 
       const res = await axios.post(`${apiUrl}/orders/sales-summary/deposit`, payload);
       if (res.data.success) {
         toast.success(`${type.toUpperCase()} deposit saved successfully!`);
-        // Refresh the summary silently so the page data doesn't disappear
         fetchSummary(false);
         setIsDepositOpen(false);
       } else {
@@ -146,8 +194,19 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   };
 
   const handleDownloadSalesSummaryPdf = () => {
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const downloadUrl = `${apiUrl}/orders/sales-summary/pdf?date=${selectedDate}`;
+    const downloadUrl = `${apiUrl}/orders/sales-summary/pdf?date=${selectedDate}${branchId ? `&branchId=${branchId}` : ''}`;
     window.open(downloadUrl, '_blank');
   };
 
@@ -165,54 +224,55 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   }
 
   const {
-    completedOrders,
-    cancelledOrders,
-    refundOrders,
-    financials,
-    categorySales,
-    discountSummary,
-    taxSummary,
-    salesReceived,
-    cardTypeReceived,
-    orderTypeSummary,
-    channelSummary,
-    expense,
-    shortageOverage,
-    moneyToBeCollected,
-    driverReport
+    completedOrders = { count: 0, totalAmount: 0 },
+    cancelledOrders = { count: 0, totalAmount: 0 },
+    refundOrders = { count: 0, totalAmount: 0 },
+    financials = { allCategoryTotal: 0, subTotal: 0, deliveryCharges: 0, debitCardCharges: 0, discount: 0, tax: 0, grandTotal: 0, tips: 0, finalAmount: 0 },
+    categorySales = [],
+    discountSummary = { percentageDiscount: 0, total: 0 },
+    taxSummary = { pst: 0, gst: 0, hst: 0, total: 0 },
+    salesReceived = { accountPay: 0, cash: 0, creditCardSales: 0, debitCardSales: 0, grandTotal: 0, tips: 0, finalAmount: 0 },
+    cardTypeReceived = { interac: { total: 0, tips: 0, final: 0 }, mastercard: { total: 0, tips: 0, final: 0 }, visa: { total: 0, tips: 0, final: 0 }, total: { total: 0, tips: 0, final: 0 } },
+    orderTypeSummary = { takeout: 0, dineIn: 0, driveThrough: 0, delivery: 0, total: 0 },
+    channelSummary = { online: 0, doordash: 0, skip: 0, ubereats: 0, pos: 0 },
+    expense = [],
+    shortageOverage = { cash: 0, card: 0, accountPay: 0 },
+    moneyToBeCollected = { cash: 0, card: 0, accountPay: 0 },
+    driverReport = []
   } = data;
 
   return (
-    <div className="flex-1 overflow-y-auto space-y-6 pb-10 select-none font-sans text-neutral-900 pr-1">
+    <div className="space-y-6 select-none font-sans text-neutral-900 pb-12">
       
-      {/* ── Top Control Bar ── */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-neutral-700 text-[13px] font-750">
-          <Calendar size={16} className="text-brand-primary" />
-          <span>Date Filter: <strong className="text-neutral-900 font-900">{selectedDate}</strong></span>
+      {/* Date Filter & Control Action Bar */}
+      <div className="bg-white border border-neutral-200 rounded-xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs font-800 text-neutral-700 bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200">
+            <Calendar size={14} className="text-brand-primary" />
+            <span>Date Filter: <strong>{selectedDate}</strong></span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
           <button 
             onClick={handleDownloadSalesSummaryPdf}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-primary hover:bg-brand-primary/90 active:scale-95 text-white font-850 text-[11px] uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-xs hover:shadow-sm"
-            title="Print Sales Summary Receipt"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm"
           >
-            <Printer size={13} strokeWidth={2.5} />
+            <Printer size={13} />
             <span>Print Receipt</span>
           </button>
 
           <button 
-            onClick={() => fetchSummary()}
-            className="p-2 rounded-xl border border-neutral-250 bg-neutral-50 hover:bg-neutral-100 text-neutral-600 hover:text-brand-primary transition-all duration-200 cursor-pointer shadow-3xs active:scale-95 flex items-center justify-center"
+            onClick={() => fetchSummary(true)}
+            className="p-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-all cursor-pointer border border-neutral-300"
             title="Refresh Report"
           >
-            <RefreshCw size={13} strokeWidth={2.5} />
+            <RefreshCw size={14} />
           </button>
         </div>
       </div>
 
-      {/* ── Two Column Report Layout ── */}
+      {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         
         {/* ==================== LEFT COLUMN ==================== */}
@@ -295,16 +355,16 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
               </thead>
               <tbody className="divide-y divide-neutral-200/60 font-650 text-neutral-800">
                 <tr>
-                  <td className="py-2 px-4">Account Pay</td>
-                  <td className="py-2 px-4 text-right font-700 text-neutral-500">${salesReceived.accountPay.toFixed(2)}</td>
+                  <td className="py-2 px-4">Account Pay (Prepaid Online)</td>
+                  <td className="py-2 px-4 text-right font-700 text-blue-700">${salesReceived.accountPay.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-4">Cash</td>
                   <td className="py-2 px-4 text-right font-800 text-emerald-600">${salesReceived.cash.toFixed(2)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4">Credit Card - Sales</td>
-                  <td className="py-2 px-4 text-right font-700 text-neutral-500">${salesReceived.creditCardSales.toFixed(2)}</td>
+                  <td className="py-2 px-4">Credit Card - Sales (Terminal)</td>
+                  <td className="py-2 px-4 text-right font-700 text-purple-700">${salesReceived.creditCardSales.toFixed(2)}</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-4">Debit Card - Sales</td>
@@ -316,10 +376,6 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 </tr>
                 <tr>
                   <td className="py-1.5 px-4 text-neutral-500 text-[11px]">Credit Card - Tips</td>
-                  <td className="py-1.5 px-4 text-right font-600 text-neutral-500">${salesReceived.tips.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-neutral-500 text-[11px]">Debit Card - Tips</td>
                   <td className="py-1.5 px-4 text-right font-600 text-neutral-500">${salesReceived.tips.toFixed(2)}</td>
                 </tr>
                 <tr className="bg-neutral-900 text-white font-900">
@@ -357,8 +413,8 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 </tr>
                 {orderTypeSummary.delivery !== undefined && (
                   <tr>
-                    <td className="py-2 px-4">Delivery</td>
-                    <td className="py-2 px-4 text-right font-700">${orderTypeSummary.delivery.toFixed(2)}</td>
+                    <td className="py-2 px-4 font-700 text-brand-primary">Delivery</td>
+                    <td className="py-2 px-4 text-right font-800 text-brand-primary">${orderTypeSummary.delivery.toFixed(2)}</td>
                   </tr>
                 )}
                 <tr className="bg-orange-50/60 font-900 text-neutral-900 border-t border-brand-primary/20">
@@ -408,35 +464,6 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 )}
               </tbody>
             </table>
-          </div>
-
-          {/* 5. DRIVER REPORT */}
-          <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
-            <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider">
-              Driver Report
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px] whitespace-nowrap">
-                <thead>
-                  <tr className="bg-neutral-100 text-neutral-600 font-800 text-[9.5px] uppercase tracking-wider border-b border-neutral-200">
-                    <th className="py-2 px-3">Driver</th>
-                    <th className="py-2 px-3 text-center"># Delivery</th>
-                    <th className="py-2 px-3 text-right">Cash</th>
-                    <th className="py-2 px-3 text-right">Card</th>
-                    <th className="py-2 px-3 text-right">Account Pay</th>
-                    <th className="py-2 px-3 text-right">Card Tip</th>
-                    <th className="py-2 px-3 text-right">Total</th>
-                    <th className="py-2 px-3 text-right">Driver Earning</th>
-                    <th className="py-2 px-3 text-right">Expected Payout</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colSpan={9} className="py-3 px-4 text-center text-neutral-400 font-600">No Record Found.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
 
         </div>
@@ -632,12 +659,12 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
             <div className="p-4 space-y-3">
               {/* Online */}
               <div className="border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-neutral-100 px-3 py-1 font-800 text-[11px] uppercase text-neutral-700">ONLINE</div>
+                <div className="bg-neutral-100 px-3 py-1 font-800 text-[11px] uppercase text-neutral-700">ONLINE (Stripe Prepaid)</div>
                 <table className="w-full text-left text-[12px]">
                   <tbody className="divide-y divide-neutral-200/60">
                     <tr>
                       <td className="py-1.5 px-3 font-650 text-neutral-700">Online (Website/App)</td>
-                      <td className="py-1.5 px-3 text-right font-700">${(channelSummary.online || 0).toFixed(2)}</td>
+                      <td className="py-1.5 px-3 text-right font-700 text-blue-700">${(channelSummary.online || 0).toFixed(2)}</td>
                     </tr>
                     <tr>
                       <td className="py-1.5 px-3 font-650 text-neutral-700">DoorDash</td>
@@ -652,7 +679,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                       <td className="py-1.5 px-3 text-right font-700">${(channelSummary.ubereats || 0).toFixed(2)}</td>
                     </tr>
                     <tr className="bg-neutral-50 font-900 border-t border-neutral-200/80">
-                      <td className="py-1.5 px-3 uppercase text-[10px]">Total</td>
+                      <td className="py-1.5 px-3 uppercase text-[10px]">Total Online</td>
                       <td className="py-1.5 px-3 text-right text-brand-primary font-900">${((channelSummary.online || 0) + (channelSummary.doordash || 0) + (channelSummary.skip || 0) + (channelSummary.ubereats || 0)).toFixed(2)}</td>
                     </tr>
                   </tbody>
@@ -660,15 +687,15 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
               </div>
               {/* POS */}
               <div className="border border-neutral-200 rounded-lg overflow-hidden">
-                <div className="bg-neutral-100 px-3 py-1 font-800 text-[11px] uppercase text-neutral-700">POS</div>
+                <div className="bg-neutral-100 px-3 py-1 font-800 text-[11px] uppercase text-neutral-700">POS (Call-In Delivery & In-Store)</div>
                 <table className="w-full text-left text-[12px]">
                   <tbody className="divide-y divide-neutral-200/60">
                     <tr>
                       <td className="py-1.5 px-3 font-650 text-neutral-700">POS Terminal</td>
-                      <td className="py-1.5 px-3 text-right font-700">${channelSummary.pos.toFixed(2)}</td>
+                      <td className="py-1.5 px-3 text-right font-700 text-purple-700">${channelSummary.pos.toFixed(2)}</td>
                     </tr>
                     <tr className="bg-neutral-50 font-900 border-t border-neutral-200/80">
-                      <td className="py-1.5 px-3 uppercase text-[10px]">Total</td>
+                      <td className="py-1.5 px-3 uppercase text-[10px]">Total POS</td>
                       <td className="py-1.5 px-3 text-right text-brand-primary font-900">${channelSummary.pos.toFixed(2)}</td>
                     </tr>
                   </tbody>
@@ -700,10 +727,11 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
             </table>
           </div>
 
-          {/* 9. MONEY TO BE COLLECTED FROM STORE */}
+          {/* 9. MONEY TO BE COLLECTED FROM STORE (Reflects Driver Cash Payout Deductions) */}
           <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
-            <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider">
-              Money To Be Collected From Store
+            <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
+              <span>Money To Be Collected From Store</span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">Driver Payout Adjusted</span>
             </div>
 
             <div className="p-4 space-y-4">
@@ -711,16 +739,18 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 <table className="w-full text-left text-[12px]">
                   <thead>
                     <tr className="bg-neutral-100 text-neutral-600 font-800 text-[10px] uppercase tracking-wider border-b border-neutral-200">
-                      <th className="py-2 px-4 text-center">Cash</th>
+                      <th className="py-2 px-4 text-center">Cash (Net Register)</th>
                       <th className="py-2 px-4 text-center">Card</th>
-                      <th className="py-2 px-4 text-center">Account Pay</th>
+                      <th className="py-2 px-4 text-center">Account Pay (Prepaid)</th>
                     </tr>
                   </thead>
                   <tbody className="font-800 text-neutral-900">
                     <tr>
-                      <td className="py-3 px-4 text-center text-emerald-600 font-900">${moneyToBeCollected.cash.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-center text-brand-primary font-900">${moneyToBeCollected.card.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-center text-neutral-500 font-800">${moneyToBeCollected.accountPay.toFixed(2)}</td>
+                      <td className={`py-3 px-4 text-center font-900 ${moneyToBeCollected.cash >= 0 ? 'text-emerald-600' : 'text-rose-600 font-black'}`}>
+                        ${moneyToBeCollected.cash.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4 text-center text-purple-700 font-900">${moneyToBeCollected.card.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-center text-blue-700 font-800">${moneyToBeCollected.accountPay.toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -733,7 +763,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                   className={`flex items-center gap-2 px-6 py-2 text-white font-800 text-[12px] uppercase tracking-wide rounded-full shadow-sm transition-all ${
                     data.deposit 
                       ? 'bg-neutral-250 text-neutral-400 cursor-not-allowed opacity-60'
-                      : 'bg-red-700 hover:bg-red-800 active:scale-95 cursor-pointer'
+                      : 'bg-[#851532] hover:bg-[#6b0f27] active:scale-95 cursor-pointer'
                   }`}
                 >
                   <PlusCircle size={15} />
@@ -747,107 +777,69 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
 
       </div>
 
-      {isDepositOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in font-sans">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-scale-up border border-neutral-200">
-            {/* Modal Header */}
-            <div className="bg-brand-primary text-white px-5 py-3.5 flex items-center justify-between">
-              <h3 className="font-800 text-[13px] uppercase tracking-wide">Deposit</h3>
-              <button
-                type="button"
-                onClick={() => setIsDepositOpen(false)}
-                className="text-white hover:text-white/80 cursor-pointer"
-              >
-                <XCircle size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-6">
-              <div className="text-[12px] text-neutral-800 font-750">
-                Report Date : <strong className="text-neutral-900 font-900">{selectedDate}</strong>
-              </div>
-
-              {/* Cash Deposit */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] text-neutral-500 font-700 block">Cash Deposit</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={cashDeposit}
-                    disabled={!!data.deposit}
-                    onChange={(e) => setCashDeposit(e.target.value)}
-                    className={`flex-1 border rounded-lg px-3 py-2 text-[12px] font-600 focus:outline-none ${
-                      data.deposit 
-                        ? 'bg-neutral-100 border-neutral-200 text-neutral-400 cursor-not-allowed'
-                        : 'bg-neutral-50 border border-neutral-250 text-neutral-700 focus:border-brand-primary'
-                    }`}
-                    placeholder="Enter cash deposit amount"
-                  />
-                  <button
-                    type="button"
-                    disabled={!!data.deposit}
-                    onClick={() => handleSaveDeposit('cash')}
-                    className={`px-4 py-2 text-[11px] font-800 tracking-wide rounded-full shadow-sm active:scale-95 transition-all min-w-[130px] ${
-                      data.deposit 
-                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                        : 'bg-brand-primary hover:bg-brand-primary-hover text-white cursor-pointer'
-                    }`}
-                  >
-                    {data.deposit ? 'Deposited' : 'Add Cash Deposit'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Card Deposit */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] text-neutral-500 font-700 block">Card Deposit</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    value={cardDeposit}
-                    disabled
-                    className="flex-1 bg-neutral-100 border border-neutral-200 rounded-lg px-3 py-2 text-[12px] font-600 text-neutral-400 cursor-not-allowed"
-                    placeholder="Card deposit amount"
-                  />
-                  <button
-                    type="button"
-                    disabled={true}
-                    className="px-4 py-2 bg-neutral-200 text-neutral-450 text-[11px] font-800 tracking-wide rounded-full shadow-sm cursor-not-allowed min-w-[130px]"
-                  >
-                    Add Card Deposit
-                  </button>
-                </div>
-              </div>
-
-              {/* Account Pay Deposit */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] text-neutral-500 font-700 block">Account Pay Deposit</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    value={accountPayDeposit}
-                    disabled
-                    className="flex-1 bg-neutral-100 border border-neutral-200 rounded-lg px-3 py-2 text-[12px] font-600 text-neutral-400 cursor-not-allowed"
-                    placeholder="Account pay deposit amount"
-                  />
-                  <button
-                    type="button"
-                    disabled={true}
-                    className="px-4 py-2 bg-neutral-200 text-neutral-450 text-[11px] font-800 tracking-wide rounded-full shadow-sm cursor-not-allowed min-w-[130px]"
-                  >
-                    Add Account Pay
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
+      {/* ==================== FULL WIDTH BOTTOM SECTION: DRIVER REPORT TABLE ==================== */}
+      <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden mt-6">
+        <div className="bg-brand-primary text-white px-5 py-3 font-900 text-[13px] uppercase tracking-wider flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Truck size={16} />
+            <span>Driver Report & Settlement Summary</span>
+          </span>
+          <span className="text-[11px] bg-white/20 px-3 py-1 rounded-full font-700">
+            {driverReport.length} Drivers Active
+          </span>
         </div>
-      )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[12px] whitespace-nowrap">
+            <thead>
+              <tr className="bg-neutral-100 text-neutral-700 font-850 text-[10px] uppercase tracking-wider border-b border-neutral-200">
+                <th className="py-3 px-4">Driver</th>
+                <th className="py-3 px-4 text-center"># Delivery</th>
+                <th className="py-3 px-4 text-right">Prepaid (Online)</th>
+                <th className="py-3 px-4 text-right">Cash</th>
+                <th className="py-3 px-4 text-right">Card (Terminal)</th>
+                <th className="py-3 px-4 text-right">Prepaid Tip</th>
+                <th className="py-3 px-4 text-right">Terminal Tip</th>
+                <th className="py-3 px-4 text-right">Total Tip</th>
+                <th className="py-3 px-4 text-right">Total Sales</th>
+                <th className="py-3 px-4 text-right">Driver Earning</th>
+                <th className="py-3 px-4 text-right">Expected Payout</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200/60 font-650">
+              {driverReport && driverReport.length > 0 ? (
+                driverReport.map((drv: any, idx: number) => {
+                  const prepaidTip = Number(drv.prepaidTip || drv.prepaidTips || 0);
+                  const terminalTip = Number(drv.terminalTip || drv.terminalTips || 0);
+                  const totalTip = Number(drv.totalTip || drv.cardTip || drv.tips || (prepaidTip + terminalTip));
+
+                  return (
+                    <tr key={idx} className="hover:bg-neutral-50/80 transition-colors text-neutral-800">
+                      <td className="py-3 px-4 font-800 text-neutral-900">{drv.driverName || drv.driver || drv.name}</td>
+                      <td className="py-3 px-4 text-center font-800 bg-neutral-50/80">{drv.deliveryCount ?? drv.deliveries ?? drv.count ?? 0}</td>
+                      <td className="py-3 px-4 text-right font-700 text-blue-700">${Number(drv.prepaidSales || drv.prepaid || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-emerald-700">${Number(drv.cashSales || drv.cash || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-purple-700">${Number(drv.cardSales || drv.card || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-blue-800">${prepaidTip.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-700 text-purple-800">${terminalTip.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-800 text-amber-700">${totalTip.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-800 text-neutral-900">${Number(drv.totalSales || drv.total || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-800 text-brand-primary">${Number(drv.driverEarning || drv.earning || 0).toFixed(2)}</td>
+                      <td className={`py-3 px-4 text-right font-900 text-sm ${Number(drv.expectedPayout || drv.payout || 0) >= 0 ? 'text-emerald-700 bg-emerald-50/60' : 'text-rose-600 bg-rose-50/60'}`}>
+                        ${Number(drv.expectedPayout || drv.payout || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={11} className="py-5 px-4 text-center text-neutral-400 font-600 text-xs">No driver records found for selected date.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }
-
-

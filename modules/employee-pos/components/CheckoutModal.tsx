@@ -58,6 +58,7 @@ export default function CheckoutModal() {
     setPaymentType,
     paymentMethod,
     setPaymentMethod,
+    branchTaxFees,
     splitPayments,
     addSplitPayment,
     updateSplitPayment,
@@ -145,8 +146,14 @@ export default function CheckoutModal() {
 
     // Validate
     if (orderSource === "doordash" || orderSource === "ubereats") {
-      if (!selectedCustomer || !selectedCustomer.name || !selectedCustomer.name.trim()) {
-        toast.error("Customer name is required for DoorDash and Uber Eats orders.");
+      if (
+        !selectedCustomer ||
+        !selectedCustomer.name ||
+        !selectedCustomer.name.trim()
+      ) {
+        toast.error(
+          "Customer name is required for DoorDash and Uber Eats orders.",
+        );
         submittingRef.current = false;
         return;
       }
@@ -294,21 +301,21 @@ export default function CheckoutModal() {
               <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
                 {/* Pay Now / Pay Later */}
                 {!isThirdParty && (
-                <div className="grid grid-cols-2 gap-2">
-                  {(["pay-now", "pay-later"] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setPaymentTiming(t)}
-                      className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer active:scale-[0.98] ${
-                        paymentTiming === t
-                          ? "bg-brand-primary text-white shadow-sm"
-                          : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-                      }`}
-                    >
-                      {t === "pay-now" ? "Pay Now" : "Pay Later"}
-                    </button>
-                  ))}
-                </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["pay-now", "pay-later"] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setPaymentTiming(t)}
+                        className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer active:scale-[0.98] ${
+                          paymentTiming === t
+                            ? "bg-brand-primary text-white shadow-sm"
+                            : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                        }`}
+                      >
+                        {t === "pay-now" ? "Pay Now" : "Pay Later"}
+                      </button>
+                    ))}
+                  </div>
                 )}
 
                 {/* One Time / Split Payment */}
@@ -350,176 +357,189 @@ export default function CheckoutModal() {
                 )}
 
                 {/* ── ONE TIME PAYMENT ── */}
-                {paymentTiming === "pay-now" && paymentType === "one-time" && !isThirdParty && (
-                  <>
-                    {/* Amount */}
-                    <div>
-                      <label className="block text-[10px] font-600 text-neutral-500 mb-1.5 uppercase tracking-wide">
-                        Amount To Pay ($)
-                      </label>
-                      <div className="border border-neutral-200 rounded-xl px-3.5 py-2.5 bg-brand-primary/5">
-                        <span className="text-[16px] font-800 text-brand-primary">
-                          ${total.toFixed(2)}
-                        </span>
+                {paymentTiming === "pay-now" &&
+                  paymentType === "one-time" &&
+                  !isThirdParty && (
+                    <>
+                      {/* Amount */}
+                      <div>
+                        <label className="block text-[10px] font-600 text-neutral-500 mb-1.5 uppercase tracking-wide">
+                          Amount To Pay ($)
+                        </label>
+                        <div className="border border-neutral-200 rounded-xl px-3.5 py-2.5 bg-brand-primary/5">
+                          <span className="text-[16px] font-800 text-brand-primary">
+                            ${total.toFixed(2)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Cash / Card */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setPaymentMethod("cash")}
-                        className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
-                          paymentMethod === "cash"
-                            ? "bg-brand-primary text-white shadow-sm"
-                            : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-                        }`}
-                      >
-                        <Banknote size={13} /> Cash
-                      </button>
-                      <button
-                        onClick={() => setPaymentMethod("card")}
-                        className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
-                          paymentMethod === "card"
-                            ? "bg-brand-primary text-white shadow-sm"
-                            : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-                        }`}
-                      >
-                        <CreditCard size={13} /> Card
-                      </button>
-                    </div>
+                      {/* Cash / Card */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setPaymentMethod("cash")}
+                          className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                            paymentMethod === "cash"
+                              ? "bg-brand-primary text-white shadow-sm"
+                              : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                          }`}
+                        >
+                          <Banknote size={13} /> Cash
+                        </button>
+                        <button
+                          onClick={() => setPaymentMethod("card")}
+                          className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                            paymentMethod === "card"
+                              ? "bg-brand-primary text-white shadow-sm"
+                              : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                          }`}
+                        >
+                          <CreditCard size={13} /> Card
+                        </button>
+                      </div>
 
-                    {/* Cash denomination picker */}
-                    {paymentMethod === "cash" && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-600 text-neutral-500 uppercase tracking-wide">
-                          Cash Denominations
-                        </p>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {DENOMINATIONS.map((denom) => {
-                            const qty = cashDenominations[denom] || 0;
-                            return (
-                              <div
-                                key={denom}
-                                className="bg-neutral-50 border border-neutral-200 rounded-xl p-2 flex flex-col items-center gap-1.5"
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-[10px] font-700 text-neutral-700">
-                                    ${denom}
-                                  </span>
-                                  <button
-                                    onClick={() =>
-                                      setCashDenomination(denom, qty - 1)
-                                    }
-                                    className="w-5 h-5 flex items-center justify-center rounded-md bg-neutral-200 hover:bg-neutral-300 transition-colors cursor-pointer"
-                                  >
-                                    <Minus size={9} />
-                                  </button>
+                      {/* Cash denomination picker */}
+                      {paymentMethod === "cash" && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-600 text-neutral-500 uppercase tracking-wide">
+                            Cash Denominations
+                          </p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {DENOMINATIONS.map((denom) => {
+                              const qty = cashDenominations[denom] || 0;
+                              return (
+                                <div
+                                  key={denom}
+                                  className="bg-neutral-50 border border-neutral-200 rounded-xl p-2 flex flex-col items-center gap-1.5"
+                                >
+                                  <div className="flex items-center justify-between w-full">
+                                    <span className="text-[10px] font-700 text-neutral-700">
+                                      ${denom}
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        setCashDenomination(denom, qty - 1)
+                                      }
+                                      className="w-5 h-5 flex items-center justify-center rounded-md bg-neutral-200 hover:bg-neutral-300 transition-colors cursor-pointer"
+                                    >
+                                      <Minus size={9} />
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center justify-between w-full">
+                                    <span className="text-[13px] font-800 text-neutral-900 w-6 text-center">
+                                      {qty}
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        setCashDenomination(denom, qty + 1)
+                                      }
+                                      className="w-5 h-5 flex items-center justify-center rounded-md bg-brand-primary hover:bg-brand-primary-hover text-white transition-colors cursor-pointer"
+                                    >
+                                      <Plus size={9} />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-[13px] font-800 text-neutral-900 w-6 text-center">
-                                    {qty}
-                                  </span>
-                                  <button
-                                    onClick={() =>
-                                      setCashDenomination(denom, qty + 1)
-                                    }
-                                    className="w-5 h-5 flex items-center justify-center rounded-md bg-brand-primary hover:bg-brand-primary-hover text-white transition-colors cursor-pointer"
-                                  >
-                                    <Plus size={9} />
-                                  </button>
-                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Custom cash amount input */}
+                          <div>
+                            <label className="block text-[10px] font-600 text-neutral-500 mb-1.5 uppercase tracking-wide">
+                              Or Enter Custom Amount
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] font-500 text-neutral-400">
+                                $
+                              </span>
+                              <input
+                                type="number"
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                                value={
+                                  cashGiven > 0 &&
+                                  Object.values(cashDenominations).every(
+                                    (q) => q === 0,
+                                  )
+                                    ? cashGiven
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setCashGiven(parseFloat(e.target.value) || 0)
+                                }
+                                className="w-full border border-neutral-200 rounded-xl pl-8 pr-4 py-2.5 text-[12px] font-600 text-neutral-800 bg-neutral-50 focus:outline-none focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/10 transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Cash totals */}
+                          {cashGiven > 0 && (
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-neutral-500 font-500">
+                                  Cash Given
+                                </span>
+                                <span className="text-[11px] font-700 text-neutral-800">
+                                  ${cashGiven.toFixed(2)}
+                                </span>
                               </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Custom cash amount input */}
-                        <div>
-                          <label className="block text-[10px] font-600 text-neutral-500 mb-1.5 uppercase tracking-wide">
-                            Or Enter Custom Amount
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] font-500 text-neutral-400">
-                              $
-                            </span>
-                            <input
-                              type="number"
-                              placeholder="0.00"
-                              min="0"
-                              step="0.01"
-                              value={
-                                cashGiven > 0 &&
-                                Object.values(cashDenominations).every(
-                                  (q) => q === 0,
-                                )
-                                  ? cashGiven
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                setCashGiven(parseFloat(e.target.value) || 0)
-                              }
-                              className="w-full border border-neutral-200 rounded-xl pl-8 pr-4 py-2.5 text-[12px] font-600 text-neutral-800 bg-neutral-50 focus:outline-none focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/10 transition-all"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Cash totals */}
-                        {cashGiven > 0 && (
-                          <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-neutral-500 font-500">
-                                Cash Given
-                              </span>
-                              <span className="text-[11px] font-700 text-neutral-800">
-                                ${cashGiven.toFixed(2)}
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-neutral-500 font-500">
+                                  Change Due
+                                </span>
+                                <span
+                                  className={`text-[12px] font-800 ${changeAmount > 0 ? "text-green-600" : "text-neutral-400"}`}
+                                >
+                                  ${changeAmount.toFixed(2)}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-neutral-500 font-500">
-                                Change Due
-                              </span>
-                              <span
-                                className={`text-[12px] font-800 ${changeAmount > 0 ? "text-green-600" : "text-neutral-400"}`}
-                              >
-                                ${changeAmount.toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
 
                 {/* ── ACCOUNT PAY (3rd Party) ── */}
-                {paymentTiming === "pay-now" && paymentType === "one-time" && isThirdParty && (
-                  <div className="space-y-2">
-                    {/* Amount */}
-                    <div>
-                      <label className="block text-[10px] font-600 text-neutral-500 mb-1.5 uppercase tracking-wide">
-                        Amount To Pay ($)
-                      </label>
-                      <div className="border border-neutral-200 rounded-xl px-3.5 py-2.5 bg-brand-primary/5">
-                        <span className="text-[16px] font-800 text-brand-primary">
-                          ${total.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Account Pay Badge */}
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2">
-                      <CheckCircle size={14} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                {paymentTiming === "pay-now" &&
+                  paymentType === "one-time" &&
+                  isThirdParty && (
+                    <div className="space-y-2">
+                      {/* Amount */}
                       <div>
-                        <p className="text-[11px] font-700 text-emerald-800">
-                          Account Pay
-                        </p>
-                        <p className="text-[10px] text-emerald-600 mt-0.5">
-                          Payment received via {orderSource === "doordash" ? "DoorDash" : orderSource === "skip" ? "Skip The Dishes" : "Uber Eats"}. Amount will be recorded as Account Pay.
-                        </p>
+                        <label className="block text-[10px] font-600 text-neutral-500 mb-1.5 uppercase tracking-wide">
+                          Amount To Pay ($)
+                        </label>
+                        <div className="border border-neutral-200 rounded-xl px-3.5 py-2.5 bg-brand-primary/5">
+                          <span className="text-[16px] font-800 text-brand-primary">
+                            ${total.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Account Pay Badge */}
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2">
+                        <CheckCircle
+                          size={14}
+                          className="text-emerald-600 flex-shrink-0 mt-0.5"
+                        />
+                        <div>
+                          <p className="text-[11px] font-700 text-emerald-800">
+                            Account Pay
+                          </p>
+                          <p className="text-[10px] text-emerald-600 mt-0.5">
+                            Payment received via{" "}
+                            {orderSource === "doordash"
+                              ? "DoorDash"
+                              : orderSource === "skip"
+                                ? "Skip The Dishes"
+                                : "Uber Eats"}
+                            . Amount will be recorded as Account Pay.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* ── SPLIT PAYMENT ── */}
                 {paymentTiming === "pay-now" && paymentType === "split" && (
@@ -760,7 +780,10 @@ export default function CheckoutModal() {
                   onClick={() => {
                     setOrderSource("pos");
                     // Reset order type if switching from 3rd party
-                    if (["doordash", "skip", "ubereats"].includes(orderSource) && orderType === "delivery") {
+                    if (
+                      ["doordash", "skip", "ubereats"].includes(orderSource) &&
+                      orderType === "delivery"
+                    ) {
                       setOrderType("takeout");
                     }
                   }}
@@ -776,7 +799,10 @@ export default function CheckoutModal() {
                   onClick={() => {
                     setOrderSource("doordash");
                     // Reset order type if it's not takeout or delivery
-                    if (orderType === "drive-through" || orderType === "dine-in") {
+                    if (
+                      orderType === "drive-through" ||
+                      orderType === "dine-in"
+                    ) {
                       setOrderType("takeout");
                     }
                   }}
@@ -797,11 +823,27 @@ export default function CheckoutModal() {
                     Select Platform
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {([
-                      { id: "doordash" as const, label: "DoorDash", color: "bg-red-50 border-red-200 text-red-700", activeColor: "bg-red-600 border-red-600 text-white" },
-                      { id: "skip" as const, label: "Skip", color: "bg-orange-50 border-orange-200 text-orange-700", activeColor: "bg-orange-600 border-orange-600 text-white" },
-                      { id: "ubereats" as const, label: "Uber Eats", color: "bg-green-50 border-green-200 text-green-700", activeColor: "bg-green-600 border-green-600 text-white" },
-                    ]).map((platform) => (
+                    {[
+                      {
+                        id: "doordash" as const,
+                        label: "DoorDash",
+                        color: "bg-red-50 border-red-200 text-red-700",
+                        activeColor: "bg-red-600 border-red-600 text-white",
+                      },
+                      {
+                        id: "skip" as const,
+                        label: "Skip",
+                        color: "bg-orange-50 border-orange-200 text-orange-700",
+                        activeColor:
+                          "bg-orange-600 border-orange-600 text-white",
+                      },
+                      {
+                        id: "ubereats" as const,
+                        label: "Uber Eats",
+                        color: "bg-green-50 border-green-200 text-green-700",
+                        activeColor: "bg-green-600 border-green-600 text-white",
+                      },
+                    ].map((platform) => (
                       <button
                         key={platform.id}
                         onClick={() => setOrderSource(platform.id)}
@@ -924,7 +966,7 @@ export default function CheckoutModal() {
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-neutral-500 font-500">
-                      GST (5%)
+                      GST ({branchTaxFees?.gstTaxRate ?? 5}%)
                     </span>
                     <span className="text-[10px] font-600 text-neutral-700">
                       ${tax.toFixed(2)}
@@ -932,7 +974,11 @@ export default function CheckoutModal() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-neutral-500 font-500">
-                      Total Tax (5%)
+                      Total Tax (
+                      {(branchTaxFees?.gstTaxRate ?? 5) +
+                        (branchTaxFees?.pstTaxRate ?? 0) +
+                        (branchTaxFees?.hstTaxRate ?? 0)}
+                      %)
                     </span>
                     <span className="text-[10px] font-600 text-neutral-700">
                       ${tax.toFixed(2)}

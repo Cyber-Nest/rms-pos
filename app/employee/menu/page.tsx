@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Search, UtensilsCrossed, RefreshCw, ArrowLeft, ImageIcon, X } from 'lucide-react';
-import OrdersNavbar from '@/modules/employee-pos/components/OrdersNavbar';
+import PosNavbar from '@/modules/employee-pos/components/PosNavbar';
 import POSSidebarDrawer from '@/modules/employee-pos/components/POSSidebarDrawer';
 
 interface Product {
@@ -46,7 +46,23 @@ export default function BranchMenuPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await axios.get(`${apiUrl}/menu/products/branch-list`);
+
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
+      const res = await axios.get(`${apiUrl}/menu/products/branch-list`, {
+        params: {
+          ...(branchId ? { branchId } : {}),
+        },
+      });
       if (res.data && res.data.success) {
         setProducts(res.data.data || []);
       } else {
@@ -67,12 +83,24 @@ export default function BranchMenuPage() {
   const handleToggleActive = async (product: Product) => {
     if (togglingId) return; // Prevent double clicks
     
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
     const newStatus = product.isActive !== false ? false : true;
     setTogglingId(product._id);
     
     try {
       const res = await axios.patch(`${apiUrl}/menu/products/${product._id}/toggle-active`, {
-        isActive: newStatus
+        isActive: newStatus,
+        branchId,
       });
       
       if (res.data && res.data.success) {
@@ -94,12 +122,24 @@ export default function BranchMenuPage() {
   const handleToggleStock = async (product: Product) => {
     if (togglingStockId) return;
     
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
     const newStatus = product.isOutOfStock !== true ? true : false;
     setTogglingStockId(product._id);
     
     try {
       const res = await axios.patch(`${apiUrl}/menu/products/${product._id}/toggle-stock`, {
-        isOutOfStock: newStatus
+        isOutOfStock: newStatus,
+        branchId,
       });
       
       if (res.data && res.data.success) {
@@ -143,7 +183,7 @@ export default function BranchMenuPage() {
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar Header */}
-      <OrdersNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
+      <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* Control Bar (Matching the project layout style) */}
       <div className="bg-white border-b border-neutral-200 px-6 py-3.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 shadow-sm flex-shrink-0 select-none">

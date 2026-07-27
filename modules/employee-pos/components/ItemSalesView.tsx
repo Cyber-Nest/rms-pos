@@ -35,9 +35,20 @@ export default function ItemSalesView({ startDate, endDate }: ItemSalesViewProps
     try {
       setLoading(true);
       setError(null);
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders/item-sales-summary`, {
-        params: { startDate, endDate }
+        params: { startDate, endDate, ...(branchId ? { branchId } : {}) }
       });
       if (res.data && res.data.success) {
         setData(res.data.data || []);

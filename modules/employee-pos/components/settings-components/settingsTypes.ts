@@ -39,4 +39,11 @@ export interface Holiday {
   createdDate: string;
 }
 
-export type TabType = 'main_settings' | 'terminal_setup' | 'till_setup' | 'store_timings' | 'store_timings_update' | 'holidays';
+export interface TaxFeesSettings {
+  deliveryFee: string | number;
+  gstTaxRate: string | number;
+  pstTaxRate: string | number;
+  hstTaxRate: string | number;
+}
+
+export type TabType = 'main_settings' | 'tax_fees' | 'terminal_setup' | 'till_setup' | 'store_timings' | 'store_timings_update' | 'holidays';

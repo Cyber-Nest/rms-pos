@@ -36,6 +36,17 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
 
     setSubmitting(true);
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const payload = {
         category,
         expenseType,
@@ -46,7 +57,8 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
         pst: parseFloat(pst) || 0,
         gst: parseFloat(gst) || 0,
         hst: parseFloat(hst) || 0,
-        description
+        description,
+        ...(branchId ? { branchId } : {})
       };
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";

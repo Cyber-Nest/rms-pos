@@ -30,13 +30,25 @@ export default function ReceptionView() {
   // ── Fetch Active Orders from API ──
   const fetchActiveOrders = useCallback(async () => {
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== "undefined") {
+        const rawBranch = localStorage.getItem("rms_branch");
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
           status: "pending,preparing,ready,completed",
-          fields: "orderNumber,orderSource,orderType,status,receptionCompleted,createdAt",
+          fields: "orderNumber,orderSource,orderType,status,receptionCompleted,createdAt,branchId",
           excludeReceptionCompleted: "true",
+          ...(branchId ? { branchId } : {}),
         },
       });
       if (res.data.success) {
@@ -129,8 +141,20 @@ export default function ReceptionView() {
 
   // ── Pusher Real-time Listener ──
   useEffect(() => {
+    let branchId: string | undefined = undefined;
+    if (typeof window !== "undefined") {
+      const rawBranch = localStorage.getItem("rms_branch");
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
+    const channelName = branchId ? `orders-${branchId}` : "orders";
     const pusher = getPusherClient();
-    const channel = pusher.subscribe("orders");
+    const channel = pusher.subscribe(channelName);
 
     // Listen for new orders
     channel.bind("new-order", (data: any) => {
@@ -161,7 +185,7 @@ export default function ReceptionView() {
 
     return () => {
       channel.unbind_all();
-      pusher.unsubscribe("orders");
+      pusher.unsubscribe(channelName);
     };
   }, [fetchActiveOrders]);
 

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
-import KitchenNavbar from './KitchenNavbar';
+import PosNavbar from './PosNavbar';
 import KitchenOrderCard from './KitchenOrderCard';
 import KitchenDetailModal from './KitchenDetailModal';
 import POSSidebarDrawer from './POSSidebarDrawer';
@@ -21,24 +21,66 @@ export default function KitchenDashboard() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'preparing' | 'ready'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'takeout' | 'drive-through' | 'dine-in' | 'delivery' | 'online'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'chicken' | 'pizza'>('chicken');
+  const [branchMenuItems, setBranchMenuItems] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [startIndex, setStartIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState(Date.now());
-
   const ordersRef = useRef(orders);
   useEffect(() => {
     ordersRef.current = orders;
   }, [orders]);
 
+  // ── Fetch Branch Menu Feed to Inspect Kitchen Labels ────────
+  const fetchBranchMenu = useCallback(async () => {
+    try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.get(`${apiUrl}/menu/pos-feed`, {
+        params: branchId ? { branchId } : {}
+      });
+      if (res.data?.success && res.data?.data?.menuItems) {
+        setBranchMenuItems(res.data.data.menuItems);
+      }
+    } catch (err) {
+      console.warn('Failed to load branch menu feed for kitchen label inspection');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBranchMenu();
+  }, [fetchBranchMenu]);
+
   // ── Fetch DB Orders ──────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders`, {
         params: {
           status: 'pending,preparing,ready',
-          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared',
-          excludeKitchenCleared: 'true'
+          fields: 'orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared,branchId,branchName,branchCode',
+          excludeKitchenCleared: 'true',
+          ...(branchId ? { branchId } : {})
         }
       });
       if (res.data.success) {
@@ -76,8 +118,20 @@ export default function KitchenDashboard() {
 
   // ── Pusher Real-time Listener ────────────────────────────────
   useEffect(() => {
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id;
+        } catch (e) {}
+      }
+    }
+
     const pusher = getPusherClient();
-    const channel = pusher.subscribe('orders');
+    const channelName = branchId ? `orders-${branchId}` : 'orders';
+    const channel = pusher.subscribe(channelName);
 
     // Bind to the 'new-order' event
     channel.bind('new-order', (data: any) => {
@@ -120,7 +174,7 @@ export default function KitchenDashboard() {
     // Cleanup on unmount
     return () => {
       channel.unbind_all();
-      pusher.unsubscribe('orders');
+      pusher.unsubscribe(channelName);
     };
   }, [fetchOrders]);
 
@@ -307,16 +361,49 @@ export default function KitchenDashboard() {
     return { all: candidates.length, pizza: pizzaCount, chicken: chickenCount };
   }, [orders, draftCart, statusFilter, typeFilter, currentTime]);
 
+  // Check if Pizza & Chicken kitchen labels are present in branch menu or active orders
+  const hasPizzaMenu = React.useMemo(() => {
+    const inMenu = branchMenuItems.some((item) => item.kitchenLabel === 'pizza');
+    const inOrders = orders.some((o) => o.items?.some((item: any) => item.kitchenLabel === 'pizza'));
+    return inMenu || inOrders;
+  }, [branchMenuItems, orders]);
+
+  const hasChickenMenu = React.useMemo(() => {
+    const inMenu = branchMenuItems.some((item) => item.kitchenLabel !== 'pizza');
+    const inOrders = orders.some((o) => o.items?.some((item: any) => item.kitchenLabel !== 'pizza'));
+    return inMenu || inOrders;
+  }, [branchMenuItems, orders]);
+
+  const availableCatTabs = React.useMemo(() => {
+    const tabs: { id: 'all' | 'chicken' | 'pizza'; label: string }[] = [];
+    if (hasChickenMenu && hasPizzaMenu) {
+      tabs.push({ id: 'all', label: 'All' });
+    }
+    if (hasChickenMenu) {
+      tabs.push({ id: 'chicken', label: 'Chicken' });
+    }
+    if (hasPizzaMenu) {
+      tabs.push({ id: 'pizza', label: 'Pizza' });
+    }
+    return tabs;
+  }, [hasChickenMenu, hasPizzaMenu]);
+
+  // Automatically fallback categoryFilter if active tab is not available for this branch
+  useEffect(() => {
+    if (categoryFilter === 'pizza' && !hasPizzaMenu) {
+      setCategoryFilter(hasChickenMenu ? 'chicken' : 'all');
+    } else if (categoryFilter === 'all' && !(hasChickenMenu && hasPizzaMenu)) {
+      if (hasChickenMenu && !hasPizzaMenu) setCategoryFilter('chicken');
+      else if (hasPizzaMenu && !hasChickenMenu) setCategoryFilter('pizza');
+    }
+  }, [hasPizzaMenu, hasChickenMenu, categoryFilter]);
+
   const visibleOrders = filteredOrders.slice(startIndex, startIndex + 4);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar */}
-      <KitchenNavbar 
-        activePendingCount={activeDraftCount} 
-        activeConfirmedCount={countConfirmed} 
-        onToggleSidebar={() => setIsSidebarOpen(true)} 
-      />
+      <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* ── Filter Controls Section (Premium Low-Profile Segmented Controls) ── */}
       <div className="bg-white border-b border-neutral-200 px-6 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-xs flex-shrink-0 select-none">
@@ -347,30 +434,28 @@ export default function KitchenDashboard() {
           })}
         </div>
 
-        {/* Category Segment Bar  */}
-        <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200">
-          {[
-            { id: "all", label: "All" },
-            { id: "chicken", label: "Chicken" },
-            { id: "pizza", label: "Pizza" },
-          ].map((catTab) => {
-            const active = categoryFilter === catTab.id;
-            const count = categoryCountData[catTab.id as keyof typeof categoryCountData] ?? 0;
-            return (
-              <button
-                key={catTab.id}
-                onClick={() => setCategoryFilter(catTab.id as any)}
-                className={`px-4 py-1 rounded-lg text-[10px] font-700 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
-                  active
-                    ? "bg-brand-primary text-white shadow-xs"
-                    : "text-neutral-550 hover:text-brand-primary"
-                }`}
-              >
-                {catTab.label} ({count})
-              </button>
-            );
-          })}
-        </div>
+        {/* Category Segment Bar — Only rendered if multiple kitchen labels exist for this branch */}
+        {availableCatTabs.length > 1 && (
+          <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200">
+            {availableCatTabs.map((catTab) => {
+              const active = categoryFilter === catTab.id;
+              const count = categoryCountData[catTab.id as keyof typeof categoryCountData] ?? 0;
+              return (
+                <button
+                  key={catTab.id}
+                  onClick={() => setCategoryFilter(catTab.id as any)}
+                  className={`px-4 py-1 rounded-lg text-[10px] font-700 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                    active
+                      ? "bg-brand-primary text-white shadow-xs"
+                      : "text-neutral-550 hover:text-brand-primary"
+                  }`}
+                >
+                  {catTab.label} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Order Types Segment Bar */}
         <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200">
