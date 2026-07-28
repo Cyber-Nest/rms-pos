@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   Truck, Calendar, User, Search, Printer, DollarSign, 
   CheckCircle, FileText, ArrowRightLeft, 
@@ -71,15 +71,14 @@ export default function DriverDropDashboard() {
   
   // Modals state
   const [activePrintModal, setActivePrintModal] = useState<"sales" | "commission" | "both" | null>(null);
-  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
   const [isSalesDetailsModalOpen, setIsSalesDetailsModalOpen] = useState(false);
 
-  // ── "Enter the Drop Below" Input States ──
-  const [dropCash, setDropCash] = useState<string>("0.00");
-  const [dropCreditCard, setDropCreditCard] = useState<string>("0.00");
-  const [dropOther, setDropOther] = useState<string>("0.00");
+  // ── Shift Reconciliation Table Direct Input States ──
+  const [terminalSalesInput, setTerminalSalesInput] = useState<string>("0.00");
+  const [terminalTipsInput, setTerminalTipsInput] = useState<string>("0.00");
+  const [cashSalesInput, setCashSalesInput] = useState<string>("0.00");
 
-  // ── Payout Confirmation Modal States ──
+  // ── Driver Settlement Payout Card States ──
   const [hasAdditionalCommissionToggle, setHasAdditionalCommissionToggle] = useState<boolean>(true);
   const [additionalCommission, setAdditionalCommission] = useState<string>("1.50");
   const [additionalReason, setAdditionalReason] = useState<string>("Rain Allowance");
@@ -98,6 +97,26 @@ export default function DriverDropDashboard() {
   const orders = useMemo(() => {
     if (!selectedDriver) return [];
     return DUMMY_ORDERS_MAP[selectedDriver.id] || [];
+  }, [selectedDriver]);
+
+  // Sync default input values whenever selectedDriver changes
+  useEffect(() => {
+    if (selectedDriver) {
+      const drvOrders = DUMMY_ORDERS_MAP[selectedDriver.id] || [];
+      const tmOrders = drvOrders.filter(o => o.pd === "TM");
+      const tmSales = tmOrders.reduce((sum, o) => sum + o.total, 0);
+      const tmTips = drvOrders.reduce((sum, o) => sum + o.terminalTip, 0);
+      const csOrders = drvOrders.filter(o => o.pd === "CS");
+      const csSales = csOrders.reduce((sum, o) => sum + o.total, 0);
+
+      setTerminalSalesInput(tmSales.toFixed(2));
+      setTerminalTipsInput(tmTips.toFixed(2));
+      setCashSalesInput(csSales.toFixed(2));
+    } else {
+      setTerminalSalesInput("0.00");
+      setTerminalTipsInput("0.00");
+      setCashSalesInput("0.00");
+    }
   }, [selectedDriver]);
 
   // ── Calculation Logic ──
@@ -120,8 +139,6 @@ export default function DriverDropDashboard() {
         totalTipsEarned: 0,
         totalDriverEarning: 0,
         netCashPayoutToDriver: 0,
-        totalEnteredDrop: 0,
-        numChecks: 0,
         ratePerOrder: 6.00,
       };
     }
@@ -136,31 +153,24 @@ export default function DriverDropDashboard() {
 
     const totalNewSales = totalSales - prepaidSales - prepaidTips;
 
-    const terminalOrders = orders.filter(o => o.pd === "TM");
-    const terminalSales = terminalOrders.reduce((sum, o) => sum + o.total, 0);
-    const terminalTips = orders.reduce((sum, o) => sum + o.terminalTip, 0);
+    // Entered Input values
+    const enteredTerminalSales = parseFloat(terminalSalesInput) || 0;
+    const enteredTerminalTips = parseFloat(terminalTipsInput) || 0;
+    const enteredCashSales = parseFloat(cashSalesInput) || 0;
 
-    const cashOrders = orders.filter(o => o.pd === "CS");
-    const cashSales = cashOrders.reduce((sum, o) => sum + o.total, 0);
-
-    const saleDue = Math.max(0, totalNewSales - terminalSales - terminalTips - cashSales);
+    // Sale Due calculation
+    const saleDue = totalNewSales - enteredTerminalSales - enteredTerminalTips - enteredCashSales;
 
     // Delivery Commissions ($6.00 flat per order)
     const driverBaseCommission = totalOrders * 6.00;
     const extraComm = hasAdditionalCommissionToggle ? (parseFloat(additionalCommission) || 0) : 0;
     const driverTotalCommission = driverBaseCommission + extraComm;
 
-    const totalTipsEarned = prepaidTips + terminalTips;
-
-    // Sum of entered drops
-    const numCash = parseFloat(dropCash) || 0;
-    const numCard = parseFloat(dropCreditCard) || 0;
-    const numOther = parseFloat(dropOther) || 0;
-    const totalEnteredDrop = numCash + numCard + numOther;
+    const totalTipsEarned = prepaidTips + enteredTerminalTips;
 
     // Total Driver Earnings & Net Cash Settlement
     const totalDriverEarning = totalTipsEarned + driverTotalCommission;
-    const netCashPayoutToDriver = totalDriverEarning - cashSales;
+    const netCashPayoutToDriver = totalDriverEarning;
 
     return {
       totalOrders,
@@ -169,9 +179,9 @@ export default function DriverDropDashboard() {
       prepaidSales,
       prepaidTips,
       totalNewSales,
-      terminalSales,
-      terminalTips,
-      cashSales,
+      terminalSales: enteredTerminalSales,
+      terminalTips: enteredTerminalTips,
+      cashSales: enteredCashSales,
       saleDue,
       driverBaseCommission,
       driverAdditionalCommission: extraComm,
@@ -179,13 +189,11 @@ export default function DriverDropDashboard() {
       totalTipsEarned,
       totalDriverEarning,
       netCashPayoutToDriver,
-      totalEnteredDrop,
-      numChecks: 0,
       ratePerOrder: 6.00,
     };
-  }, [selectedDriver, orders, dropCash, dropCreditCard, dropOther, hasAdditionalCommissionToggle, additionalCommission]);
+  }, [selectedDriver, orders, terminalSalesInput, terminalTipsInput, cashSalesInput, hasAdditionalCommissionToggle, additionalCommission]);
 
-  // Submit button is disabled if no driver selected OR Sale Due > 0
+  // Submit button disabled if no driver selected OR Sale Due > 0
   const isSubmitDisabled = !selectedDriver || calculations.saleDue > 0;
 
   // Data for Thermal Sales Report
@@ -213,9 +221,9 @@ export default function DriverDropDashboard() {
       cashSales: calculations.cashSales,
       saleDue: calculations.saleDue,
       openBanks: 0,
-      cashDropped: parseFloat(dropCash) || 0,
-      creditCardDrop: parseFloat(dropCreditCard) || 0,
-      otherDrops: parseFloat(dropOther) || 0,
+      cashDropped: calculations.cashSales,
+      creditCardDrop: calculations.terminalSales,
+      otherDrops: 0,
       checksDropped: 0,
       totalDue: calculations.saleDue,
       totalPrepaidTips: calculations.prepaidTips,
@@ -229,7 +237,7 @@ export default function DriverDropDashboard() {
       totalDriverEarning: calculations.totalDriverEarning,
       totalCommissionDue: calculations.driverTotalCommission,
     };
-  }, [selectedDriver, selectedDate, orders, calculations, dropCash, dropCreditCard, dropOther, hasAdditionalCommissionToggle, additionalReason]);
+  }, [selectedDriver, selectedDate, orders, calculations, hasAdditionalCommissionToggle, additionalReason]);
 
   // Data for Thermal Commission Slip
   const commissionSlipData: DriverCommissionSlipData = useMemo(() => {
@@ -259,34 +267,19 @@ export default function DriverDropDashboard() {
     window.print();
   };
 
-  const handleOpenSettlement = () => {
+  const handleFinalizeSettlement = () => {
     if (!selectedDriver) {
       toast.error("Please select a driver first!");
       return;
     }
     if (isSubmitDisabled) {
-      toast.error(`Cannot submit settlement while Sale Due is $${calculations.saleDue.toFixed(2)}. Reconciliation must equal $0.00.`);
+      toast.error(`Cannot submit settlement while Sale Due is $${calculations.saleDue.toFixed(2)}. Reconciliation must be $0.00 or less.`);
       return;
     }
-    setIsSettlementModalOpen(true);
-  };
-
-  const handleFinalizeSettlement = () => {
-    if (!selectedDriver) return;
-    setIsSettlementModalOpen(false);
     toast.success(
       `Drop settlement finalized for ${selectedDriver.name}! Net Cash Payout: $${calculations.netCashPayoutToDriver.toFixed(2)}`
     );
     setActivePrintModal("both");
-  };
-
-  const handleCancelDropInputs = () => {
-    setDropCash("0.00");
-    setDropCreditCard("0.00");
-    setDropOther("0.00");
-    setAdditionalCommission("0.00");
-    setAdditionalReason("");
-    toast("Drop entries reset to 0.00");
   };
 
   return (
@@ -363,9 +356,9 @@ export default function DriverDropDashboard() {
               <User size={15} />
               <span>Driver Selection & Profile</span>
             </span>
-            <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">
+            {/* <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">
               {selectedDriver ? "Shift Active" : "No Driver Selected"}
-            </span>
+            </span> */}
           </div>
 
           <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
@@ -437,9 +430,9 @@ export default function DriverDropDashboard() {
                     </div>
                   </div>
 
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  {/* <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
                     {selectedDriver.status}
-                  </span>
+                  </span> */}
                 </div>
 
                 {/* Quick Stat Badges */}
@@ -489,7 +482,7 @@ export default function DriverDropDashboard() {
               <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
                 <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
                   <span>Shift Sales Reconciliation</span>
-                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">Excel Sync</span>
+                  {/* <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">Interactive Inputs</span> */}
                 </div>
 
                 <table className="w-full text-left text-[12px]">
@@ -521,22 +514,69 @@ export default function DriverDropDashboard() {
                       <td className="py-2.5 px-4 text-right text-brand-primary font-900">${calculations.totalNewSales.toFixed(2)}</td>
                     </tr>
 
-                    <tr>
-                      <td className="py-2 px-4 text-neutral-600 pl-6">Terminal sales (-)</td>
-                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.terminalSales.toFixed(2)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 text-neutral-600 pl-6">Terminal Tips (-)</td>
-                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.terminalTips.toFixed(2)}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 text-neutral-600 pl-6">Cash Sales (-)</td>
-                      <td className="py-2 px-4 text-right font-700 text-rose-600">-${calculations.cashSales.toFixed(2)}</td>
+                    {/* Interactive Input Row 1: Terminal Sales */}
+                    <tr className="bg-neutral-50/70">
+                      <td className="py-2 px-4 text-neutral-800 font-700 pl-6 flex items-center gap-1.5">
+                        <span>Terminal sales (-)</span>
+                      </td>
+                      <td className="py-1.5 px-4 text-right">
+                        <div className="inline-flex items-center relative">
+                          <span className="absolute left-2.5 text-neutral-400 font-bold text-[11px]">$</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={terminalSalesInput}
+                            onChange={(e) => setTerminalSalesInput(e.target.value)}
+                            className="w-28 bg-white border border-neutral-300 rounded-lg pl-6 pr-2.5 py-1 text-right font-800 text-rose-600 focus:outline-none focus:border-brand-primary font-mono text-xs shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+                      </td>
                     </tr>
 
-                    <tr className="bg-neutral-900 text-white font-900">
-                      <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Sale Due (=)</td>
-                      <td className="py-2.5 px-4 text-right text-emerald-400 font-900 text-sm">${calculations.saleDue.toFixed(2)}</td>
+                    {/* Interactive Input Row 2: Terminal Tips */}
+                    <tr className="bg-neutral-50/70">
+                      <td className="py-2 px-4 text-neutral-800 font-700 pl-6 flex items-center gap-1.5">
+                        <span>Terminal Tips (-)</span>
+                      </td>
+                      <td className="py-1.5 px-4 text-right">
+                        <div className="inline-flex items-center relative">
+                          <span className="absolute left-2.5 text-neutral-400 font-bold text-[11px]">$</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={terminalTipsInput}
+                            onChange={(e) => setTerminalTipsInput(e.target.value)}
+                            className="w-28 bg-white border border-neutral-300 rounded-lg pl-6 pr-2.5 py-1 text-right font-800 text-rose-600 focus:outline-none focus:border-brand-primary font-mono text-xs shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Interactive Input Row 3: Cash Sales */}
+                    <tr className="bg-neutral-50/70">
+                      <td className="py-2 px-4 text-neutral-800 font-700 pl-6 flex items-center gap-1.5">
+                        <span>Cash Sales (-)</span>
+                      </td>
+                      <td className="py-1.5 px-4 text-right">
+                        <div className="inline-flex items-center relative">
+                          <span className="absolute left-2.5 text-neutral-400 font-bold text-[11px]">$</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={cashSalesInput}
+                            onChange={(e) => setCashSalesInput(e.target.value)}
+                            className="w-28 bg-white border border-neutral-300 rounded-lg pl-6 pr-2.5 py-1 text-right font-800 text-rose-600 focus:outline-none focus:border-brand-primary font-mono text-xs shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Final Sale Due Row */}
+                    <tr className={`font-900 transition-colors ${calculations.saleDue <= 0 ? 'bg-neutral-900 text-white' : 'bg-rose-950 text-white'}`}>
+                      <td className="py-3 px-4 uppercase text-[11px] tracking-wide">Sale Due (=)</td>
+                      <td className={`py-3 px-4 text-right font-900 text-sm font-mono ${calculations.saleDue <= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        ${calculations.saleDue.toFixed(2)}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -544,16 +584,16 @@ export default function DriverDropDashboard() {
 
               {/* ==================== RIGHT COLUMN: DRIVER SETTLEMENT PAYOUT ==================== */}
               <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
-                <div>
+                <div className="divide-y divide-neutral-200/60">
                   <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
                     <span>Driver Settlement Payout</span>
-                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">$6.00 / Delivery Order</span>
+                    {/* <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-700">$6.00 / Delivery Order</span> */}
                   </div>
 
                   <table className="w-full text-left text-[12px]">
                     <tbody className="divide-y divide-neutral-200/60 font-650">
                       <tr>
-                        <td className="py-2.5 px-4 text-neutral-800 font-700">Driver Base Commission ($6.00 / Order)</td>
+                        <td className="py-2.5 px-4 text-neutral-800 font-700">Driver Base Commission ($6.00 × {calculations.totalOrders} Orders)</td>
                         <td className="py-2.5 px-4 text-right font-800 text-brand-primary">${calculations.driverBaseCommission.toFixed(2)}</td>
                       </tr>
                       <tr>
@@ -564,134 +604,112 @@ export default function DriverDropDashboard() {
                         <td className="py-2.5 px-4 text-neutral-700">Terminal Tips</td>
                         <td className="py-2.5 px-4 text-right font-700 text-neutral-900">${calculations.terminalTips.toFixed(2)}</td>
                       </tr>
+                    </tbody>
+                  </table>
 
+                  {/* Additional Commission Section Integrated Directly into Card */}
+                  <div className="p-4 bg-neutral-50/80 space-y-3 border-t border-neutral-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800 font-800 text-xs uppercase">ADDITIONAL COMMISSION?</span>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          type="button"
+                          onClick={() => setHasAdditionalCommissionToggle(true)}
+                          className={`px-4 py-1 rounded-lg font-900 text-xs cursor-pointer transition-all ${
+                            hasAdditionalCommissionToggle ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-neutral-600 border border-neutral-300'
+                          }`}
+                        >
+                          Yes
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setHasAdditionalCommissionToggle(false)}
+                          className={`px-4 py-1 rounded-lg font-900 text-xs cursor-pointer transition-all ${
+                            !hasAdditionalCommissionToggle ? 'bg-rose-600 text-white shadow-xs' : 'bg-white text-neutral-600 border border-neutral-300'
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+
+                    {hasAdditionalCommissionToggle && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 animate-fade-in">
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-800 text-neutral-600 uppercase block">Additional Comm ($)</label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">$</span>
+                            <input 
+                              type="number"
+                              step="0.01"
+                              value={additionalCommission}
+                              onChange={(e) => setAdditionalCommission(e.target.value)}
+                              className="w-full bg-white border border-neutral-300 rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono shadow-2xs"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-800 text-neutral-600 uppercase block">Reason</label>
+                          <input 
+                            type="text"
+                            placeholder="e.g. Rain Allowance"
+                            value={additionalReason}
+                            onChange={(e) => setAdditionalReason(e.target.value)}
+                            className="w-full bg-white border border-neutral-300 rounded-lg px-2.5 py-1.5 text-xs font-600 text-neutral-900 focus:outline-none focus:border-brand-primary"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <table className="w-full text-left text-[12px]">
+                    <tbody className="divide-y divide-neutral-200/60 font-650">
                       <tr className="bg-orange-50/60 font-900 text-neutral-900 border-y border-brand-primary/20">
-                        <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">Total Driver Earnings (Comm + Tips)</td>
+                        <td className="py-2.5 px-4 uppercase text-[11px] tracking-wide">TOTAL DRIVER EARNINGS (COMM + TIPS)</td>
                         <td className="py-2.5 px-4 text-right text-brand-primary font-900">${calculations.totalDriverEarning.toFixed(2)}</td>
-                      </tr>
-
-                      <tr>
-                        <td className="py-2.5 px-4 text-rose-700 font-700">- Less Cash Kept by Driver (Cash Sales)</td>
-                        <td className="py-2.5 px-4 text-right font-800 text-rose-600">-${calculations.cashSales.toFixed(2)}</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
 
                 {/* Net Payout Callout Footer Box */}
-                <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex items-center justify-between">
+                <div className="p-4 bg-neutral-50 border-t border-neutral-200 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-800 uppercase text-neutral-500 tracking-wider">Net Cash Payout to Driver</p>
-                    <p className="text-2xl font-900 text-emerald-700 mt-0.5">${calculations.netCashPayoutToDriver.toFixed(2)}</p>
+                    <p className="text-[10px] font-800 uppercase text-neutral-500 tracking-wider">NET CASH PAYOUT TO DRIVER</p>
+                    <p className="text-2xl font-900 text-emerald-700 mt-0.5 font-mono">${calculations.netCashPayoutToDriver.toFixed(2)}</p>
                   </div>
 
-                  <button 
-                    onClick={() => setActivePrintModal("both")}
-                    className="px-5 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white font-850 text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95 hover:shadow-sm select-none"
-                  >
-                    <Printer size={14} />
-                    <span>Print Both Slips</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => setActivePrintModal("both")}
+                      className="px-4 py-2.5 bg-white border border-neutral-300 hover:bg-neutral-100 text-neutral-800 font-800 text-[11px] uppercase rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer size={13} />
+                      <span>Print Both Slips</span>
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={handleFinalizeSettlement}
+                      disabled={isSubmitDisabled}
+                      className={`px-5 py-2.5 font-900 text-[12px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-1.5 ${
+                        isSubmitDisabled
+                          ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60'
+                          : 'bg-[#851532] hover:bg-[#6b0f27] text-white cursor-pointer active:scale-95'
+                      }`}
+                    >
+                      {isSubmitDisabled && <Lock size={13} />}
+                      <span>SUBMIT</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
             </div>
 
-            {/* ── Section 3: Enter the Drop Below Section ── */}
-            <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden animate-fade-in">
-              <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Wallet size={15} />
-                  <span>ENTER THE DROP BELOW</span>
-                </span>
-                <span className="text-[10px] font-700 text-white/80">
-                  Total Drop Entered: <strong className="text-white">${calculations.totalEnteredDrop.toFixed(2)}</strong>
-                </span>
-              </div>
-
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 text-xs font-700">
-                  
-                  {/* Cash Input */}
-                  <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-1.5">
-                    <label className="text-neutral-700 font-800 uppercase block text-[11px]">Cash</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
-                      <input 
-                        type="number"
-                        step="0.01"
-                        value={dropCash}
-                        onChange={(e) => setDropCash(e.target.value)}
-                        className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-left font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-sm shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Credit Card Input */}
-                  <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-1.5">
-                    <label className="text-neutral-700 font-800 uppercase block text-[11px]">Credit Card</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
-                      <input 
-                        type="number"
-                        step="0.01"
-                        value={dropCreditCard}
-                        onChange={(e) => setDropCreditCard(e.target.value)}
-                        className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-left font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-sm shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Other Input */}
-                  <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-1.5">
-                    <label className="text-neutral-700 font-800 uppercase block text-[11px]">Other</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
-                      <input 
-                        type="number"
-                        step="0.01"
-                        value={dropOther}
-                        onChange={(e) => setDropOther(e.target.value)}
-                        className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-left font-900 text-neutral-900 focus:outline-none focus:border-brand-primary font-mono text-sm shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Total Due Row */}
-                <div className="bg-neutral-100/70 p-3.5 rounded-xl border border-neutral-200 flex items-center justify-between">
-                  <span className="font-900 text-neutral-900 uppercase text-xs">TOTAL DUE</span>
-                  <span className="font-900 text-brand-primary text-lg font-mono">${calculations.saleDue.toFixed(2)}</span>
-                </div>
-
-                {/* Bottom Action Bar */}
-                <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-200">
-                  <button 
-                    onClick={handleCancelDropInputs}
-                    className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-800 text-[11px] uppercase rounded-xl transition-all cursor-pointer"
-                  >
-                    CANCEL
-                  </button>
-
-                  <button 
-                    onClick={handleOpenSettlement}
-                    disabled={isSubmitDisabled}
-                    className={`px-6 py-2.5 font-900 text-[12px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-1.5 ${
-                      isSubmitDisabled
-                        ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60'
-                        : 'bg-[#851532] hover:bg-[#6b0f27] text-white cursor-pointer active:scale-95'
-                    }`}
-                  >
-                    {isSubmitDisabled && <Lock size={13} />}
-                    <span>SUBMIT (CLOSE DRIVER)</span>
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-            {/* ── Section 4: Delivered Orders Breakdown Table ── */}
+            {/* ── Section 3: Delivered Orders Breakdown Table ── */}
             <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden animate-fade-in">
               <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
                 <span>Delivered Orders Breakdown</span>
@@ -767,132 +785,6 @@ export default function DriverDropDashboard() {
         )}
 
       </div>
-
-      {/* ── 1. SETTLEMENT PAYOUT CONFIRMATION POPUP MODAL ── */}
-      {isSettlementModalOpen && selectedDriver && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in font-sans select-none">
-          <div className="bg-white rounded-2xl max-w-xl w-full border border-neutral-200 shadow-2xl overflow-hidden animate-scale-up">
-            
-            {/* Header in Burgundy #851532 */}
-            <div className="bg-[#851532] px-6 py-4 flex items-center justify-between text-white">
-              <div>
-                <h3 className="font-900 text-sm uppercase tracking-wide leading-none">
-                  Employee Sales Information & Settlement
-                </h3>
-                <p className="text-[11px] font-700 text-white/80 mt-1">
-                  Driver: #{selectedDriver.id} - {selectedDriver.name}
-                </p>
-              </div>
-              <button 
-                onClick={() => setIsSettlementModalOpen(false)}
-                className="text-white/80 hover:text-white transition-colors cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4 text-xs font-700 bg-white text-neutral-800">
-              
-              <div className="flex items-center justify-between bg-neutral-50 p-3 rounded-xl border border-neutral-200">
-                <span className="text-neutral-700 font-800 uppercase">Commission Due ($6/order)</span>
-                <div className="flex items-center gap-3">
-                  <span className="bg-white px-3.5 py-1 rounded-lg border border-neutral-300 font-900 text-brand-primary text-sm font-mono shadow-2xs">
-                    ${calculations.driverBaseCommission.toFixed(2)}
-                  </span>
-                  <span className="text-neutral-500 font-800 text-[11px]">
-                    Orders: {calculations.totalOrders}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-neutral-50 p-3 rounded-xl border border-neutral-200">
-                <span className="text-neutral-700 font-800 uppercase">Prepaid & Terminal Tips Due</span>
-                <span className="bg-white px-3.5 py-1 rounded-lg border border-neutral-300 font-900 text-neutral-900 text-sm font-mono shadow-2xs">
-                  ${calculations.totalTipsEarned.toFixed(2)}
-                </span>
-              </div>
-
-              {/* Additional Commission Toggle */}
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-neutral-800 font-800 uppercase">ADDITIONAL COMMISSION?</span>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setHasAdditionalCommissionToggle(true)}
-                    className={`px-5 py-1.5 rounded-lg font-900 text-xs cursor-pointer transition-all ${
-                      hasAdditionalCommissionToggle ? 'bg-emerald-600 text-white shadow-xs' : 'bg-neutral-100 text-neutral-500 border border-neutral-200'
-                    }`}
-                  >
-                    Yes
-                  </button>
-                  <button 
-                    onClick={() => setHasAdditionalCommissionToggle(false)}
-                    className={`px-5 py-1.5 rounded-lg font-900 text-xs cursor-pointer transition-all ${
-                      !hasAdditionalCommissionToggle ? 'bg-rose-600 text-white shadow-xs' : 'bg-neutral-100 text-neutral-500 border border-neutral-200'
-                    }`}
-                  >
-                    No
-                  </button>
-                </div>
-              </div>
-
-              {/* Conditional Inputs: Shown only if Toggle = Yes */}
-              {hasAdditionalCommissionToggle && (
-                <>
-                  {/* Additional Commission Input */}
-                  <div className="space-y-1 pt-1 animate-fade-in">
-                    <label className="text-neutral-700 font-800 text-xs block uppercase">Additional Commission ($)</label>
-                    <input 
-                      type="number"
-                      step="0.01"
-                      value={additionalCommission}
-                      onChange={(e) => setAdditionalCommission(e.target.value)}
-                      className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-3.5 py-2 text-neutral-900 font-900 text-sm font-mono focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  {/* Reason Text Input */}
-                  <div className="space-y-1 animate-fade-in">
-                    <label className="text-neutral-700 font-800 text-xs block uppercase">Reason (Why additional commission is given)</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. Rain Allowance"
-                      value={additionalReason}
-                      onChange={(e) => setAdditionalReason(e.target.value)}
-                      className="w-full bg-neutral-50 border border-neutral-300 rounded-lg px-3.5 py-2 text-neutral-900 text-xs font-600 focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Total Driver Earning Callout */}
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-neutral-900 font-900">
-                <span className="text-xs uppercase text-amber-900">Total Driver Earning (Tips + Comm):</span>
-                <span className="text-brand-primary text-lg font-mono font-900">${calculations.totalDriverEarning.toFixed(2)}</span>
-              </div>
-
-            </div>
-
-            {/* Footer Buttons in Clean Theme */}
-            <div className="bg-neutral-50 px-6 py-4 border-t border-neutral-200 flex items-center justify-end gap-3">
-              <button 
-                onClick={() => setIsSettlementModalOpen(false)}
-                className="px-5 py-2 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 text-xs font-800 uppercase rounded-xl transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleFinalizeSettlement}
-                className="px-6 py-2 bg-[#851532] hover:bg-[#6b0f27] text-white font-900 text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-              >
-                <Check size={15} />
-                <span>Done & Print Receipts</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       {/* ── 2. VIEW SALES DETAILS MODAL ── */}
       {isSalesDetailsModalOpen && selectedDriver && (
