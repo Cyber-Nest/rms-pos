@@ -32,6 +32,7 @@ export default function BranchMenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'outOfStock' | 'inactive'>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
@@ -158,9 +159,15 @@ export default function BranchMenuPage() {
     }
   };
 
-  // Filter products by search query
+  // Filter products by search query and status filter
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
+      // 1. Status filter
+      if (statusFilter === 'active' && product.isActive === false) return false;
+      if (statusFilter === 'outOfStock' && product.isOutOfStock !== true) return false;
+      if (statusFilter === 'inactive' && product.isActive !== false) return false;
+
+      // 2. Search query filter
       const query = searchQuery.toLowerCase().trim();
       if (!query) return true;
       
@@ -170,7 +177,7 @@ export default function BranchMenuPage() {
       
       return nameMatch || idMatch || categoryMatch;
     });
-  }, [products, searchQuery]);
+  }, [products, searchQuery, statusFilter]);
 
   // Pagination Calculations
   const totalEntries = filteredProducts.length;
@@ -223,20 +230,64 @@ export default function BranchMenuPage() {
             )}
           </div>
 
-          {/* Stats Pills (Matching Standard Badges) */}
+          {/* Stats Filter Buttons */}
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1.5 bg-neutral-50 text-neutral-600 border border-neutral-200 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('all');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'all'
+                  ? 'bg-neutral-800 text-white border-neutral-800 shadow-sm ring-2 ring-neutral-400/30'
+                  : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100 hover:border-neutral-300'
+              }`}
+            >
               Total: {products.length}
-            </span>
-            <span className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('active');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'active'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-400/30'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100 hover:border-emerald-300'
+              }`}
+            >
               Active: {products.filter(p => p.isActive !== false).length}
-            </span>
-            <span className="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('outOfStock');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'outOfStock'
+                  ? 'bg-amber-500 text-white border-amber-500 shadow-sm ring-2 ring-amber-400/30'
+                  : 'bg-amber-50 text-amber-700 border-amber-200/60 hover:bg-amber-100 hover:border-amber-300'
+              }`}
+            >
               Out of Stock: {products.filter(p => p.isOutOfStock === true).length}
-            </span>
-            <span className="px-2.5 py-1.5 bg-red-50 text-red-750 border border-red-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('inactive');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'inactive'
+                  ? 'bg-red-600 text-white border-red-600 shadow-sm ring-2 ring-red-400/30'
+                  : 'bg-red-50 text-red-750 border-red-200/60 hover:bg-red-100 hover:border-red-300'
+              }`}
+            >
               Inactive: {products.filter(p => p.isActive === false).length}
-            </span>
+            </button>
           </div>
 
           {/* Action Buttons */}
