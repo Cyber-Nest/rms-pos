@@ -167,7 +167,7 @@ export default function CheckInOutModal({
                   type="text"
                   value={employeeIdInput}
                   onChange={(e) => setEmployeeIdInput(e.target.value.toUpperCase())}
-                  placeholder="e.g. EMP-001"
+                  placeholder="e.g. 001"
                   required
                   autoFocus
                   className="w-full pl-9 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono font-800 text-neutral-900 tracking-wider focus:outline-none focus:border-brand-primary focus:bg-white transition-all uppercase"

@@ -7,7 +7,7 @@ interface EmployeeData {
   _id?: string;
   employeeId?: string;
   name: string;
-  role: "manager" | "driver" | "cashier" | "chef" | "crew-member";
+  role: "manager" | "supervisor" | "driver" | "cashier" | "chef" | "crew-member";
   phone?: string;
   email?: string;
   address?: string;
@@ -221,6 +221,7 @@ export default function CreateEmployeeModal({
                 className="w-full pl-9 pr-9 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-700 text-neutral-800 focus:outline-none focus:border-brand-primary focus:bg-white appearance-none transition-all cursor-pointer"
               >
                 <option value="manager">Manager</option>
+                <option value="supervisor">Supervisor</option>
                 <option value="cashier">Cashier</option>
                 <option value="chef">Chef</option>
                 <option value="driver">Driver</option>
