@@ -1185,6 +1185,15 @@ export default function KitchenDetailModal({
                       </span>
                     </div>
                   )}
+                  {((localOrder.tip as number | undefined) ?? 0) >
+                    0 && (
+                    <div className="flex justify-between text-brand-primary font-bold">
+                      <span>Staff & Driver Tip:</span>
+                      <span className="font-mono">
+                        +${(localOrder.tip as number).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-[13.5px] font-750 text-neutral-900 border-t border-neutral-200 pt-2.5">
                     <span>Grand Total:</span>
                     <span className="font-mono text-[14.5px] text-brand-primary font-800">

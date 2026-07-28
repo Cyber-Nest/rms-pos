@@ -42,6 +42,7 @@ export interface PromoApplied {
 
 export interface Order {
   deliveryFee: number | undefined;
+  tip?: number;
   kitchenCleared: any;
   _id?: string;
   orderNumber: string;

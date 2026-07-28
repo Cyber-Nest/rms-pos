@@ -188,6 +188,14 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
               {((order.taxRate ?? 0) * 100).toFixed(0)}%)
             </span>
           </div>
+          {(order.tip ?? 0) > 0 && (
+            <div className="flex justify-between font-700">
+              <span>Tip :</span>
+              <span className="font-700">
+                +${(order.tip ?? 0).toFixed(2)}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between text-[12px] font-900 pt-1 border-t border-neutral-200">
             <span>Total :</span>
             <span className="font-900">${(order.total ?? 0).toFixed(2)}</span>

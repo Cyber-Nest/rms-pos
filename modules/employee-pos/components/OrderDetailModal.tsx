@@ -358,6 +358,12 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     <span className="text-neutral-850 font-700 font-mono">${(order.deliveryFee ?? 0).toFixed(2)}</span>
                   </div>
                 )}
+                {(order.tip ?? 0) > 0 && (
+                  <div className="flex justify-between font-700 text-brand-primary">
+                    <span>Driver Tip :</span>
+                    <span className="font-mono">${(order.tip ?? 0).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="border-t border-dashed border-neutral-300 my-2.5" />
                 <div className="flex justify-between text-[14px] font-900 text-neutral-900 pt-1">
                   <span>Grand Total :</span>
