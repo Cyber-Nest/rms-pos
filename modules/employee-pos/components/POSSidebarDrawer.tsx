@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { 
   X, LogOut, LayoutDashboard, KeyRound, Clock, ShoppingBag, 
   Receipt, ArrowLeftRight, Wallet, Users, UtensilsCrossed, 
-  Settings, UserCheck, Lock, Bell, BarChart3, Power, ChefHat, TrendingUp, Truck, Car, QrCode
+  Settings, UserCheck, Lock, Bell, BarChart3, Power, ChefHat, TrendingUp, Truck, Car, QrCode, ShieldCheck
 } from 'lucide-react';
 import CheckInOutModal from './CheckInOutModal';
 import StoreQrModal from './StoreQrModal';
@@ -40,6 +40,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     { key: 'menus', label: 'Menus', icon: UtensilsCrossed },
     { key: 'setting', label: 'Setting', icon: Settings },
     { key: 'employees', label: 'Employee Management', icon: UserCheck },
+    { key: 'permissions', label: 'Permissions', icon: ShieldCheck },
     { key: 'update_profile', label: 'Update Profile', icon: UserCheck },
     { key: 'change_password', label: 'Change Password', icon: Lock },
     // { key: 'sound_notification', label: 'Sound Notification', icon: Bell },
@@ -120,6 +121,8 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                         window.location.href = '/employee/customers';
                       } else if (item.key === 'employees') {
                         window.location.href = '/employee/employees';
+                      } else if (item.key === 'permissions') {
+                        window.location.href = '/employee/permissions';
                       } else if (item.key === 'setting') {
                         window.location.href = '/employee/settings';
                       } else if (item.key === 'menus') {
