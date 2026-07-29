@@ -593,7 +593,7 @@ export default function DriverDropDashboard() {
                   <table className="w-full text-left text-[12px]">
                     <tbody className="divide-y divide-neutral-200/60 font-650">
                       <tr>
-                        <td className="py-2.5 px-4 text-neutral-800 font-700">Driver Base Commission ($6.00 × {calculations.totalOrders} Orders)</td>
+                        <td className="py-2.5 px-4 text-neutral-800 font-700">Driver Base Commission</td>
                         <td className="py-2.5 px-4 text-right font-800 text-brand-primary">${calculations.driverBaseCommission.toFixed(2)}</td>
                       </tr>
                       <tr>
