@@ -107,7 +107,10 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getFilteredDrivers: () => {
     const { drivers, carrierFilter } = get();
     if (carrierFilter === "available") {
-      return drivers.filter((d) => d.status === "available");
+      // Show POS checked-in drivers (both available and offline-but-checked-in)
+      return drivers.filter(
+        (d) => d.posCheckedIn && (d.status === "available" || d.status === "offline")
+      );
     }
     return drivers.filter(
       (d) => d.status === "on-delivery" || d.status === "returning",
@@ -126,7 +129,9 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getCarrierCounts: () => {
     const { drivers } = get();
     return {
-      available: drivers.filter((d) => d.status === "available").length,
+      available: drivers.filter(
+        (d) => d.posCheckedIn && (d.status === "available" || d.status === "offline")
+      ).length,
       enRoute: drivers.filter(
         (d) => d.status === "on-delivery" || d.status === "returning",
       ).length,
@@ -136,7 +141,7 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getDriversWithVehicles: () => {
     const { drivers } = get();
     return drivers.filter(
-      (d) => d.assignedVehicle !== null && d.status !== "offline",
+      (d) => d.assignedVehicle !== null && d.status === "available",
     );
   },
 
@@ -326,8 +331,26 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   // ── Real-Time Pusher Actions ──
   initPusher: () => {
+    let branchId = "default";
+    try {
+      const raw = localStorage.getItem("rms_branch");
+      if (raw) {
+        const b = JSON.parse(raw);
+        branchId = b._id || b.id || b.branchId || "default";
+      }
+    } catch (e) {}
+
     const pusher = getPusherClient();
-    const channel = pusher.subscribe("private-restaurant-default");
+    const channel = pusher.subscribe(`private-restaurant-${branchId}`);
+    const ordersChannel = pusher.subscribe(`orders-${branchId}`);
+
+    // Listen for new-order and order-updated from user-frontend
+    ordersChannel.bind("new-order", (data: any) => {
+      get().fetchOrders();
+    });
+    ordersChannel.bind("order-updated", (data: any) => {
+      get().fetchOrders();
+    });
 
     // 1. Listen for Pusher location events (both client events & server-relay fallback)
     const handleLocationUpdate = (data: any) => {
@@ -485,7 +508,17 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   },
 
   cleanupPusher: () => {
+    let branchId = "default";
+    try {
+      const raw = localStorage.getItem("rms_branch");
+      if (raw) {
+        const b = JSON.parse(raw);
+        branchId = b._id || b.id || b.branchId || "default";
+      }
+    } catch (e) {}
+
     const pusher = getPusherClient();
-    pusher.unsubscribe("private-restaurant-default");
+    pusher.unsubscribe(`private-restaurant-${branchId}`);
+    pusher.unsubscribe(`orders-${branchId}`);
   },
 }));

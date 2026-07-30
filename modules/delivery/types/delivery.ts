@@ -39,6 +39,7 @@ export interface Driver {
   color: string;
   activeOrders: string[];
   assignedVehicle: Vehicle | null;
+  posCheckedIn?: boolean;
   bearing?: number; // bearing direction (0-360)
   speed?: number; // speed in km/h from GPS
   locationUpdatedAt?: number; // last updated timestamp

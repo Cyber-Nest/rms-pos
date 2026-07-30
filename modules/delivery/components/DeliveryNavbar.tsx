@@ -13,8 +13,19 @@ export default function DeliveryNavbar({
 }: DeliveryNavbarProps) {
   const orders = useDeliveryStore((s) => s.orders);
   const [currentTime, setCurrentTime] = useState("");
+  const [branchName, setBranchName] = useState("Restaurant");
 
   const deliveryCount = orders.filter((o) => o.status !== "delivered").length;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("rms_branch");
+      if (raw) {
+        const b = JSON.parse(raw);
+        setBranchName(b.name || b.branchName || "Restaurant");
+      }
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -50,7 +61,7 @@ export default function DeliveryNavbar({
           </div>
           <div className="flex flex-col leading-tight">
             <span className="text-[13px] font-bold tracking-tight text-white">
-              Chicken Delight
+              {branchName}
             </span>
             <span className="text-[10px] font-medium text-white/50 uppercase tracking-widest">
               Dispatch System
@@ -103,7 +114,7 @@ export default function DeliveryNavbar({
         )}
 
         {/* Exit/Logout Button */}
-        <button
+        {/* <button
           onClick={() => {
             if (confirm("Exit the system?")) window.close();
           }}
@@ -111,7 +122,7 @@ export default function DeliveryNavbar({
           title="Exit POS"
         >
           <Power size={14} />
-        </button>
+        </button> */}
       </div>
     </nav>
   );
