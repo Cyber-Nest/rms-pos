@@ -107,8 +107,21 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
     };
   }, [router]);
 
-  const handleLogout = async () => {
-    if (confirm('Are you sure you want to log out of the branch terminal?')) {
+  // Employee Logout: clears active staff session, locks terminal, goes to /login
+  const handleEmployeeLogout = () => {
+    if (confirm(`Logout ${activeEmployee?.name}`)) {
+      localStorage.removeItem('rms_active_employee');
+      localStorage.setItem('rms_terminal_locked', 'true');
+      document.cookie = 'rms_terminal_locked=true; path=/; max-age=604800; SameSite=Lax';
+      window.dispatchEvent(new Event('rms_active_employee_changed'));
+      router.push('/login');
+    }
+  };
+
+
+  // Master Logout: clears everything (branch + employee) and redirects to /login
+  const handleMasterLogout = async () => {
+    if (confirm('Master Logout: This will close the terminal session. All staff will need to re-login. Continue?')) {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
         await axios.post(`${API_URL}/branches/logout`, {}, { withCredentials: true });
@@ -116,13 +129,17 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
 
       if (typeof window !== 'undefined') {
         localStorage.removeItem('rms_branch');
+        localStorage.removeItem('rms_active_employee');
+        localStorage.removeItem('rms_terminal_locked');
         localStorage.removeItem('rms_draft_cart');
-        document.cookie = 'rms_branch_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = 'rms_branch_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'rms_terminal_locked=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'rms_branch_session=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'rms_branch_token=; path=/; max-age=0; SameSite=Lax';
       }
       router.push('/login');
     }
   };
+
 
   const rawNavLinks = [
     { key: 'pos', name: 'POS Terminal', href: '/employee/pos', icon: LayoutGrid },
@@ -254,11 +271,11 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
           </div>
         ) : null}
 
-        {/* Logout Button */}
+        {/* Logout Button — Always locks screen to /login while keeping terminal active */}
         <button
-          onClick={handleLogout}
+          onClick={handleEmployeeLogout}
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 hover:text-red-700 hover:border-red-300 transition-all cursor-pointer"
-          title="Logout of Terminal"
+          title={activeEmployee ? `Logout ${activeEmployee.name}` : "Lock Terminal Screen"}
         >
           <LogOut size={15} />
         </button>

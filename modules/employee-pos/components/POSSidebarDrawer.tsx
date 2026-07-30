@@ -10,6 +10,8 @@ import CheckInOutModal from './CheckInOutModal';
 import StoreQrModal from './StoreQrModal';
 import LoginAsCodeModal from './LoginAsCodeModal';
 import toast from 'react-hot-toast';
+import axios from 'axios';
+
 
 interface POSSidebarDrawerProps {
   isOpen: boolean;
@@ -51,9 +53,33 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
 
   const handleSwitchToManager = () => {
     localStorage.removeItem('rms_active_employee');
+    localStorage.setItem('rms_terminal_locked', 'true');
+    document.cookie = 'rms_terminal_locked=true; path=/; max-age=604800; SameSite=Lax';
     window.dispatchEvent(new Event('rms_active_employee_changed'));
-    toast.success('Switched back to Manager mode');
+    toast.success('Staff logged out');
+    window.location.href = '/login';
   };
+
+  // Master Logout: clears everything and redirects to /login
+  const handleMasterLogout = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    try {
+      await axios.post(`${API_URL}/branches/logout`, {}, { withCredentials: true });
+    } catch {
+      // Even if API fails, proceed with local cleanup
+    }
+    // Clear localStorage
+    localStorage.removeItem('rms_branch');
+    localStorage.removeItem('rms_active_employee');
+    localStorage.removeItem('rms_terminal_locked');
+    // Clear JS-readable cookies (Next.js middleware uses these)
+    document.cookie = 'rms_terminal_locked=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'rms_branch_session=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'rms_branch_token=; path=/; max-age=0; SameSite=Lax';
+    toast.success('Terminal logged out');
+    window.location.href = '/login';
+  };
+
 
   if (!isOpen && !isCheckInOutOpen && !isStoreQrOpen && !isLoginCodeOpen) return null;
 
@@ -81,14 +107,20 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     { key: 'master_logout', label: 'Master Logout', icon: LogOut, isLogout: true },
   ];
 
-  // Filter menu items if a non-manager staff is logged in
+  // Filter menu items based on role
+  const isManagerMode = !activeEmployee || activeEmployee.role === 'manager';
+
   const menuItems = rawMenuItems.filter(item => {
+    // Master Logout: only for manager/admin (no active employee OR active employee is manager)
+    if (item.key === 'master_logout') {
+      return isManagerMode;
+    }
     // Always visible system utilities
-    if (['login_code', 'check_in_out', 'store_qr', 'master_logout', 'pos'].includes(item.key)) {
+    if (['login_code', 'check_in_out', 'store_qr', 'pos'].includes(item.key)) {
       return true;
     }
     // Manager or no staff logged in sees all tabs
-    if (!activeEmployee || activeEmployee.role === 'manager') {
+    if (isManagerMode) {
       return true;
     }
     // Non-manager employee: check employee permissions object
@@ -99,6 +131,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     }
     return perms[item.key] === true;
   });
+
 
   return (
     <>
@@ -140,8 +173,9 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                   </button>
                 ) : (
                   <button 
+                    onClick={handleMasterLogout}
                     className="p-2 rounded-full bg-red-600/90 hover:bg-red-600 text-white transition-colors cursor-pointer"
-                    title="Logout Terminal"
+                    title="Master Logout Terminal"
                   >
                     <Power size={14} />
                   </button>
@@ -196,6 +230,11 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                       if (item.key === 'store_qr') {
                         setIsStoreQrOpen(true);
                         onClose();
+                        return;
+                      }
+
+                      if (item.key === 'master_logout') {
+                        handleMasterLogout();
                         return;
                       }
 

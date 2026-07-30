@@ -36,58 +36,73 @@ export default function EmployeePermissionGuard({
       if (typeof window === "undefined") return;
 
       try {
+        const terminalLocked = localStorage.getItem("rms_terminal_locked");
         const raw = emp
           ? JSON.stringify(emp)
           : localStorage.getItem("rms_active_employee");
 
+        // ── 1. If terminal is explicitly locked (employee logged out), REDIRECT TO /LOGIN ──
+        if (terminalLocked === "true") {
+          setIsAllowed(false);
+          window.location.href = "/login";
+          return;
+        }
+
+        // ── 2. If no active employee is logged in ──
         if (!raw) {
-          // No staff logged in → Manager Terminal Mode → Always allowed
+          // If terminal has never been unlocked or is locked, go to /login
+          if (terminalLocked !== "false") {
+            setIsAllowed(false);
+            window.location.href = "/login";
+            return;
+          }
+          // Manager Terminal Mode (Master Login was done and not locked) → Full Access
           setIsAllowed(true);
           return;
         }
 
+        // ── 3. Staff is logged in ──
         const activeEmp = typeof emp === "object" && emp !== null ? emp : JSON.parse(raw);
         if (!activeEmp || activeEmp.role === "manager") {
-          // Manager role → Always allowed
           setIsAllowed(true);
           return;
         }
 
         setEmployeeName(activeEmp.name || "Staff");
-
         const perms = activeEmp.permissions || {};
 
-        // POS route is default allowed (always on)
+        // POS route is allowed unless explicitly set to false
         if (permissionKey === "pos") {
-          setIsAllowed(perms.pos !== false);
+          if (perms.pos === false) {
+            setIsAllowed(false);
+            toast.error("Access Restricted: You don't have permission to view POS.");
+          } else {
+            setIsAllowed(true);
+          }
           return;
         }
 
         // Check main permission key
         let allowed = perms[permissionKey] === true;
 
-        // ── Orders page: also validate the active sub-tab from URL ──
+        // ── Orders page: also validate active sub-tab from URL ──
         if (permissionKey === "orders" && allowed) {
           const urlParams = new URLSearchParams(window.location.search);
           const tab = urlParams.get("tab");
-          // Map URL tab param → permission key
           const TAB_TO_PERM: Record<string, string> = { orders: "orders_list" };
           const PERM_TO_TAB: Record<string, string> = { orders_list: "orders" };
           if (tab && ORDERS_SUBTAB_KEYS.includes(TAB_TO_PERM[tab] ?? tab)) {
             const permKey = TAB_TO_PERM[tab] ?? tab;
             if (perms[permKey] !== true) {
-              // Find the first sub-tab that IS allowed and redirect there
               const firstAllowedPermKey = ORDERS_SUBTAB_KEYS.find((k) => perms[k] === true);
               if (firstAllowedPermKey) {
                 const firstAllowedTab = PERM_TO_TAB[firstAllowedPermKey] ?? firstAllowedPermKey;
                 const url = new URL(window.location.href);
                 url.searchParams.set("tab", firstAllowedTab);
                 window.history.replaceState({}, "", url.pathname + url.search);
-                // Don't block the page — just redirect the tab
                 setIsAllowed(true);
                 return;
               } else {
-                // No sub-tab allowed at all, block entire orders page
                 allowed = false;
               }
             }
@@ -96,9 +111,7 @@ export default function EmployeePermissionGuard({
 
         if (!allowed) {
           setIsAllowed(false);
-          toast.error(
-            `Access Restricted: You don't have permission to view this section.`
-          );
+          toast.error(`Access Restricted: You don't have permission to view this section.`);
         } else {
           setIsAllowed(true);
         }
@@ -176,21 +189,21 @@ export default function EmployeePermissionGuard({
   // Access Denied Screen
   if (!isAllowed) {
     return (
-      <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-6 text-white font-sans">
-        <div className="w-full max-w-md bg-neutral-800/90 border border-neutral-700/80 rounded-2xl p-8 shadow-2xl text-center space-y-5 animate-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 bg-red-500/15 border border-red-500/30 rounded-2xl flex items-center justify-center text-red-500 mx-auto shadow-inner">
+      <div className="min-h-screen bg-neutral-100 flex flex-col items-center justify-center p-6 text-neutral-900 font-sans">
+        <div className="w-full max-w-md bg-white border border-neutral-200/90 rounded-2xl p-8 shadow-xl text-center space-y-5 animate-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center text-red-500 mx-auto shadow-inner">
             <Lock size={32} />
           </div>
 
           <div className="space-y-1.5">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-800 bg-red-500/20 text-red-400 border border-red-500/30 uppercase tracking-widest">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-800 bg-red-50 text-red-600 border border-red-200 uppercase tracking-widest">
               403 Forbidden
             </span>
-            <h2 className="text-xl font-900 text-white tracking-tight pt-1">
+            <h2 className="text-xl font-900 text-neutral-900 tracking-tight pt-1">
               Access Restricted
             </h2>
-            <p className="text-xs text-neutral-400 font-500 leading-relaxed max-w-xs mx-auto">
-              Hi <strong className="text-neutral-200">{employeeName}</strong>,
+            <p className="text-xs text-neutral-500 font-500 leading-relaxed max-w-xs mx-auto">
+              Hi <strong className="text-neutral-800">{employeeName}</strong>,
               your account does not have permission to access the{" "}
               <strong className="text-brand-primary capitalize">
                 {permissionKey.replace(/_/g, " ")}

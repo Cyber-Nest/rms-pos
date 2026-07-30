@@ -73,7 +73,7 @@ export default function LoginAsCodeModal({
         branchId,
         employeeId: employeeIdInput.trim(),
         pin: pinInput.trim(),
-      });
+      }, { withCredentials: true });
 
       if (res.data.success && res.data.data?.employee) {
         const emp = res.data.data.employee;

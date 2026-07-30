@@ -81,7 +81,7 @@ export default function CheckInOutModal({
         branchId,
         employeeId: employeeIdInput.trim().toUpperCase(),
         pin: pinInput.trim(),
-      });
+      }, { withCredentials: true });
 
       if (res.data.success) {
         setVerifiedEmployee(res.data.data.employee);
@@ -105,7 +105,7 @@ export default function CheckInOutModal({
       const res = await axios.post(`${apiUrl}/attendance/${actionType}`, {
         branchId,
         employeeId: verifiedEmployee._id,
-      });
+      }, { withCredentials: true });
 
       if (res.data.success) {
         const actionLabels = {
