@@ -193,7 +193,6 @@ export default function VehiclesDashboard() {
     } else {
       await addVehicle(number, label);
     }
-    await loadData();
   };
 
   const handleDeleteVehicle = async (id: string) => {
@@ -201,7 +200,6 @@ export default function VehiclesDashboard() {
       try {
         await deleteVehicle(id);
         toast.success('Vehicle deleted successfully.');
-        await loadData();
       } catch (err: any) {
         toast.error(err.response?.data?.message || 'Failed to delete vehicle.');
       }

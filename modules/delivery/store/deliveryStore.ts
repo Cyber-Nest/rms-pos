@@ -11,6 +11,26 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const DEFAULT_RESTAURANT_COORDS = { lat: 22.1818, lng: 78.7618 };
 
+const getBranchConfig = () => {
+  if (typeof window === "undefined") return { withCredentials: true };
+  try {
+    const raw = localStorage.getItem("rms_branch");
+    if (raw) {
+      const b = JSON.parse(raw);
+      const branchId = b._id || b.id || b.branchId;
+      if (branchId) {
+        return {
+          withCredentials: true,
+          headers: { "x-branch-id": branchId },
+          params: { branchId, restaurantId: branchId },
+        };
+      }
+    }
+  } catch (e) {}
+  return { withCredentials: true };
+};
+
+
 interface DeliveryState {
   // ── Data ──
   orders: DeliveryOrder[];
@@ -133,7 +153,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   // ── API Actions ──
   fetchOrders: async () => {
     try {
-      const res = await axios.get(`${API_URL}/delivery/orders`);
+      const config = getBranchConfig();
+      const res = await axios.get(`${API_URL}/delivery/orders`, config);
       if (res.data.success) {
         // Map backend properties if needed (backend matches frontend mostly)
         const mappedOrders = res.data.data.map((o: any) => ({
@@ -150,7 +171,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   fetchDrivers: async () => {
     try {
-      const res = await axios.get(`${API_URL}/delivery/drivers`);
+      const config = getBranchConfig();
+      const res = await axios.get(`${API_URL}/delivery/drivers`, config);
       if (res.data.success) {
         const mappedDrivers = res.data.data.map((d: any) => ({
           ...d,
@@ -166,7 +188,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   fetchVehicles: async () => {
     try {
-      const res = await axios.get(`${API_URL}/delivery/vehicles`);
+      const config = getBranchConfig();
+      const res = await axios.get(`${API_URL}/delivery/vehicles`, config);
       if (res.data.success) {
         const mappedVehicles = res.data.data.map((v: any) => ({
           ...v,
@@ -225,10 +248,11 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   assignVehicle: async (driverId, vehicleId) => {
     try {
+      const config = getBranchConfig();
       const res = await axios.post(`${API_URL}/delivery/vehicles/assign`, {
         driverId,
         vehicleId,
-      });
+      }, config);
       if (res.data.success) {
         await Promise.all([get().fetchDrivers(), get().fetchVehicles()]);
         set({ vehicleModalOpen: false, selectedDriverId: null });
@@ -240,7 +264,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   unassignVehicle: async (driverId) => {
     try {
-      const res = await axios.delete(`${API_URL}/delivery/vehicles/unassign/${driverId}`);
+      const config = getBranchConfig();
+      const res = await axios.delete(`${API_URL}/delivery/vehicles/unassign/${driverId}`, config);
       if (res.data.success) {
         await Promise.all([get().fetchDrivers(), get().fetchVehicles()]);
       }
@@ -251,7 +276,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   addVehicle: async (number, label) => {
     try {
-      const res = await axios.post(`${API_URL}/delivery/vehicles`, { number, label });
+      const config = getBranchConfig();
+      const res = await axios.post(`${API_URL}/delivery/vehicles`, { number, label }, config);
       if (res.data.success) {
         await get().fetchVehicles();
       }
@@ -263,7 +289,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   updateVehicle: async (id, number, label) => {
     try {
-      const res = await axios.put(`${API_URL}/delivery/vehicles/${id}`, { number, label });
+      const config = getBranchConfig();
+      const res = await axios.put(`${API_URL}/delivery/vehicles/${id}`, { number, label }, config);
       if (res.data.success) {
         await Promise.all([get().fetchVehicles(), get().fetchDrivers()]);
       }
@@ -275,7 +302,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   deleteVehicle: async (id) => {
     try {
-      const res = await axios.delete(`${API_URL}/delivery/vehicles/${id}`);
+      const config = getBranchConfig();
+      const res = await axios.delete(`${API_URL}/delivery/vehicles/${id}`, config);
       if (res.data.success) {
         await Promise.all([get().fetchVehicles(), get().fetchDrivers()]);
       }
