@@ -203,6 +203,34 @@ export default function CheckInOutModal({
               </div>
             </div>
 
+            {/* Keypad Buttons for easy touch input */}
+            <div className="grid grid-cols-3 gap-1.5 pt-2 select-none">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"].map((btn) => (
+                <button
+                  key={btn}
+                  type="button"
+                  onClick={() => {
+                    if (btn === "C") {
+                      setPinInput("");
+                    } else if (btn === "⌫") {
+                      setPinInput(prev => prev.slice(0, -1));
+                    } else if (pinInput.length < 4) {
+                      setPinInput(prev => prev + btn);
+                    }
+                  }}
+                  className={`py-2 rounded-xl text-xs font-800 transition-all cursor-pointer ${
+                    btn === "C"
+                      ? "bg-red-50 text-red-600 hover:bg-red-100"
+                      : btn === "⌫"
+                      ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      : "bg-neutral-100 text-neutral-800 hover:bg-neutral-200 active:scale-95"
+                  }`}
+                >
+                  {btn}
+                </button>
+              ))}
+            </div>
+
             <div className="pt-2">
               <button
                 type="submit"

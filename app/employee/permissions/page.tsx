@@ -20,6 +20,8 @@ import {
   CheckSquare,
   Square,
   Check,
+  Pencil,
+  X,
 } from "lucide-react";
 
 // ─── Permission Definitions ───────────────────────────────────────────────────
@@ -121,6 +123,13 @@ const PERMISSION_DEFS: PermissionDef[] = [
     label: "Orders Dashboard",
     shortLabel: "Dashboard",
     description: "Live order queue and metric cards",
+    group: "Orders Page",
+  },
+  {
+    key: "orders_list",
+    label: "Orders / Transactions",
+    shortLabel: "Orders",
+    description: "Orders list and transaction history (same as Transactions in sidebar)",
     group: "Orders Page",
   },
   {
@@ -253,6 +262,7 @@ export default function PermissionsPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [localPerms, setLocalPerms] = useState<{
     [empId: string]: EmployeePermissions;
   }>({});
@@ -299,14 +309,56 @@ export default function PermissionsPage() {
     fetchEmployees();
   }, [fetchEmployees]);
 
+  // All Orders sub-tab keys (including orders_list = Transactions)
+  const ORDERS_SUBTAB_KEYS = [
+    "dashboard",
+    "orders_list",
+    "sales_summary",
+    "expense_payout",
+    "reports",
+    "item_sales",
+    "hourly_sales",
+    "cash_out_summary",
+    "monthly_sales_summary",
+    "failed_transaction",
+    "refund_orders",
+  ];
+
   const handleToggle = (empId: string, permKey: string) => {
-    setLocalPerms((prev) => ({
-      ...prev,
-      [empId]: {
-        ...prev[empId],
-        [permKey]: !prev[empId]?.[permKey],
-      },
-    }));
+    setLocalPerms((prev) => {
+      const current = prev[empId] || {};
+      const newValue = !current[permKey];
+      let updated = { ...current, [permKey]: newValue };
+
+      // When 'orders' main route is toggled ON → auto-enable 'dashboard' sub-tab as default
+      if (permKey === "orders" && newValue === true) {
+        updated = { ...updated, dashboard: true };
+      }
+
+      // When 'orders' main route is toggled OFF → disable all Orders sub-tabs too
+      if (permKey === "orders" && newValue === false) {
+        ORDERS_SUBTAB_KEYS.forEach((k) => {
+          updated[k] = false;
+        });
+      }
+
+      // When any sub-tab is turned ON → also ensure 'orders' parent is enabled
+      if (ORDERS_SUBTAB_KEYS.includes(permKey) && newValue === true) {
+        updated = { ...updated, orders: true };
+      }
+
+      // When a sub-tab is turned OFF → if all sub-tabs are now false, also disable 'orders'
+      if (ORDERS_SUBTAB_KEYS.includes(permKey) && newValue === false) {
+        const anySubTabOn = ORDERS_SUBTAB_KEYS.some(
+          (k) => k !== permKey && updated[k] === true
+        );
+        if (!anySubTabOn) {
+          updated = { ...updated, orders: false };
+        }
+      }
+
+      return { ...prev, [empId]: updated };
+    });
   };
 
   const handleSelectAll = (empId: string, select: boolean) => {
@@ -333,6 +385,26 @@ export default function PermissionsPage() {
       );
       if (res.data?.success) {
         toast.success(`Permissions saved for ${emp.name}`);
+
+        // ── Instantly sync localStorage if this is the active employee ──
+        if (typeof window !== "undefined") {
+          const rawActive = localStorage.getItem("rms_active_employee");
+          if (rawActive) {
+            try {
+              const activeEmp = JSON.parse(rawActive);
+              if (activeEmp && activeEmp._id === emp._id) {
+                const updatedEmp = { ...activeEmp, permissions: payload };
+                localStorage.setItem(
+                  "rms_active_employee",
+                  JSON.stringify(updatedEmp),
+                );
+                window.dispatchEvent(new Event("rms_active_employee_changed"));
+                window.dispatchEvent(new Event("storage"));
+              }
+            } catch (e) {}
+          }
+        }
+
         fetchEmployees();
       } else {
         toast.error("Save failed");
@@ -343,6 +415,7 @@ export default function PermissionsPage() {
       setSavingId(null);
     }
   };
+
 
   const filtered = employees.filter(
     (e) =>
@@ -474,9 +547,9 @@ export default function PermissionsPage() {
                         </span>
                       </th>
                     ))}
-                    <th className="px-4 py-2 text-right sticky right-0 z-40 bg-neutral-50 border-l border-neutral-200/80 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)]">
-                      Save / Toggle
-                    </th>
+                     <th className="px-4 py-2 text-right sticky right-0 top-0 z-40 bg-neutral-50 border-l border-neutral-200/80 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)]">
+                       Actions
+                     </th>
                   </tr>
                 </thead>
 
@@ -488,6 +561,7 @@ export default function PermissionsPage() {
                     const BadgeIcon = badge.Icon;
                     const isManager = emp.role === "manager";
                     const isSaving = savingId === emp._id;
+                    const isEditing = editingId === emp._id;
                     const allSelected = PERMISSION_DEFS.every(
                       (p) => perms[p.key],
                     );
@@ -495,8 +569,12 @@ export default function PermissionsPage() {
                     return (
                       <tr
                         key={emp._id}
-                        className={`hover:bg-neutral-50/80 transition-colors ${
-                          isManager ? "bg-purple-50/15" : ""
+                        className={`transition-colors ${
+                          isEditing
+                            ? "bg-amber-50/40 ring-1 ring-inset ring-amber-200"
+                            : isManager
+                            ? "bg-purple-50/15 hover:bg-purple-50/30"
+                            : "hover:bg-neutral-50/80"
                         }`}
                       >
                         {/* Employee Column (Sticky Left) */}
@@ -506,6 +584,8 @@ export default function PermissionsPage() {
                               className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-900 shrink-0 ${
                                 isManager
                                   ? "bg-purple-100 text-purple-700"
+                                  : isEditing
+                                  ? "bg-amber-100 text-amber-700"
                                   : "bg-brand-primary/10 text-brand-primary"
                               }`}
                             >
@@ -537,6 +617,8 @@ export default function PermissionsPage() {
                             : !!perms[perm.key];
                           const isAlwaysOn =
                             perm.alwaysOn === true || isManager;
+                          // Only interactive when this row is in edit mode
+                          const isInteractive = isEditing && !isAlwaysOn;
 
                           return (
                             <td
@@ -551,15 +633,17 @@ export default function PermissionsPage() {
                                   className={`inline-flex items-center justify-center p-1 rounded-md transition-all ${
                                     isAlwaysOn
                                       ? "cursor-not-allowed opacity-75"
-                                      : "cursor-pointer hover:bg-neutral-100"
+                                      : isInteractive
+                                      ? "cursor-pointer hover:bg-amber-100"
+                                      : "cursor-not-allowed opacity-60"
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    disabled={isAlwaysOn}
+                                    disabled={!isInteractive}
                                     onChange={() =>
-                                      !isAlwaysOn &&
+                                      isInteractive &&
                                       handleToggle(emp._id, perm.key)
                                     }
                                     className="sr-only"
@@ -570,7 +654,9 @@ export default function PermissionsPage() {
                                         ? isAlwaysOn
                                           ? "bg-neutral-400 border-neutral-400"
                                           : "bg-emerald-600 border-emerald-600 shadow-2xs"
-                                        : "bg-white border-neutral-300 hover:border-neutral-400"
+                                        : isInteractive
+                                        ? "bg-white border-neutral-300 hover:border-amber-400"
+                                        : "bg-neutral-50 border-neutral-200"
                                     }`}
                                   >
                                     {isChecked && (
@@ -588,49 +674,82 @@ export default function PermissionsPage() {
                         })}
 
                         {/* Actions Column (Sticky Right) */}
-                        <td className="px-4 py-2.5 sticky right-0 z-20 bg-white border-l border-neutral-200/80 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] text-right">
+                        <td className="px-3 py-2.5 sticky right-0 z-20 bg-white border-l border-neutral-200/80 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.06)] text-right">
                           {isManager ? (
                             <span className="text-[10px] font-800 text-purple-600 bg-purple-50 border border-purple-200 px-2 py-1 rounded-lg">
                               Full Access
                             </span>
-                          ) : (
+                          ) : isEditing ? (
+                            /* ── Edit Mode: Select-All toggle + Save + Cancel ── */
                             <div className="flex items-center justify-end gap-1.5">
+                              {/* Select All / Deselect All */}
                               <button
                                 type="button"
                                 onClick={() =>
                                   handleSelectAll(emp._id, !allSelected)
                                 }
                                 className="p-1 rounded-lg border border-neutral-200 hover:bg-neutral-100 text-neutral-600 transition-colors cursor-pointer"
-                                title={
-                                  allSelected ? "Deselect All" : "Select All"
-                                }
+                                title={allSelected ? "Deselect All" : "Select All"}
                               >
                                 {allSelected ? (
                                   <Square size={13} />
                                 ) : (
-                                  <CheckSquare
-                                    size={13}
-                                    className="text-brand-primary"
-                                  />
+                                  <CheckSquare size={13} className="text-brand-primary" />
                                 )}
                               </button>
 
+                              {/* Save */}
                               <button
                                 type="button"
-                                onClick={() => handleSave(emp)}
+                                onClick={async () => {
+                                  await handleSave(emp);
+                                  setEditingId(null);
+                                }}
                                 disabled={isSaving}
-                                className="px-3 py-1 rounded-lg bg-brand-primary hover:bg-orange-600 text-white text-[11px] font-800 flex items-center gap-1 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-800 flex items-center gap-1 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
                               >
                                 {isSaving ? (
                                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                 ) : (
                                   <>
-                                    <Save size={12} />
+                                    <Save size={11} />
                                     <span>Save</span>
                                   </>
                                 )}
                               </button>
+
+                              {/* Cancel */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingId(null);
+                                  // Reset local changes by re-merging from original
+                                  const original = employees.find((e) => e._id === emp._id);
+                                  if (original) {
+                                    setLocalPerms((prev) => ({
+                                      ...prev,
+                                      [emp._id]: mergePermissions(
+                                        original.permissions as EmployeePermissions | undefined,
+                                      ),
+                                    }));
+                                  }
+                                }}
+                                className="p-1 rounded-lg border border-neutral-200 hover:bg-red-50 hover:border-red-200 text-neutral-500 hover:text-red-500 transition-colors cursor-pointer"
+                                title="Cancel"
+                              >
+                                <X size={13} />
+                              </button>
                             </div>
+                          ) : (
+                            /* ── View Mode: Edit button only ── */
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(emp._id)}
+                              className="px-3 py-1 rounded-lg border border-neutral-200 hover:bg-brand-primary hover:text-white hover:border-brand-primary text-neutral-700 text-[11px] font-800 flex items-center gap-1.5 ml-auto transition-all cursor-pointer"
+                            >
+                              <Pencil size={11} />
+                              <span>Edit</span>
+                            </button>
                           )}
                         </td>
                       </tr>

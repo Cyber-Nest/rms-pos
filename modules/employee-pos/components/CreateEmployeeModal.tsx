@@ -41,6 +41,7 @@ const PERMISSION_OPTIONS = [
   { key: 'setting',               label: 'Settings',              group: 'POS Main Routes' },
   // Orders Page Sub-Tabs
   { key: 'dashboard',             label: 'Dashboard',             group: 'Orders Page Tabs' },
+  { key: 'orders_list',           label: 'Orders / Transactions', group: 'Orders Page Tabs' },
   { key: 'sales_summary',         label: 'Sales Summary',         group: 'Orders Page Tabs' },
   { key: 'expense_payout',        label: 'Expense / Payout',      group: 'Orders Page Tabs' },
   { key: 'reports',               label: 'Reports',               group: 'Orders Page Tabs' },
@@ -109,6 +110,52 @@ export default function CreateEmployeeModal({
       updated[p.key] = select;
     });
     setPermissions(updated);
+  };
+
+  // ── Orders cascade logic (same as permissions/page.tsx) ──
+  const ORDERS_SUBTAB_KEYS = [
+    "dashboard",
+    "orders_list",
+    "sales_summary",
+    "expense_payout",
+    "reports",
+    "item_sales",
+    "hourly_sales",
+    "cash_out_summary",
+    "monthly_sales_summary",
+    "failed_transaction",
+    "refund_orders",
+  ];
+
+  const handlePermissionToggle = (permKey: string, newValue: boolean) => {
+    setPermissions(prev => {
+      let updated = { ...prev, [permKey]: newValue };
+
+      // When 'orders' main route is turned ON → auto-enable 'dashboard' sub-tab
+      if (permKey === "orders" && newValue === true) {
+        updated = { ...updated, dashboard: true };
+      }
+
+      // When 'orders' main route is turned OFF → disable all Orders sub-tabs
+      if (permKey === "orders" && newValue === false) {
+        ORDERS_SUBTAB_KEYS.forEach(k => { updated[k] = false; });
+      }
+
+      // When any sub-tab is turned ON → also ensure 'orders' parent is enabled
+      if (ORDERS_SUBTAB_KEYS.includes(permKey) && newValue === true) {
+        updated = { ...updated, orders: true };
+      }
+
+      // When a sub-tab is turned OFF → if all sub-tabs are now false, disable 'orders'
+      if (ORDERS_SUBTAB_KEYS.includes(permKey) && newValue === false) {
+        const anySubTabOn = ORDERS_SUBTAB_KEYS.some(k => k !== permKey && updated[k] === true);
+        if (!anySubTabOn) {
+          updated = { ...updated, orders: false };
+        }
+      }
+
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -425,7 +472,7 @@ export default function CreateEmployeeModal({
                               type="checkbox"
                               checked={isChecked}
                               disabled={isAlwaysOn}
-                              onChange={(e) => !isAlwaysOn && setPermissions(prev => ({ ...prev, [perm.key]: e.target.checked }))}
+                              onChange={(e) => !isAlwaysOn && handlePermissionToggle(perm.key, e.target.checked)}
                               className="w-3.5 h-3.5 accent-brand-primary rounded cursor-pointer disabled:cursor-not-allowed"
                             />
                             <span className="truncate flex-1">{perm.label}</span>
@@ -460,7 +507,7 @@ export default function CreateEmployeeModal({
                             <input
                               type="checkbox"
                               checked={isChecked}
-                              onChange={(e) => setPermissions(prev => ({ ...prev, [perm.key]: e.target.checked }))}
+                              onChange={(e) => handlePermissionToggle(perm.key, e.target.checked)}
                               className="w-3.5 h-3.5 accent-brand-primary rounded"
                             />
                             <span className="truncate">{perm.label}</span>

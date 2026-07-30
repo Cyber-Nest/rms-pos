@@ -1,8 +1,23 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ShieldAlert, ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import toast from "react-hot-toast";
+import axios from "axios";
+
+// All Orders sub-tabs that require their own permission key
+const ORDERS_SUBTAB_KEYS = [
+  "dashboard",
+  "sales_summary",
+  "expense_payout",
+  "reports",
+  "item_sales",
+  "hourly_sales",
+  "cash_out_summary",
+  "monthly_sales_summary",
+  "failed_transaction",
+  "refund_orders",
+];
 
 interface EmployeePermissionGuardProps {
   permissionKey: string;
@@ -17,49 +32,64 @@ export default function EmployeePermissionGuard({
   const [employeeName, setEmployeeName] = useState<string>("");
 
   useEffect(() => {
-    const checkPermission = () => {
+    const checkPermission = (emp?: any) => {
       if (typeof window === "undefined") return;
 
       try {
-        const raw = localStorage.getItem("rms_active_employee");
+        const raw = emp
+          ? JSON.stringify(emp)
+          : localStorage.getItem("rms_active_employee");
+
         if (!raw) {
           // No staff logged in → Manager Terminal Mode → Always allowed
           setIsAllowed(true);
           return;
         }
 
-        const emp = JSON.parse(raw);
-        if (!emp || emp.role === "manager") {
+        const activeEmp = typeof emp === "object" && emp !== null ? emp : JSON.parse(raw);
+        if (!activeEmp || activeEmp.role === "manager") {
           // Manager role → Always allowed
           setIsAllowed(true);
           return;
         }
 
-        setEmployeeName(emp.name || "Staff");
+        setEmployeeName(activeEmp.name || "Staff");
 
-        // Check permission key
-        const perms = emp.permissions || {};
+        const perms = activeEmp.permissions || {};
 
-        // POS route is default allowed
+        // POS route is default allowed (always on)
         if (permissionKey === "pos") {
           setIsAllowed(perms.pos !== false);
           return;
         }
 
-        // Check specific permission key
+        // Check main permission key
         let allowed = perms[permissionKey] === true;
 
-        // If on orders page, also check URL tab parameter if present
-        if (
-          permissionKey === "orders" &&
-          allowed &&
-          typeof window !== "undefined"
-        ) {
+        // ── Orders page: also validate the active sub-tab from URL ──
+        if (permissionKey === "orders" && allowed) {
           const urlParams = new URLSearchParams(window.location.search);
-          const tab = urlParams.get("tab") || urlParams.get("view");
-          if (tab && tab !== "orders" && tab !== "transactions") {
-            if (perms[tab] === false) {
-              allowed = false;
+          const tab = urlParams.get("tab");
+          // Map URL tab param → permission key
+          const TAB_TO_PERM: Record<string, string> = { orders: "orders_list" };
+          const PERM_TO_TAB: Record<string, string> = { orders_list: "orders" };
+          if (tab && ORDERS_SUBTAB_KEYS.includes(TAB_TO_PERM[tab] ?? tab)) {
+            const permKey = TAB_TO_PERM[tab] ?? tab;
+            if (perms[permKey] !== true) {
+              // Find the first sub-tab that IS allowed and redirect there
+              const firstAllowedPermKey = ORDERS_SUBTAB_KEYS.find((k) => perms[k] === true);
+              if (firstAllowedPermKey) {
+                const firstAllowedTab = PERM_TO_TAB[firstAllowedPermKey] ?? firstAllowedPermKey;
+                const url = new URL(window.location.href);
+                url.searchParams.set("tab", firstAllowedTab);
+                window.history.replaceState({}, "", url.pathname + url.search);
+                // Don't block the page — just redirect the tab
+                setIsAllowed(true);
+                return;
+              } else {
+                // No sub-tab allowed at all, block entire orders page
+                allowed = false;
+              }
             }
           }
         }
@@ -67,7 +97,7 @@ export default function EmployeePermissionGuard({
         if (!allowed) {
           setIsAllowed(false);
           toast.error(
-            `Access Restricted: You don't have permission to view this section.`,
+            `Access Restricted: You don't have permission to view this section.`
           );
         } else {
           setIsAllowed(true);
@@ -77,15 +107,57 @@ export default function EmployeePermissionGuard({
       }
     };
 
+    // Run initial check from localStorage
     checkPermission();
-    window.addEventListener("rms_active_employee_changed", checkPermission);
-    window.addEventListener("storage", checkPermission);
+
+    // ── Background DB Sync: fetch fresh permissions from backend ──
+    const syncFromDB = async () => {
+      try {
+        const raw = localStorage.getItem("rms_active_employee");
+        if (!raw) return;
+        const activeEmp = JSON.parse(raw);
+        if (!activeEmp || !activeEmp._id || activeEmp.role === "manager") return;
+
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const res = await axios.get(`${apiUrl}/employees/${activeEmp._id}`);
+        if (res.data?.success && res.data?.data) {
+          const freshEmp = res.data.data;
+          const freshPerms = freshEmp.permissions || {};
+          // Only update if permissions actually changed
+          if (
+            JSON.stringify(freshPerms) !==
+            JSON.stringify(activeEmp.permissions || {})
+          ) {
+            const updatedSession = {
+              ...activeEmp,
+              permissions: freshPerms,
+              name: freshEmp.name || activeEmp.name,
+              role: freshEmp.role || activeEmp.role,
+            };
+            localStorage.setItem(
+              "rms_active_employee",
+              JSON.stringify(updatedSession)
+            );
+            // Re-check permission with fresh data
+            checkPermission(updatedSession);
+            window.dispatchEvent(new Event("rms_active_employee_changed"));
+          }
+        }
+      } catch {
+        // Silently fail — don't block access if DB is unreachable
+      }
+    };
+
+    syncFromDB();
+
+    const handleStorageChange = () => checkPermission();
+    window.addEventListener("rms_active_employee_changed", handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+
     return () => {
-      window.removeEventListener(
-        "rms_active_employee_changed",
-        checkPermission,
-      );
-      window.removeEventListener("storage", checkPermission);
+      window.removeEventListener("rms_active_employee_changed", handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [permissionKey]);
 
@@ -121,15 +193,11 @@ export default function EmployeePermissionGuard({
               Hi <strong className="text-neutral-200">{employeeName}</strong>,
               your account does not have permission to access the{" "}
               <strong className="text-brand-primary capitalize">
-                {permissionKey.replace("_", " ")}
+                {permissionKey.replace(/_/g, " ")}
               </strong>{" "}
               section.
             </p>
           </div>
-
-          {/* <div className="bg-neutral-900/60 border border-neutral-700/50 rounded-xl p-3 text-[11px] text-neutral-400 font-500">
-            Please contact your manager if you require access to this feature.
-          </div> */}
 
           <div className="pt-2">
             <button
