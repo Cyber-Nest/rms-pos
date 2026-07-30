@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Search, UtensilsCrossed, RefreshCw, ArrowLeft, ImageIcon, X } from 'lucide-react';
 import PosNavbar from '@/modules/employee-pos/components/PosNavbar';
 import POSSidebarDrawer from '@/modules/employee-pos/components/POSSidebarDrawer';
+import EmployeePermissionGuard from '@/modules/employee-pos/components/EmployeePermissionGuard';
 
 interface Product {
   _id: string;
@@ -527,42 +528,36 @@ export default function BranchMenuPage() {
                     className={`w-7 h-7 rounded-full flex items-center justify-center font-800 transition-all ${
                       activePage === totalPages || totalPages === 0
                         ? 'bg-transparent text-neutral-300 cursor-not-allowed'
-                        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 cursor-pointer'
-                    }`}
-                  >
-                    &rarr;
-                  </button>
-                </div>
-              </div>
-            </>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Sidebar Drawer Component */}
-      <POSSidebarDrawer
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        activeTab="menus"
-        onSelectTab={(tabKey) => {
-          setIsSidebarOpen(false);
-          if (tabKey === 'pos') {
-            window.location.href = '/employee/pos';
-          } else if (tabKey === 'kitchen') {
-            window.location.href = '/employee/kitchen';
-          } else if (tabKey === 'customers') {
-            window.location.href = '/employee/customers';
-          } else if (tabKey === 'setting') {
-            window.location.href = '/employee/settings';
-          } else if (
-            ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'transactions', 'reports', 'update_profile', 'change_password'].includes(tabKey)
-          ) {
-            let targetTab = tabKey;
-            if (tabKey === 'transactions') targetTab = 'orders';
-            window.location.href = `/employee/orders?view=${targetTab}`;
-          }
-        }}
-      />
-    </main>
+        {/* Sidebar Drawer Component */}
+        <POSSidebarDrawer
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          activeTab="menus"
+          onSelectTab={(tabKey) => {
+            if (tabKey === 'menus') {
+              setIsSidebarOpen(false);
+            } else if (tabKey === 'pos') {
+              window.location.href = '/employee/pos';
+            } else if (tabKey === 'kitchen') {
+              window.location.href = '/employee/kitchen';
+            } else if (tabKey === 'customers') {
+              window.location.href = '/employee/customers';
+            } else if (tabKey === 'setting') {
+              window.location.href = '/employee/settings';
+            } else if (
+              ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'transactions', 'reports', 'update_profile', 'change_password'].includes(tabKey)
+            ) {
+              let targetTab = tabKey;
+              if (tabKey === 'transactions') targetTab = 'orders';
+              window.location.href = `/employee/orders?view=${targetTab}`;
+            }
+          }}
+        />
+      </main>
+    </EmployeePermissionGuard>
   );
 }

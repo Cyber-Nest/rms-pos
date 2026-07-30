@@ -80,10 +80,22 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
   const handleUpdateStatus = async (newStatus: "pending" | "preparing" | "ready" | "completed" | "cancelled") => {
     setUpdating(true);
     try {
+      let activeEmpName = "Manager";
+      if (typeof window !== "undefined") {
+        const rawEmp = localStorage.getItem("rms_active_employee");
+        if (rawEmp) {
+          try {
+            const emp = JSON.parse(rawEmp);
+            if (emp && emp.name) activeEmpName = emp.name;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.patch(`${apiUrl}/orders/${order._id}/status`, {
         status: newStatus,
         note: `Status updated to ${newStatus} via orders list`,
+        userName: activeEmpName,
       });
 
       if (res.data.success) {
@@ -492,7 +504,9 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                 </div>
                 <div className="flex justify-between py-1">
                   <span>Order By :</span>
-                  <span className="text-neutral-800 font-700">Employee (Jone)</span>
+                  <span className="text-neutral-800 font-700">
+                    {(order as any).placedBy || (order as any).employeeName || (typeof window !== 'undefined' && localStorage.getItem('rms_active_employee') ? JSON.parse(localStorage.getItem('rms_active_employee') || '{}').name : 'Manager')}
+                  </span>
                 </div>
               </div>
             </div>
@@ -597,7 +611,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                           {formatDate(hist.changedAt)}
                         </td>
                         <td className="px-4 py-2 text-neutral-750 font-600">
-                          Jone
+                          {(hist as any).userName || (hist as any).updatedBy || (order as any).placedBy || (typeof window !== 'undefined' && localStorage.getItem('rms_active_employee') ? JSON.parse(localStorage.getItem('rms_active_employee') || '{}').name : 'Manager')}
                         </td>
                       </tr>
                     ))
@@ -609,7 +623,9 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                         <td className="px-4 py-2 text-brand-primary font-700">Order Created</td>
                         <td className="px-4 py-2 text-neutral-450 italic">New order placed</td>
                         <td className="px-4 py-2 text-neutral-500">{formatDate(order.createdAt)}</td>
-                        <td className="px-4 py-2 text-neutral-750 font-600">Jone</td>
+                        <td className="px-4 py-2 text-neutral-750 font-600">
+                          {(order as any).placedBy || (typeof window !== 'undefined' && localStorage.getItem('rms_active_employee') ? JSON.parse(localStorage.getItem('rms_active_employee') || '{}').name : 'Manager')}
+                        </td>
                       </tr>
                       {order.paymentStatus === 'paid' && (
                         <tr className="hover:bg-neutral-50/30">
@@ -617,7 +633,9 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                           <td className="px-4 py-2 text-brand-primary font-700">Payment Processed</td>
                           <td className="px-4 py-2 text-neutral-450 italic">Marked paid</td>
                           <td className="px-4 py-2 text-neutral-500">{formatDate(order.createdAt)}</td>
-                          <td className="px-4 py-2 text-neutral-750 font-600">Jone</td>
+                          <td className="px-4 py-2 text-neutral-750 font-600">
+                            {(order as any).placedBy || (typeof window !== 'undefined' && localStorage.getItem('rms_active_employee') ? JSON.parse(localStorage.getItem('rms_active_employee') || '{}').name : 'Manager')}
+                          </td>
                         </tr>
                       )}
                     </>

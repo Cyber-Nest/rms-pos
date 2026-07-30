@@ -30,6 +30,7 @@ const PERMISSION_OPTIONS = [
   // POS Main Routes
   { key: 'pos',                   label: 'POS Terminal',          group: 'POS Main Routes', alwaysOn: true },
   { key: 'kitchen',               label: 'Kitchen View',          group: 'POS Main Routes' },
+  { key: 'orders',                label: 'Orders View',           group: 'POS Main Routes' },
   { key: 'reception_view',        label: 'Reception View',        group: 'POS Main Routes' },
   { key: 'delivery',              label: 'Delivery',              group: 'POS Main Routes' },
   { key: 'driver_drop',           label: 'Driver Drop',           group: 'POS Main Routes' },
@@ -40,7 +41,6 @@ const PERMISSION_OPTIONS = [
   { key: 'setting',               label: 'Settings',              group: 'POS Main Routes' },
   // Orders Page Sub-Tabs
   { key: 'dashboard',             label: 'Dashboard',             group: 'Orders Page Tabs' },
-  { key: 'orders',                label: 'Orders',                group: 'Orders Page Tabs' },
   { key: 'sales_summary',         label: 'Sales Summary',         group: 'Orders Page Tabs' },
   { key: 'expense_payout',        label: 'Expense / Payout',      group: 'Orders Page Tabs' },
   { key: 'reports',               label: 'Reports',               group: 'Orders Page Tabs' },

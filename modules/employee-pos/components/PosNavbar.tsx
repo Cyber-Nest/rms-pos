@@ -17,6 +17,27 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
   const { search, setSearch, orders } = usePosStore();
   const [branchInfo, setBranchInfo] = React.useState<{ name: string; code: string; _id?: string } | null>(null);
   const [loadingBranchInfo, setLoadingBranchInfo] = React.useState(true);
+  const [activeEmployee, setActiveEmployee] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const syncActiveEmployee = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const raw = localStorage.getItem('rms_active_employee');
+        setActiveEmployee(raw ? JSON.parse(raw) : null);
+      } catch {
+        setActiveEmployee(null);
+      }
+    };
+
+    syncActiveEmployee();
+    window.addEventListener('rms_active_employee_changed', syncActiveEmployee);
+    window.addEventListener('storage', syncActiveEmployee);
+    return () => {
+      window.removeEventListener('rms_active_employee_changed', syncActiveEmployee);
+      window.removeEventListener('storage', syncActiveEmployee);
+    };
+  }, []);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -103,12 +124,23 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
     }
   };
 
-  const navLinks = [
-    { name: 'POS Terminal', href: '/employee/pos', icon: LayoutGrid },
-    { name: 'Kitchen View', href: '/employee/kitchen', icon: ChefHat },
-    { name: 'Orders', href: '/employee/orders', icon: ClipboardList },
-    { name: 'Reception View', href: '/employee/reception', icon: TrendingUp },
+  const rawNavLinks = [
+    { key: 'pos', name: 'POS Terminal', href: '/employee/pos', icon: LayoutGrid },
+    { key: 'kitchen', name: 'Kitchen View', href: '/employee/kitchen', icon: ChefHat },
+    { key: 'orders', name: 'Orders', href: '/employee/orders', icon: ClipboardList },
+    { key: 'reception_view', name: 'Reception View', href: '/employee/reception', icon: TrendingUp },
   ];
+
+  const navLinks = rawNavLinks.filter((link) => {
+    if (!activeEmployee || activeEmployee.role === 'manager') return true;
+    if (link.key === 'pos') return true;
+    const perms = activeEmployee.permissions || {};
+    if (link.key === 'orders') {
+      const orderSubTabKeys = ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'];
+      return orderSubTabKeys.some(k => perms[k] === true);
+    }
+    return perms[link.key] === true;
+  });
 
   return (
     <header className="h-[64px] bg-white border-b border-neutral-200 px-5 flex items-center justify-between sticky top-0 z-40 shadow-sm font-sans">
@@ -146,7 +178,7 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         ) : null}
 
         {/* Divider */}
-        <div className="h-5 w-px bg-neutral-200 hidden lg:block" />
+        {navLinks.length > 0 && <div className="h-5 w-px bg-neutral-200 hidden lg:block" />}
 
         {/* Nav Navigation Links */}
         <div className="hidden lg:flex items-center gap-1.5">
@@ -203,21 +235,21 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         {/* Divider */}
         <div className="h-7 w-px bg-neutral-200" />
 
-        {/* Staff Profile */}
+        {/* Staff Profile Badge */}
         {loadingBranchInfo && !branchInfo ? (
           <div className="w-24 h-8 bg-neutral-100 animate-pulse rounded-xl" />
         ) : branchInfo ? (
-          <div className="flex items-center gap-2">
-            <div className="text-right hidden sm:block">
-              <p className="text-[12px] font-800 text-neutral-900 leading-tight">
-                {branchInfo.code} Staff
-              </p>
-              <span className="text-[9px] font-700 text-brand-primary leading-tight uppercase tracking-wider">
-                Terminal
-              </span>
+          <div className="flex items-center gap-2.5 bg-neutral-50/90 border border-neutral-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
+            <div className="w-7 h-7 rounded-lg bg-brand-primary text-white font-900 text-[11px] flex items-center justify-center shadow-xs uppercase shrink-0">
+              {activeEmployee ? activeEmployee.name.charAt(0) : branchInfo.code.slice(0, 2)}
             </div>
-            <div className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center text-[11px] font-900 text-white shadow-xs">
-              {branchInfo.code.slice(0, 2)}
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="text-[12px] font-800 text-neutral-900 leading-none">
+                {activeEmployee ? activeEmployee.name : `${branchInfo.code} Staff`}
+              </span>
+              <span className="text-[9.5px] font-800 text-brand-primary uppercase tracking-wider mt-0.5 leading-none">
+                {activeEmployee ? activeEmployee.role.replace('_', ' ') : 'Terminal'}
+              </span>
             </div>
           </div>
         ) : null}

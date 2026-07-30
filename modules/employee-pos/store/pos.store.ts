@@ -671,6 +671,7 @@ export const usePosStore = create<PosState>((set, get) => ({
     let branchId: string | undefined = undefined;
     let branchName: string | undefined = undefined;
     let branchCode: string | undefined = undefined;
+    let placedBy: string = "Manager";
     if (typeof window !== "undefined") {
       const rawBranch = localStorage.getItem("rms_branch");
       if (rawBranch) {
@@ -681,11 +682,19 @@ export const usePosStore = create<PosState>((set, get) => ({
           branchCode = b.code;
         } catch (e) {}
       }
+      const rawEmp = localStorage.getItem("rms_active_employee");
+      if (rawEmp) {
+        try {
+          const emp = JSON.parse(rawEmp);
+          if (emp && emp.name) placedBy = emp.name;
+        } catch (e) {}
+      }
     }
 
     const payload = {
       orderType,
       orderSource,
+      placedBy,
       branchId: branchId || undefined,
       branchName: branchName || undefined,
       branchCode: branchCode || undefined,

@@ -185,12 +185,23 @@ export default function KitchenDetailModal({
 
     setUpdating(true);
     try {
+      let activeEmpName = "Manager";
+      if (typeof window !== "undefined") {
+        const rawEmp = localStorage.getItem("rms_active_employee");
+        if (rawEmp) {
+          try {
+            const emp = JSON.parse(rawEmp);
+            if (emp && emp.name) activeEmpName = emp.name;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const note = `Kitchen updated status to ${nextStatus}`;
       const res = await axios.patch(
         `${apiUrl}/orders/${localOrder._id}/status`,
-        { status: nextStatus, note },
+        { status: nextStatus, note, userName: activeEmpName },
       );
 
       if (res.data.success) {
@@ -208,6 +219,7 @@ export default function KitchenDetailModal({
           status: nextStatus,
           changedAt: new Date().toISOString(),
           note,
+          userName: activeEmpName,
         });
 
         setLocalOrder({
@@ -416,10 +428,22 @@ export default function KitchenDetailModal({
     if (!localOrder || !localOrder._id) return;
     setUpdating(true);
     try {
+      let activeEmpName = "Manager";
+      if (typeof window !== "undefined") {
+        const rawEmp = localStorage.getItem("rms_active_employee");
+        if (rawEmp) {
+          try {
+            const emp = JSON.parse(rawEmp);
+            if (emp && emp.name) activeEmpName = emp.name;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.patch(
         `${apiUrl}/orders/${localOrder._id}/kitchen-clear`,
+        { userName: activeEmpName },
       );
       if (res.data.success) {
         toast.success("Order handed over to driver!");
