@@ -63,6 +63,14 @@ export default function EmployeePermissionGuard({
 
         // ── 3. Staff is logged in ──
         const activeEmp = typeof emp === "object" && emp !== null ? emp : JSON.parse(raw);
+
+        // Drivers are never allowed to view POS pages
+        if (activeEmp?.role === "driver") {
+          setIsAllowed(false);
+          toast.error("Driver accounts are not permitted to access the POS terminal.");
+          return;
+        }
+
         if (!activeEmp || activeEmp.role === "manager") {
           setIsAllowed(true);
           return;
