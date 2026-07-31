@@ -42,6 +42,7 @@ export interface PromoApplied {
 
 export interface Order {
   deliveryFee: number | undefined;
+  tip?: number;
   kitchenCleared: any;
   _id?: string;
   orderNumber: string;
@@ -70,6 +71,6 @@ export interface Order {
   notes: string;
   status: "pending" | "preparing" | "ready" | "completed" | "cancelled";
   receptionCompleted?: boolean;
-  statusHistory?: Array<{ status: string; changedAt: string; note?: string }>;
+  statusHistory?: Array<{ status: string; changedAt: string; note?: string; userName?: string }>;
   createdAt: string;
 }

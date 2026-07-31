@@ -13,21 +13,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for branch token or session cookie
-  const branchToken = request.cookies.get("rms_branch_token")?.value;
-  const branchSession = request.cookies.get("rms_branch_session")?.value;
-  const isAuthenticated = !!(branchToken || branchSession);
-
-  // If user is on /login page and is already authenticated, redirect to /
+  // Always allow /login page (master + staff login both happen here)
   if (pathname === "/login") {
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
     return NextResponse.next();
   }
 
+  // Check for branch token or session cookie
+  const branchToken = request.cookies.get("rms_branch_token")?.value;
+  const branchSession = request.cookies.get("rms_branch_session")?.value;
+  const isLocked = request.cookies.get("rms_terminal_locked")?.value === "true";
+  const isAuthenticated = !!(branchToken || branchSession);
+
   // Protect all other routes (/, /kitchen, /orders, /reception)
-  if (!isAuthenticated) {
+  if (!isAuthenticated || isLocked) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);

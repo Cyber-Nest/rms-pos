@@ -88,12 +88,24 @@ export default function ReceptionView() {
   const handleCompleteOrder = async (orderId: string) => {
     setCompletingId(orderId);
     try {
+      let activeEmpName = "Manager";
+      if (typeof window !== "undefined") {
+        const rawEmp = localStorage.getItem("rms_active_employee");
+        if (rawEmp) {
+          try {
+            const emp = JSON.parse(rawEmp);
+            if (emp && emp.name) activeEmpName = emp.name;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.patch(`${apiUrl}/orders/${orderId}/status`, {
         status: "completed",
         note: "Order completed and handed over to customer via Reception View",
         receptionCompleted: true,
+        userName: activeEmpName,
       });
       if (res.data.success) {
         toast.success("Order marked as completed!");
@@ -113,12 +125,24 @@ export default function ReceptionView() {
   const handleHandoverDelivery = async (orderId: string) => {
     setCompletingId(orderId);
     try {
+      let activeEmpName = "Manager";
+      if (typeof window !== "undefined") {
+        const rawEmp = localStorage.getItem("rms_active_employee");
+        if (rawEmp) {
+          try {
+            const emp = JSON.parse(rawEmp);
+            if (emp && emp.name) activeEmpName = emp.name;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.patch(`${apiUrl}/orders/${orderId}/status`, {
         status: "ready", // KEEP status as ready
         note: "Order handed over to delivery driver",
         receptionCompleted: true, // This clears it from Reception View
+        userName: activeEmpName,
       });
       if (res.data.success) {
         toast.success("Handed over to driver!");

@@ -81,7 +81,7 @@ export default function CheckInOutModal({
         branchId,
         employeeId: employeeIdInput.trim().toUpperCase(),
         pin: pinInput.trim(),
-      });
+      }, { withCredentials: true });
 
       if (res.data.success) {
         setVerifiedEmployee(res.data.data.employee);
@@ -105,7 +105,7 @@ export default function CheckInOutModal({
       const res = await axios.post(`${apiUrl}/attendance/${actionType}`, {
         branchId,
         employeeId: verifiedEmployee._id,
-      });
+      }, { withCredentials: true });
 
       if (res.data.success) {
         const actionLabels = {
@@ -167,7 +167,7 @@ export default function CheckInOutModal({
                   type="text"
                   value={employeeIdInput}
                   onChange={(e) => setEmployeeIdInput(e.target.value.toUpperCase())}
-                  placeholder="e.g. EMP-001"
+                  placeholder="e.g. 001"
                   required
                   autoFocus
                   className="w-full pl-9 pr-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-mono font-800 text-neutral-900 tracking-wider focus:outline-none focus:border-brand-primary focus:bg-white transition-all uppercase"
@@ -201,6 +201,34 @@ export default function CheckInOutModal({
                   {showPin ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+            </div>
+
+            {/* Keypad Buttons for easy touch input */}
+            <div className="grid grid-cols-3 gap-1.5 pt-2 select-none">
+              {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"].map((btn) => (
+                <button
+                  key={btn}
+                  type="button"
+                  onClick={() => {
+                    if (btn === "C") {
+                      setPinInput("");
+                    } else if (btn === "⌫") {
+                      setPinInput(prev => prev.slice(0, -1));
+                    } else if (pinInput.length < 4) {
+                      setPinInput(prev => prev + btn);
+                    }
+                  }}
+                  className={`py-2 rounded-xl text-xs font-800 transition-all cursor-pointer ${
+                    btn === "C"
+                      ? "bg-red-50 text-red-600 hover:bg-red-100"
+                      : btn === "⌫"
+                      ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      : "bg-neutral-100 text-neutral-800 hover:bg-neutral-200 active:scale-95"
+                  }`}
+                >
+                  {btn}
+                </button>
+              ))}
             </div>
 
             <div className="pt-2">

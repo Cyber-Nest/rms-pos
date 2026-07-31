@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Search, UtensilsCrossed, RefreshCw, ArrowLeft, ImageIcon, X } from 'lucide-react';
 import PosNavbar from '@/modules/employee-pos/components/PosNavbar';
 import POSSidebarDrawer from '@/modules/employee-pos/components/POSSidebarDrawer';
+import EmployeePermissionGuard from '@/modules/employee-pos/components/EmployeePermissionGuard';
 
 interface Product {
   _id: string;
@@ -32,6 +33,7 @@ export default function BranchMenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'outOfStock' | 'inactive'>('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [togglingStockId, setTogglingStockId] = useState<string | null>(null);
@@ -158,9 +160,15 @@ export default function BranchMenuPage() {
     }
   };
 
-  // Filter products by search query
+  // Filter products by search query and status filter
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
+      // 1. Status filter
+      if (statusFilter === 'active' && product.isActive === false) return false;
+      if (statusFilter === 'outOfStock' && product.isOutOfStock !== true) return false;
+      if (statusFilter === 'inactive' && product.isActive !== false) return false;
+
+      // 2. Search query filter
       const query = searchQuery.toLowerCase().trim();
       if (!query) return true;
       
@@ -170,7 +178,7 @@ export default function BranchMenuPage() {
       
       return nameMatch || idMatch || categoryMatch;
     });
-  }, [products, searchQuery]);
+  }, [products, searchQuery, statusFilter]);
 
   // Pagination Calculations
   const totalEntries = filteredProducts.length;
@@ -181,7 +189,8 @@ export default function BranchMenuPage() {
   const visibleProducts = filteredProducts.slice(startIndex, endIndex);
 
   return (
-    <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
+    <EmployeePermissionGuard permissionKey="menus">
+      <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar Header */}
       <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
@@ -223,20 +232,64 @@ export default function BranchMenuPage() {
             )}
           </div>
 
-          {/* Stats Pills (Matching Standard Badges) */}
+          {/* Stats Filter Buttons */}
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1.5 bg-neutral-50 text-neutral-600 border border-neutral-200 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('all');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'all'
+                  ? 'bg-neutral-800 text-white border-neutral-800 shadow-sm ring-2 ring-neutral-400/30'
+                  : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100 hover:border-neutral-300'
+              }`}
+            >
               Total: {products.length}
-            </span>
-            <span className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('active');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'active'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-400/30'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100 hover:border-emerald-300'
+              }`}
+            >
               Active: {products.filter(p => p.isActive !== false).length}
-            </span>
-            <span className="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('outOfStock');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'outOfStock'
+                  ? 'bg-amber-500 text-white border-amber-500 shadow-sm ring-2 ring-amber-400/30'
+                  : 'bg-amber-50 text-amber-700 border-amber-200/60 hover:bg-amber-100 hover:border-amber-300'
+              }`}
+            >
               Out of Stock: {products.filter(p => p.isOutOfStock === true).length}
-            </span>
-            <span className="px-2.5 py-1.5 bg-red-50 text-red-750 border border-red-200/60 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1">
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('inactive');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 border rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95 ${
+                statusFilter === 'inactive'
+                  ? 'bg-red-600 text-white border-red-600 shadow-sm ring-2 ring-red-400/30'
+                  : 'bg-red-50 text-red-750 border-red-200/60 hover:bg-red-100 hover:border-red-300'
+              }`}
+            >
               Inactive: {products.filter(p => p.isActive === false).length}
-            </span>
+            </button>
           </div>
 
           {/* Action Buttons */}
@@ -488,30 +541,32 @@ export default function BranchMenuPage() {
         </div>
       </div>
 
-      {/* Sidebar Drawer Component */}
-      <POSSidebarDrawer
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        activeTab="menus"
-        onSelectTab={(tabKey) => {
-          setIsSidebarOpen(false);
-          if (tabKey === 'pos') {
-            window.location.href = '/employee/pos';
-          } else if (tabKey === 'kitchen') {
-            window.location.href = '/employee/kitchen';
-          } else if (tabKey === 'customers') {
-            window.location.href = '/employee/customers';
-          } else if (tabKey === 'setting') {
-            window.location.href = '/employee/settings';
-          } else if (
-            ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'transactions', 'reports', 'update_profile', 'change_password'].includes(tabKey)
-          ) {
-            let targetTab = tabKey;
-            if (tabKey === 'transactions') targetTab = 'orders';
-            window.location.href = `/employee/orders?view=${targetTab}`;
-          }
-        }}
-      />
-    </main>
+        {/* Sidebar Drawer Component */}
+        <POSSidebarDrawer
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          activeTab="menus"
+          onSelectTab={(tabKey) => {
+            if (tabKey === 'menus') {
+              setIsSidebarOpen(false);
+            } else if (tabKey === 'pos') {
+              window.location.href = '/employee/pos';
+            } else if (tabKey === 'kitchen') {
+              window.location.href = '/employee/kitchen';
+            } else if (tabKey === 'customers') {
+              window.location.href = '/employee/customers';
+            } else if (tabKey === 'setting') {
+              window.location.href = '/employee/settings';
+            } else if (
+              ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'transactions', 'reports', 'update_profile', 'change_password'].includes(tabKey)
+            ) {
+              let targetTab = tabKey;
+              if (tabKey === 'transactions') targetTab = 'orders';
+              window.location.href = `/employee/orders?view=${targetTab}`;
+            }
+          }}
+        />
+      </main>
+    </EmployeePermissionGuard>
   );
 }

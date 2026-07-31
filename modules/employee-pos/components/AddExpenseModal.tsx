@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -24,6 +24,39 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
   const [description, setDescription] = useState('');
   const [paymentMode, setPaymentMode] = useState<'cash' | 'card'>('cash');
   const [submitting, setSubmitting] = useState(false);
+  const [employeesList, setEmployeesList] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchRealEmployees = async () => {
+      try {
+        let branchId: string | undefined = undefined;
+        if (typeof window !== 'undefined') {
+          const rawBranch = localStorage.getItem('rms_branch');
+          if (rawBranch) {
+            try {
+              const b = JSON.parse(rawBranch);
+              branchId = b._id;
+            } catch (e) {}
+          }
+        }
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const res = await axios.get(`${apiUrl}/employees`, {
+          params: { ...(branchId ? { branchId } : {}) },
+        });
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const emps = res.data.data.map((emp: any) => ({
+            id: emp._id,
+            name: emp.name || emp.fullName || "Employee",
+          }));
+          setEmployeesList(emps);
+        }
+      } catch (err) {
+        console.warn("Could not fetch employees for AddExpenseModal", err);
+      }
+    };
+    fetchRealEmployees();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -212,9 +245,11 @@ export default function AddExpenseModal({ isOpen, onClose, onSuccess }: AddExpen
                 className="w-full px-4 py-3 rounded-2xl border border-neutral-300 bg-white focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15 focus:outline-hidden font-600 text-neutral-800 transition-all cursor-pointer shadow-2xs"
               >
                 <option value="Manager">Manager</option>
-                <option value="Alex Johnson">Alex Johnson</option>
-                <option value="Sam Miller">Sam Miller</option>
-                <option value="Nikita Sharma">Nikita Sharma</option>
+                {employeesList.map((emp) => (
+                  <option key={emp.id} value={emp.name}>
+                    {emp.name}
+                  </option>
+                ))}
               </select>
             </div>
           )}

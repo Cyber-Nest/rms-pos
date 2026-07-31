@@ -52,6 +52,7 @@ export default function SettingsDashboard() {
   const [tills, setTills] = useState<Till[]>([]);
 
   // ── 5. Store Timings State ──
+  const [isEmergencyClosed, setIsEmergencyClosed] = useState(false);
   const [storeTimings, setStoreTimings] = useState<StoreTiming[]>([
     { day: 'Sunday', startTime: '10:00 AM', endTime: '08:00 PM', isHoliday: 'No' },
     { day: 'Monday', startTime: '10:00 AM', endTime: '09:00 PM', isHoliday: 'No' },
@@ -102,15 +103,16 @@ export default function SettingsDashboard() {
         try { localStorage.setItem('rms_branch_settings', JSON.stringify(s)); } catch (e) {}
 
         if (s.mainSettings) {
-          // Convert numeric fields to string for input compatibility
-          const ms = s.mainSettings;
-          setMainSettings(prev => ({
+          if (s.mainSettings.isEmergencyClosed !== undefined) {
+            setIsEmergencyClosed(!!s.mainSettings.isEmergencyClosed);
+          }
+          setMainSettings((prev) => ({
             ...prev,
-            ...ms,
-            defaultTimeMinutes: String(ms.defaultTimeMinutes ?? prev.defaultTimeMinutes),
-            latitude: String(ms.latitude ?? prev.latitude),
-            longitude: String(ms.longitude ?? prev.longitude),
-            commission: String(ms.commission ?? prev.commission),
+            ...s.mainSettings,
+            latitude: String(s.mainSettings.latitude ?? prev.latitude),
+            longitude: String(s.mainSettings.longitude ?? prev.longitude),
+            commission: String(s.mainSettings.commission ?? prev.commission),
+            defaultTimeMinutes: String(s.mainSettings.defaultTimeMinutes ?? prev.defaultTimeMinutes),
           }));
         }
         if (s.taxFeesSettings) {
@@ -167,9 +169,19 @@ export default function SettingsDashboard() {
   };
 
   // ── Main Settings Submit Handler ──
-  const handleMainSettingsSubmit = (e: React.FormEvent) => {
+  const handleMainSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveSettingsToBackend({ mainSettings }, 'Main Settings updated successfully!');
+    await saveSettingsToBackend({ mainSettings }, 'Main Settings updated successfully!');
+    // Also update rms_branch localStorage so delivery map picks up new lat/lng immediately
+    try {
+      const raw = localStorage.getItem('rms_branch');
+      if (raw) {
+        const b = JSON.parse(raw);
+        b.lat = Number(mainSettings.latitude) || b.lat;
+        b.lng = Number(mainSettings.longitude) || b.lng;
+        localStorage.setItem('rms_branch', JSON.stringify(b));
+      }
+    } catch (e) {}
   };
 
   // ── Tax & Fees Submit Handler ──
@@ -181,7 +193,16 @@ export default function SettingsDashboard() {
   // ── Store Timings Submit Handler ──
   const handleStoreTimingsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    saveSettingsToBackend({ storeTimings }, 'Store Timings updated successfully!');
+    saveSettingsToBackend(
+      {
+        storeTimings,
+        mainSettings: {
+          ...mainSettings,
+          isEmergencyClosed,
+        },
+      },
+      'Store Timings & Closed status updated successfully!'
+    );
   };
 
   const handleUpdateTimingsUpdates = (newVal: React.SetStateAction<TimingUpdate[]>) => {
@@ -358,6 +379,8 @@ export default function SettingsDashboard() {
                 <StoreTimingsTab
                   storeTimings={storeTimings}
                   setStoreTimings={setStoreTimings}
+                  isEmergencyClosed={isEmergencyClosed}
+                  setIsEmergencyClosed={setIsEmergencyClosed}
                   onSubmit={handleStoreTimingsSubmit}
                 />
               )}

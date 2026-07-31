@@ -30,7 +30,7 @@ interface Employee {
   _id: string;
   employeeId: string;
   name: string;
-  role: "manager" | "driver" | "cashier" | "chef" | "crew-member";
+  role: "manager" | "supervisor" | "driver" | "cashier" | "chef" | "crew-member";
   phone: string;
   email: string;
   address: string;
@@ -46,6 +46,12 @@ const getRoleBadgeStyle = (role: string) => {
         bg: "bg-purple-50 text-purple-700 border-purple-200",
         icon: Shield,
         label: "Manager",
+      };
+    case "supervisor":
+      return {
+        bg: "bg-indigo-50 text-indigo-700 border-indigo-200",
+        icon: Shield,
+        label: "Supervisor",
       };
     case "chef":
       return {
@@ -207,6 +213,7 @@ export default function EmployeeManagementView() {
             >
               <option value="">All Roles</option>
               <option value="manager">Manager</option>
+              <option value="supervisor">Supervisor</option>
               <option value="cashier">Cashier</option>
               <option value="chef">Chef</option>
               <option value="driver">Driver</option>

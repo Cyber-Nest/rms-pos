@@ -11,6 +11,41 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const DEFAULT_RESTAURANT_COORDS = { lat: 22.1818, lng: 78.7618 };
 
+// Read restaurant info from rms_branch stored at login
+const getRestaurantInfoFromStorage = (): { name: string; lat: number; lng: number } => {
+  if (typeof window === "undefined") return { name: "Restaurant", ...DEFAULT_RESTAURANT_COORDS };
+  try {
+    const raw = localStorage.getItem("rms_branch");
+    if (raw) {
+      const b = JSON.parse(raw);
+      const lat = b.lat && !isNaN(Number(b.lat)) ? Number(b.lat) : DEFAULT_RESTAURANT_COORDS.lat;
+      const lng = b.lng && !isNaN(Number(b.lng)) ? Number(b.lng) : DEFAULT_RESTAURANT_COORDS.lng;
+      return { name: b.name || "Restaurant", lat, lng };
+    }
+  } catch (e) {}
+  return { name: "Restaurant", ...DEFAULT_RESTAURANT_COORDS };
+};
+
+const getBranchConfig = () => {
+  if (typeof window === "undefined") return { withCredentials: true };
+  try {
+    const raw = localStorage.getItem("rms_branch");
+    if (raw) {
+      const b = JSON.parse(raw);
+      const branchId = b._id || b.id || b.branchId;
+      if (branchId) {
+        return {
+          withCredentials: true,
+          headers: { "x-branch-id": branchId },
+          params: { branchId, restaurantId: branchId },
+        };
+      }
+    }
+  } catch (e) {}
+  return { withCredentials: true };
+};
+
+
 interface DeliveryState {
   // ── Data ──
   orders: DeliveryOrder[];
@@ -60,6 +95,7 @@ interface DeliveryState {
   // ── Real-Time Pusher Actions ──
   initPusher: () => void;
   cleanupPusher: () => void;
+  loadRestaurantFromBranch: () => Promise<void>;
 }
 
 export const useDeliveryStore = create<DeliveryState>((set, get) => ({
@@ -67,10 +103,10 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   orders: [],
   drivers: [],
   vehicles: [],
-  restaurantLocation: {
-    name: "Chicken Delight",
-    coordinates: DEFAULT_RESTAURANT_COORDS,
-  },
+  restaurantLocation: (() => {
+    const info = getRestaurantInfoFromStorage();
+    return { name: info.name, coordinates: { lat: info.lat, lng: info.lng } };
+  })(),
   activeTab: "orders",
   activeFilter: "assign",
   carrierFilter: "available",
@@ -87,7 +123,10 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getFilteredDrivers: () => {
     const { drivers, carrierFilter } = get();
     if (carrierFilter === "available") {
-      return drivers.filter((d) => d.status === "available");
+      // Show POS checked-in drivers (both available and offline-but-checked-in)
+      return drivers.filter(
+        (d) => d.posCheckedIn && (d.status === "available" || d.status === "offline")
+      );
     }
     return drivers.filter(
       (d) => d.status === "on-delivery" || d.status === "returning",
@@ -106,7 +145,9 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getCarrierCounts: () => {
     const { drivers } = get();
     return {
-      available: drivers.filter((d) => d.status === "available").length,
+      available: drivers.filter(
+        (d) => d.posCheckedIn && (d.status === "available" || d.status === "offline")
+      ).length,
       enRoute: drivers.filter(
         (d) => d.status === "on-delivery" || d.status === "returning",
       ).length,
@@ -116,7 +157,7 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getDriversWithVehicles: () => {
     const { drivers } = get();
     return drivers.filter(
-      (d) => d.assignedVehicle !== null && d.status !== "offline",
+      (d) => d.assignedVehicle !== null && d.status === "available",
     );
   },
 
@@ -128,12 +169,75 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   selectDriver: (driverId) => set({ selectedDriverId: driverId }),
   openVehicleModal: (driverId) => set({ vehicleModalOpen: true, selectedDriverId: driverId }),
   closeVehicleModal: () => set({ vehicleModalOpen: false, selectedDriverId: null }),
-  setRestaurantLocation: (coords) => set((state) => ({ restaurantLocation: { ...state.restaurantLocation, coordinates: coords } })),
+  setRestaurantLocation: (coords) =>
+    set((state) => ({
+      restaurantLocation: { ...state.restaurantLocation, coordinates: coords },
+    })),
+  loadRestaurantFromBranch: async () => {
+    const localInfo = getRestaurantInfoFromStorage();
+    set({
+      restaurantLocation: {
+        name: localInfo.name,
+        coordinates: { lat: localInfo.lat, lng: localInfo.lng },
+      },
+    });
+
+    // Step 2: Fetch LATEST coords from backend settings API
+    try {
+      let branchId: string | null = null;
+      if (typeof window !== "undefined") {
+        const raw = localStorage.getItem("rms_branch");
+        if (raw) {
+          const b = JSON.parse(raw);
+          branchId = b._id || b.id || b.branchId || null;
+        }
+      }
+      if (!branchId) return;
+
+      const res = await axios.get(`${API_URL}/branches/settings`, {
+        params: { branchId },
+        withCredentials: true,
+      });
+
+      if (res.data.success && res.data.data?.mainSettings) {
+        const ms = res.data.data.mainSettings;
+        const lat = Number(ms.latitude);
+        const lng = Number(ms.longitude);
+
+        if (!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0)) {
+          // Update store with fresh backend coordinates
+          set((state) => ({
+            restaurantLocation: {
+              name: state.restaurantLocation.name, // keep name from localStorage
+              coordinates: { lat, lng },
+            },
+          }));
+
+          // Also sync rms_branch localStorage so future reads are correct
+          try {
+            if (typeof window !== "undefined") {
+              const raw = localStorage.getItem("rms_branch");
+              if (raw) {
+                const b = JSON.parse(raw);
+                b.lat = lat;
+                b.lng = lng;
+                localStorage.setItem("rms_branch", JSON.stringify(b));
+              }
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      // Silently fallback — localStorage values already applied above
+      console.warn("[DeliveryStore] Could not fetch latest restaurant coords from API:", err);
+    }
+  },
 
   // ── API Actions ──
   fetchOrders: async () => {
     try {
-      const res = await axios.get(`${API_URL}/delivery/orders`);
+      const config = getBranchConfig();
+      const res = await axios.get(`${API_URL}/delivery/orders`, config);
       if (res.data.success) {
         // Map backend properties if needed (backend matches frontend mostly)
         const mappedOrders = res.data.data.map((o: any) => ({
@@ -150,7 +254,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   fetchDrivers: async () => {
     try {
-      const res = await axios.get(`${API_URL}/delivery/drivers`);
+      const config = getBranchConfig();
+      const res = await axios.get(`${API_URL}/delivery/drivers`, config);
       if (res.data.success) {
         const mappedDrivers = res.data.data.map((d: any) => ({
           ...d,
@@ -166,7 +271,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   fetchVehicles: async () => {
     try {
-      const res = await axios.get(`${API_URL}/delivery/vehicles`);
+      const config = getBranchConfig();
+      const res = await axios.get(`${API_URL}/delivery/vehicles`, config);
       if (res.data.success) {
         const mappedVehicles = res.data.data.map((v: any) => ({
           ...v,
@@ -225,10 +331,11 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   assignVehicle: async (driverId, vehicleId) => {
     try {
+      const config = getBranchConfig();
       const res = await axios.post(`${API_URL}/delivery/vehicles/assign`, {
         driverId,
         vehicleId,
-      });
+      }, config);
       if (res.data.success) {
         await Promise.all([get().fetchDrivers(), get().fetchVehicles()]);
         set({ vehicleModalOpen: false, selectedDriverId: null });
@@ -240,7 +347,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   unassignVehicle: async (driverId) => {
     try {
-      const res = await axios.delete(`${API_URL}/delivery/vehicles/unassign/${driverId}`);
+      const config = getBranchConfig();
+      const res = await axios.delete(`${API_URL}/delivery/vehicles/unassign/${driverId}`, config);
       if (res.data.success) {
         await Promise.all([get().fetchDrivers(), get().fetchVehicles()]);
       }
@@ -251,7 +359,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   addVehicle: async (number, label) => {
     try {
-      const res = await axios.post(`${API_URL}/delivery/vehicles`, { number, label });
+      const config = getBranchConfig();
+      const res = await axios.post(`${API_URL}/delivery/vehicles`, { number, label }, config);
       if (res.data.success) {
         await get().fetchVehicles();
       }
@@ -263,7 +372,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   updateVehicle: async (id, number, label) => {
     try {
-      const res = await axios.put(`${API_URL}/delivery/vehicles/${id}`, { number, label });
+      const config = getBranchConfig();
+      const res = await axios.put(`${API_URL}/delivery/vehicles/${id}`, { number, label }, config);
       if (res.data.success) {
         await Promise.all([get().fetchVehicles(), get().fetchDrivers()]);
       }
@@ -275,7 +385,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   deleteVehicle: async (id) => {
     try {
-      const res = await axios.delete(`${API_URL}/delivery/vehicles/${id}`);
+      const config = getBranchConfig();
+      const res = await axios.delete(`${API_URL}/delivery/vehicles/${id}`, config);
       if (res.data.success) {
         await Promise.all([get().fetchVehicles(), get().fetchDrivers()]);
       }
@@ -298,8 +409,26 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   // ── Real-Time Pusher Actions ──
   initPusher: () => {
+    let branchId = "default";
+    try {
+      const raw = localStorage.getItem("rms_branch");
+      if (raw) {
+        const b = JSON.parse(raw);
+        branchId = b._id || b.id || b.branchId || "default";
+      }
+    } catch (e) {}
+
     const pusher = getPusherClient();
-    const channel = pusher.subscribe("private-restaurant-default");
+    const channel = pusher.subscribe(`private-restaurant-${branchId}`);
+    const ordersChannel = pusher.subscribe(`orders-${branchId}`);
+
+    // Listen for new-order and order-updated from user-frontend
+    ordersChannel.bind("new-order", (data: any) => {
+      get().fetchOrders();
+    });
+    ordersChannel.bind("order-updated", (data: any) => {
+      get().fetchOrders();
+    });
 
     // 1. Listen for Pusher location events (both client events & server-relay fallback)
     const handleLocationUpdate = (data: any) => {
@@ -457,7 +586,17 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   },
 
   cleanupPusher: () => {
+    let branchId = "default";
+    try {
+      const raw = localStorage.getItem("rms_branch");
+      if (raw) {
+        const b = JSON.parse(raw);
+        branchId = b._id || b.id || b.branchId || "default";
+      }
+    } catch (e) {}
+
     const pusher = getPusherClient();
-    pusher.unsubscribe("private-restaurant-default");
+    pusher.unsubscribe(`private-restaurant-${branchId}`);
+    pusher.unsubscribe(`orders-${branchId}`);
   },
 }));

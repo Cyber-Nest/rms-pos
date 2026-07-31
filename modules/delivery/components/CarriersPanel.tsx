@@ -97,6 +97,8 @@ export default function CarriersPanel() {
                   className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide border ${
                     driver.status === 'available'
                       ? 'text-green-600 bg-green-50 border-green-200'
+                      : driver.status === 'offline'
+                      ? 'text-amber-700 bg-amber-50 border-amber-200'
                       : driver.status === 'returning'
                       ? 'text-purple-600 bg-purple-50 border-purple-200'
                       : 'text-blue-600 bg-blue-50 border-blue-200'
@@ -104,6 +106,8 @@ export default function CarriersPanel() {
                 >
                   {driver.status === 'available'
                     ? 'Available'
+                    : driver.status === 'offline'
+                    ? 'Checked In · Awaiting App'
                     : driver.status === 'returning'
                     ? 'Returning'
                     : 'On Delivery'}

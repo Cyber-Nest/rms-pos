@@ -17,6 +17,27 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
   const { search, setSearch, orders } = usePosStore();
   const [branchInfo, setBranchInfo] = React.useState<{ name: string; code: string; _id?: string } | null>(null);
   const [loadingBranchInfo, setLoadingBranchInfo] = React.useState(true);
+  const [activeEmployee, setActiveEmployee] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const syncActiveEmployee = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const raw = localStorage.getItem('rms_active_employee');
+        setActiveEmployee(raw ? JSON.parse(raw) : null);
+      } catch {
+        setActiveEmployee(null);
+      }
+    };
+
+    syncActiveEmployee();
+    window.addEventListener('rms_active_employee_changed', syncActiveEmployee);
+    window.addEventListener('storage', syncActiveEmployee);
+    return () => {
+      window.removeEventListener('rms_active_employee_changed', syncActiveEmployee);
+      window.removeEventListener('storage', syncActiveEmployee);
+    };
+  }, []);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -86,8 +107,21 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
     };
   }, [router]);
 
-  const handleLogout = async () => {
-    if (confirm('Are you sure you want to log out of the branch terminal?')) {
+  // Employee Logout: clears active staff session, locks terminal, goes to /login
+  const handleEmployeeLogout = () => {
+    if (confirm(`Logout ${activeEmployee?.name}`)) {
+      localStorage.removeItem('rms_active_employee');
+      localStorage.setItem('rms_terminal_locked', 'true');
+      document.cookie = 'rms_terminal_locked=true; path=/; max-age=604800; SameSite=Lax';
+      window.dispatchEvent(new Event('rms_active_employee_changed'));
+      router.push('/login');
+    }
+  };
+
+
+  // Master Logout: clears everything (branch + employee) and redirects to /login
+  const handleMasterLogout = async () => {
+    if (confirm('Master Logout: This will close the terminal session. All staff will need to re-login. Continue?')) {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
         await axios.post(`${API_URL}/branches/logout`, {}, { withCredentials: true });
@@ -95,20 +129,35 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
 
       if (typeof window !== 'undefined') {
         localStorage.removeItem('rms_branch');
+        localStorage.removeItem('rms_active_employee');
+        localStorage.removeItem('rms_terminal_locked');
         localStorage.removeItem('rms_draft_cart');
-        document.cookie = 'rms_branch_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        document.cookie = 'rms_branch_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'rms_terminal_locked=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'rms_branch_session=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'rms_branch_token=; path=/; max-age=0; SameSite=Lax';
       }
       router.push('/login');
     }
   };
 
-  const navLinks = [
-    { name: 'POS Terminal', href: '/employee/pos', icon: LayoutGrid },
-    { name: 'Kitchen View', href: '/employee/kitchen', icon: ChefHat },
-    { name: 'Orders', href: '/employee/orders', icon: ClipboardList },
-    { name: 'Reception View', href: '/employee/reception', icon: TrendingUp },
+
+  const rawNavLinks = [
+    { key: 'pos', name: 'POS Terminal', href: '/employee/pos', icon: LayoutGrid },
+    { key: 'kitchen', name: 'Kitchen View', href: '/employee/kitchen', icon: ChefHat },
+    { key: 'orders', name: 'Orders', href: '/employee/orders', icon: ClipboardList },
+    { key: 'reception_view', name: 'Reception View', href: '/employee/reception', icon: TrendingUp },
   ];
+
+  const navLinks = rawNavLinks.filter((link) => {
+    if (!activeEmployee || activeEmployee.role === 'manager') return true;
+    if (link.key === 'pos') return true;
+    const perms = activeEmployee.permissions || {};
+    if (link.key === 'orders') {
+      const orderSubTabKeys = ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'];
+      return orderSubTabKeys.some(k => perms[k] === true);
+    }
+    return perms[link.key] === true;
+  });
 
   return (
     <header className="h-[64px] bg-white border-b border-neutral-200 px-5 flex items-center justify-between sticky top-0 z-40 shadow-sm font-sans">
@@ -146,7 +195,7 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         ) : null}
 
         {/* Divider */}
-        <div className="h-5 w-px bg-neutral-200 hidden lg:block" />
+        {navLinks.length > 0 && <div className="h-5 w-px bg-neutral-200 hidden lg:block" />}
 
         {/* Nav Navigation Links */}
         <div className="hidden lg:flex items-center gap-1.5">
@@ -203,30 +252,30 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         {/* Divider */}
         <div className="h-7 w-px bg-neutral-200" />
 
-        {/* Staff Profile */}
+        {/* Staff Profile Badge */}
         {loadingBranchInfo && !branchInfo ? (
           <div className="w-24 h-8 bg-neutral-100 animate-pulse rounded-xl" />
         ) : branchInfo ? (
-          <div className="flex items-center gap-2">
-            <div className="text-right hidden sm:block">
-              <p className="text-[12px] font-800 text-neutral-900 leading-tight">
-                {branchInfo.code} Staff
-              </p>
-              <span className="text-[9px] font-700 text-brand-primary leading-tight uppercase tracking-wider">
-                Terminal
-              </span>
+          <div className="flex items-center gap-2.5 bg-neutral-50/90 border border-neutral-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
+            <div className="w-7 h-7 rounded-lg bg-brand-primary text-white font-900 text-[11px] flex items-center justify-center shadow-xs uppercase shrink-0">
+              {activeEmployee ? activeEmployee.name.charAt(0) : branchInfo.code.slice(0, 2)}
             </div>
-            <div className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center text-[11px] font-900 text-white shadow-xs">
-              {branchInfo.code.slice(0, 2)}
+            <div className="hidden sm:flex flex-col text-left">
+              <span className="text-[12px] font-800 text-neutral-900 leading-none">
+                {activeEmployee ? activeEmployee.name : `${branchInfo.code} Staff`}
+              </span>
+              <span className="text-[9.5px] font-800 text-brand-primary uppercase tracking-wider mt-0.5 leading-none">
+                {activeEmployee ? activeEmployee.role.replace('_', ' ') : 'Terminal'}
+              </span>
             </div>
           </div>
         ) : null}
 
-        {/* Logout Button */}
+        {/* Logout Button — Always locks screen to /login while keeping terminal active */}
         <button
-          onClick={handleLogout}
+          onClick={handleEmployeeLogout}
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 hover:text-red-700 hover:border-red-300 transition-all cursor-pointer"
-          title="Logout of Terminal"
+          title={activeEmployee ? `Logout ${activeEmployee.name}` : "Lock Terminal Screen"}
         >
           <LogOut size={15} />
         </button>

@@ -26,11 +26,14 @@ export default function DeliveryDispatchDashboard() {
   const fetchVehicles = useDeliveryStore((s) => s.fetchVehicles);
   const initPusher = useDeliveryStore((s) => s.initPusher);
   const cleanupPusher = useDeliveryStore((s) => s.cleanupPusher);
-  const setRestaurantLocation = useDeliveryStore((s) => s.setRestaurantLocation);
+  const loadRestaurantFromBranch = useDeliveryStore((s) => s.loadRestaurantFromBranch);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
+    // Load restaurant name + coords from branch profile (rms_branch localStorage)
+    loadRestaurantFromBranch();
+
     // Initial data fetch
     fetchOrders();
     fetchDrivers();
@@ -39,18 +42,10 @@ export default function DeliveryDispatchDashboard() {
     // Start Pusher listeners
     initPusher();
 
-    // Setup Geolocation for proper local testing
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setRestaurantLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.log("Geolocation not available/allowed:", err)
-      );
-    }
-
     return () => {
       cleanupPusher();
     };
-  }, [fetchOrders, fetchDrivers, fetchVehicles, initPusher, cleanupPusher, setRestaurantLocation]);
+  }, [fetchOrders, fetchDrivers, fetchVehicles, initPusher, cleanupPusher, loadRestaurantFromBranch]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-brand-bg select-none">

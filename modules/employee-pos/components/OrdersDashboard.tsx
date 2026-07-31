@@ -49,6 +49,49 @@ const formatDateDisplay = (dateStr: string) => {
   return dateStr;
 };
 
+// ── Permission helpers ────────────────────────────────────────────────────
+const ORDERS_SUBTAB_KEYS = [
+  "dashboard",
+  "orders_list",
+  "sales_summary",
+  "expense_payout",
+  "reports",
+  "item_sales",
+  "hourly_sales",
+  "cash_out_summary",
+  "monthly_sales_summary",
+  "failed_transaction",
+  "refund_orders",
+];
+
+// Map from URL tab param → permission key (when different)
+const TAB_TO_PERM_KEY: Record<string, string> = {
+  orders: "orders_list", // 'orders' tab in URL uses 'orders_list' permission
+};
+
+function getEmployeePermissions(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem("rms_active_employee");
+    if (!raw) return {};
+    const emp = JSON.parse(raw);
+    if (!emp || emp.role === "manager") return {}; // manager has all access
+    return emp.permissions || {};
+  } catch {
+    return {};
+  }
+}
+
+function isManager(): boolean {
+  try {
+    const raw = localStorage.getItem("rms_active_employee");
+    if (!raw) return true; // no staff logged in = manager mode
+    const emp = JSON.parse(raw);
+    return !emp || emp.role === "manager";
+  } catch {
+    return true;
+  }
+}
+
 export default function OrdersDashboard() {
   const [activeSubTab, setActiveSubTab] = useState<
     | "dashboard"
@@ -71,10 +114,19 @@ export default function OrdersDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+  const [empPerms, setEmpPerms] = useState<Record<string, boolean>>({});
+  const [managerMode, setManagerMode] = useState(false);
 
-  const MORE_TABS = [
+  // Helper: is this sub-tab accessible? Maps URL tab key → permission key
+  const canAccessTab = (tabKey: string): boolean => {
+    if (managerMode) return true;
+    const permKey = TAB_TO_PERM_KEY[tabKey] ?? tabKey;
+    if (ORDERS_SUBTAB_KEYS.includes(permKey)) return empPerms[permKey] === true;
+    return true;
+  };
+
+  const ALL_MORE_TABS = [
     { key: "item_sales", label: "Item Sales" },
-    // { key: "item_wise_sales", label: "Item Wise Sales" },
     { key: "hourly_sales", label: "Hourly Sales Report" },
     { key: "cash_out_report", label: "Cash Out Report" },
     { key: "cash_out_summary", label: "Cash Out Summary" },
@@ -83,7 +135,12 @@ export default function OrdersDashboard() {
     { key: "refund_orders", label: "Refund Orders" },
   ];
 
-  const isMoreTabActive = MORE_TABS.some((t) => t.key === activeSubTab);
+  // Only show tabs this employee can access
+  const MORE_TABS = managerMode
+    ? ALL_MORE_TABS
+    : ALL_MORE_TABS.filter((t) => empPerms[t.key] === true);
+
+  const isMoreTabActive = ALL_MORE_TABS.some((t) => t.key === activeSubTab);
   const activeMoreTab = MORE_TABS.find((t) => t.key === activeSubTab);
   const moreButtonLabel = activeMoreTab ? activeMoreTab.label : "More";
 
@@ -230,51 +287,94 @@ export default function OrdersDashboard() {
     setCurrentPage(1);
   }, [searchKeyword, statusFilter, paymentFilter, startDate, endDate]);
 
-  // ── Parse Tab Query Param On Mount ──
+  // ── Load employee permissions on mount ──
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const perms = getEmployeePermissions();
+      const mgr = isManager();
+      setEmpPerms(perms);
+      setManagerMode(mgr);
+    }
+
+    const onPermsChange = () => {
+      setEmpPerms(getEmployeePermissions());
+      setManagerMode(isManager());
+    };
+    window.addEventListener("rms_active_employee_changed", onPermsChange);
+    window.addEventListener("storage", onPermsChange);
+    return () => {
+      window.removeEventListener("rms_active_employee_changed", onPermsChange);
+      window.removeEventListener("storage", onPermsChange);
+    };
+  }, []);
+
+  // ── Parse Tab Query Param On Mount & enforce sub-tab permission ──
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const perms = getEmployeePermissions();
+      const mgr = isManager();
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
-      if (
-        tab &&
+
+      const VALID_TABS = [
+        "dashboard",
+        "orders",
+        "reception_view",
+        "check_in_out",
+        "sales_summary",
+        "reports",
+        "expense_payout",
+        "update_profile",
+        "change_password",
+        "item_sales",
+        "item_wise_sales",
+        "hourly_sales",
+        "cash_out_report",
+        "cash_out_summary",
+        "monthly_sales_summary",
+        "failed_transaction",
+        "refund_orders",
+      ];
+
+      let resolvedTab = tab && VALID_TABS.includes(tab) ? tab : "dashboard";
+
+      // If not manager, validate the resolved tab against permissions
+      if (!mgr) {
+        // Map URL tab → permission key
+        const permKey = TAB_TO_PERM_KEY[resolvedTab] ?? resolvedTab;
+        if (ORDERS_SUBTAB_KEYS.includes(permKey) && perms[permKey] !== true) {
+          // Find first permitted sub-tab (check by permission key, map back to URL tab)
+          const PERM_TO_TAB: Record<string, string> = { orders_list: "orders" };
+          const firstAllowedPermKey = ORDERS_SUBTAB_KEYS.find((k) => perms[k] === true);
+          if (firstAllowedPermKey) {
+            resolvedTab = PERM_TO_TAB[firstAllowedPermKey] ?? firstAllowedPermKey;
+          } else {
+            resolvedTab = "dashboard";
+          }
+          // Rewrite the URL silently
+          const url = new URL(window.location.href);
+          url.searchParams.set("tab", resolvedTab);
+          window.history.replaceState({}, "", url.pathname + url.search);
+        }
+      }
+
+      setActiveSubTab(resolvedTab as any);
+      if (resolvedTab === "dashboard") {
+        setStartDate(getPastDateStr(30));
+        setEndDate(getTodayDateStr());
+      } else if (
         [
-          "dashboard",
           "orders",
           "reception_view",
-          "check_in_out",
           "sales_summary",
-          "reports",
-          "expense_payout",
-          "update_profile",
-          "change_password",
-          "item_sales",
-          "item_wise_sales",
           "hourly_sales",
-          "cash_out_report",
-          "cash_out_summary",
-          "monthly_sales_summary",
           "failed_transaction",
           "refund_orders",
-        ].includes(tab)
+        ].includes(resolvedTab)
       ) {
-        setActiveSubTab(tab as any);
-        if (tab === "dashboard") {
-          setStartDate(getPastDateStr(30));
-          setEndDate(getTodayDateStr());
-        } else if (
-          [
-            "orders",
-            "reception_view",
-            "sales_summary",
-            "hourly_sales",
-            "failed_transaction",
-            "refund_orders",
-          ].includes(tab)
-        ) {
-          setStartDate(getTodayDateStr());
-          setEndDate(getTodayDateStr());
-          setSingleDate(getTodayDateStr());
-        }
+        setStartDate(getTodayDateStr());
+        setEndDate(getTodayDateStr());
+        setSingleDate(getTodayDateStr());
       }
     }
     setIsReady(true);
@@ -538,123 +638,133 @@ export default function OrdersDashboard() {
           </h1>
 
           <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200">
-            <button
-              onClick={() => {
-                setActiveSubTab("dashboard");
-                setIsMoreDropdownOpen(false);
-                // Keep range synced to selected singleDate
-                setStartDate(singleDate);
-                setEndDate(singleDate);
-              }}
-              className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
-                activeSubTab === "dashboard"
-                  ? "bg-brand-primary text-white shadow-sm"
-                  : "text-neutral-500 hover:text-brand-primary"
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => {
-                setActiveSubTab("orders");
-                setIsMoreDropdownOpen(false);
-                // Sync range to selected singleDate
-                setStartDate(singleDate);
-                setEndDate(singleDate);
-              }}
-              className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
-                activeSubTab === "orders"
-                  ? "bg-brand-primary text-white shadow-sm"
-                  : "text-neutral-500 hover:text-brand-primary"
-              }`}
-            >
-              Orders
-            </button>
-            <button
-              onClick={() => {
-                setActiveSubTab("sales_summary");
-                setIsMoreDropdownOpen(false);
-                // Sync range to selected singleDate
-                setStartDate(singleDate);
-                setEndDate(singleDate);
-              }}
-              className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
-                activeSubTab === "sales_summary"
-                  ? "bg-brand-primary text-white shadow-sm"
-                  : "text-neutral-500 hover:text-brand-primary"
-              }`}
-            >
-              Sales Summary
-            </button>
-
-            {/* More Dropdown */}
-            <div className="relative">
+            {/* Dashboard tab – always shown if employee has permission */}
+            {canAccessTab("dashboard") && (
               <button
-                onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
-                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer flex items-center gap-1 ${
-                  isMoreTabActive
+                onClick={() => {
+                  setActiveSubTab("dashboard");
+                  setIsMoreDropdownOpen(false);
+                  setStartDate(singleDate);
+                  setEndDate(singleDate);
+                }}
+                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                  activeSubTab === "dashboard"
                     ? "bg-brand-primary text-white shadow-sm"
                     : "text-neutral-500 hover:text-brand-primary"
                 }`}
               >
-                <span>{moreButtonLabel}</span>
-                <ChevronDown
-                  size={12}
-                  className={`transition-transform duration-200 ${isMoreDropdownOpen ? "rotate-180" : ""}`}
-                />
+                Dashboard
               </button>
+            )}
 
-              {isMoreDropdownOpen && (
-                <>
-                  {/* Backdrop overlay to close dropdown */}
-                  <div
-                    className="fixed inset-0 z-30 cursor-default"
-                    onClick={() => setIsMoreDropdownOpen(false)}
+            {/* Orders tab */}
+            {canAccessTab("orders") && (
+              <button
+                onClick={() => {
+                  setActiveSubTab("orders");
+                  setIsMoreDropdownOpen(false);
+                  setStartDate(singleDate);
+                  setEndDate(singleDate);
+                }}
+                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                  activeSubTab === "orders"
+                    ? "bg-brand-primary text-white shadow-sm"
+                    : "text-neutral-500 hover:text-brand-primary"
+                }`}
+              >
+                Orders
+              </button>
+            )}
+
+            {/* Sales Summary tab */}
+            {canAccessTab("sales_summary") && (
+              <button
+                onClick={() => {
+                  setActiveSubTab("sales_summary");
+                  setIsMoreDropdownOpen(false);
+                  setStartDate(singleDate);
+                  setEndDate(singleDate);
+                }}
+                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                  activeSubTab === "sales_summary"
+                    ? "bg-brand-primary text-white shadow-sm"
+                    : "text-neutral-500 hover:text-brand-primary"
+                }`}
+              >
+                Sales Summary
+              </button>
+            )}
+
+            {/* More Dropdown – only shown if employee has access to at least one more-tab */}
+            {MORE_TABS.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
+                  className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer flex items-center gap-1 ${
+                    isMoreTabActive
+                      ? "bg-brand-primary text-white shadow-sm"
+                      : "text-neutral-500 hover:text-brand-primary"
+                  }`}
+                >
+                  <span>{moreButtonLabel}</span>
+                  <ChevronDown
+                    size={12}
+                    className={`transition-transform duration-200 ${isMoreDropdownOpen ? "rotate-180" : ""}`}
                   />
+                </button>
 
-                  {/* Dropdown Menu */}
-                  <div className="absolute left-0 mt-2 w-52 bg-white border border-neutral-200 rounded-xl shadow-lg py-1.5 z-40 animate-scale-up font-sans">
-                    {MORE_TABS.map((tab) => {
-                      const isActive = activeSubTab === tab.key;
-                      return (
-                        <button
-                          key={tab.key}
-                          type="button"
-                          onClick={() => {
-                            if (tab.key === "cash_out_report") {
-                              window.location.href =
-                                "/employee/orders?tab=reports";
-                            } else {
-                              setActiveSubTab(tab.key as any);
-                              if (
-                                [
-                                  "hourly_sales",
-                                  "failed_transaction",
-                                  "refund_orders",
-                                  "sales_summary",
-                                  "dashboard",
-                                ].includes(tab.key)
-                              ) {
-                                setStartDate(singleDate);
-                                setEndDate(singleDate);
+                {isMoreDropdownOpen && (
+                  <>
+                    {/* Backdrop overlay to close dropdown */}
+                    <div
+                      className="fixed inset-0 z-30 cursor-default"
+                      onClick={() => setIsMoreDropdownOpen(false)}
+                    />
+
+                    {/* Dropdown Menu */}
+                    <div className="absolute left-0 mt-2 w-52 bg-white border border-neutral-200 rounded-xl shadow-lg py-1.5 z-40 animate-scale-up font-sans">
+                      {MORE_TABS.map((tab) => {
+                        const isActive = activeSubTab === tab.key;
+                        return (
+                          <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => {
+                              if (tab.key === "cash_out_report") {
+                                window.location.href =
+                                  "/employee/orders?tab=reports";
+                              } else {
+                                setActiveSubTab(tab.key as any);
+                                if (
+                                  [
+                                    "hourly_sales",
+                                    "failed_transaction",
+                                    "refund_orders",
+                                    "sales_summary",
+                                    "dashboard",
+                                  ].includes(tab.key)
+                                ) {
+                                  setStartDate(singleDate);
+                                  setEndDate(singleDate);
+                                }
                               }
-                            }
-                            setIsMoreDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-[11px] font-750 transition-colors cursor-pointer flex items-center justify-between ${
-                            isActive
-                              ? "bg-brand-primary text-white"
-                              : "text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900"
-                          }`}
-                        >
-                          <span>{tab.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
+                              setIsMoreDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-[11px] font-750 transition-colors cursor-pointer flex items-center justify-between ${
+                              isActive
+                                ? "bg-brand-primary text-white"
+                                : "text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900"
+                            }`}
+                          >
+                            <span>{tab.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

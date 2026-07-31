@@ -15,6 +15,38 @@ export default function ExpenseDashboardView() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [entriesPerPage, setEntriesPerPage] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [employeesList, setEmployeesList] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    const fetchRealEmployees = async () => {
+      try {
+        let branchId: string | undefined = undefined;
+        if (typeof window !== "undefined") {
+          const rawBranch = localStorage.getItem("rms_branch");
+          if (rawBranch) {
+            try {
+              const b = JSON.parse(rawBranch);
+              branchId = b._id;
+            } catch (e) {}
+          }
+        }
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const res = await axios.get(`${apiUrl}/employees`, {
+          params: { ...(branchId ? { branchId } : {}) },
+        });
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const emps = res.data.data.map((emp: any) => ({
+            id: emp._id,
+            name: emp.name || emp.fullName || "Employee",
+          }));
+          setEmployeesList(emps);
+        }
+      } catch (err) {
+        console.warn("Could not fetch real employees for expense filter", err);
+      }
+    };
+    fetchRealEmployees();
+  }, []);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -106,8 +138,11 @@ export default function ExpenseDashboardView() {
           >
             <option value="">Select Employee</option>
             <option value="Manager">Manager</option>
-            <option value="Alex Johnson">Alex Johnson</option>
-            <option value="Sam Miller">Sam Miller</option>
+            {employeesList.map((emp) => (
+              <option key={emp.id} value={emp.name}>
+                {emp.name}
+              </option>
+            ))}
           </select>
 
           {/* Search Input */}

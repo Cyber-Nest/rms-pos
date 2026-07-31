@@ -14,6 +14,7 @@ interface SalesSummaryViewProps {
 
 export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps) {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
 
   // Deposit modal state
@@ -22,98 +23,9 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   const [cardDeposit, setCardDeposit] = useState('');
   const [accountPayDeposit, setAccountPayDeposit] = useState('');
 
-  const getFallbackData = useCallback(() => ({
-    dateRange: { startDate: selectedDate, endDate: selectedDate },
-    completedOrders: { count: 9, totalAmount: 443.49 },
-    cancelledOrders: { count: 0, totalAmount: 0 },
-    refundOrders: { count: 0, totalAmount: 0 },
-    financials: {
-      allCategoryTotal: 443.49,
-      subTotal: 401.49,
-      deliveryCharges: 42.00,
-      debitCardCharges: 0,
-      discount: 0,
-      tax: 0,
-      grandTotal: 443.49,
-      tips: 49.35,
-      finalAmount: 492.84
-    },
-    categorySales: [
-      { name: 'Lunch Special', total: 120.00 },
-      { name: 'Mini Delight Meal', total: 85.00 },
-      { name: 'All Dinners & Snacks', total: 110.99 },
-      { name: 'Promotions', total: 0 },
-      { name: 'Sides', total: 45.50 },
-      { name: 'Beverages & Desserts', total: 40.00 },
-      { name: 'Simply Chicken', total: 42.00 },
-      { name: 'Open Item', total: 0 }
-    ],
-    discountSummary: { percentageDiscount: 0, total: 0 },
-    taxSummary: { pst: 0, gst: 0, hst: 0, total: 0 },
-    salesReceived: {
-      accountPay: 196.75,
-      cash: 61.21,
-      creditCardSales: 148.18,
-      debitCardSales: 0,
-      grandTotal: 406.14,
-      tips: 49.35,
-      finalAmount: 455.49
-    },
-    cardTypeReceived: {
-      interac: { total: 148.18, tips: 23.78, final: 171.96 },
-      mastercard: { total: 0, tips: 0, final: 0 },
-      visa: { total: 0, tips: 0, final: 0 },
-      total: { total: 148.18, tips: 23.78, final: 171.96 }
-    },
-    orderTypeSummary: {
-      takeout: 0,
-      dineIn: 0,
-      driveThrough: 0,
-      delivery: 443.49,
-      total: 443.49
-    },
-    channelSummary: {
-      online: 196.75,
-      doordash: 0,
-      skip: 0,
-      ubereats: 0,
-      pos: 246.74
-    },
-    expense: [],
-    shortageOverage: { cash: 0, card: 0, accountPay: 0 },
-    moneyToBeCollected: { cash: -43.43, card: 148.18, accountPay: 196.75 },
-    driverReport: [
-      {
-        driverName: "NOUR, MOHAMMAD (#6)",
-        deliveryCount: 7,
-        prepaidSales: 111.75,
-        cashSales: 18.71,
-        cardSales: 148.18,
-        prepaidTip: 13.57,
-        terminalTip: 23.78,
-        totalTip: 37.35,
-        totalSales: 315.99,
-        driverEarning: 80.85,
-        expectedPayout: 62.14
-      },
-      {
-        driverName: "ALEXANDER, SMITH (#12)",
-        deliveryCount: 2,
-        prepaidSales: 85.00,
-        cashSales: 42.50,
-        cardSales: 0.00,
-        prepaidTip: 12.00,
-        terminalTip: 0.00,
-        totalTip: 12.00,
-        totalSales: 127.50,
-        driverEarning: 24.00,
-        expectedPayout: -18.50
-      }
-    ]
-  }), [selectedDate]);
-
   const fetchSummary = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
+    setError(null);
     try {
       let branchId: string | undefined = undefined;
       if (typeof window !== 'undefined') {
@@ -129,20 +41,23 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.get(`${apiUrl}/orders/sales-summary`, {
         params: { date: selectedDate, ...(branchId ? { branchId } : {}) },
-        timeout: 3000
+        timeout: 12000
       });
       if (res.data.success && res.data.data && res.data.data.financials) {
         setData(res.data.data);
       } else {
-        setData(getFallbackData());
+        setError('Server ne invalid response bheja. Please refresh karo.');
       }
-    } catch (err) {
-      console.warn('Backend connection issue, using client delivery fallback:', err);
-      setData(getFallbackData());
+    } catch (err: any) {
+      console.error('Sales summary fetch failed:', err);
+      const msg = err?.code === 'ECONNABORTED'
+        ? 'Server response slow hai. Dubara try karo.'
+        : 'Backend se connect nahi ho pa raha. Server check karo.';
+      setError(msg);
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, [selectedDate, getFallbackData]);
+  }, [selectedDate]);
 
   const handleOpenDeposit = () => {
     if (data) {
@@ -214,14 +129,36 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
     fetchSummary();
   }, [fetchSummary]);
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-neutral-400 font-600 text-[12px] p-12 gap-3">
-        <span className="animate-spin text-2xl text-brand-primary">⏳</span>
-        <span>Loading Sales Summary Report...</span>
+        <div className="w-10 h-10 rounded-full border-4 border-neutral-200 border-t-brand-primary animate-spin" />
+        <span className="text-neutral-500 font-700">Loading Sales Summary Report...</span>
+        <span className="text-neutral-400 text-[11px]">Fetching data for {selectedDate}</span>
       </div>
     );
   }
+
+  if (error || !data) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-12 gap-3">
+        <div className="bg-white border border-neutral-200 rounded-2xl p-10 max-w-sm w-full text-center shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+            <RefreshCw size={22} className="text-neutral-400" />
+          </div>
+          <p className="text-neutral-800 font-800 text-[13px] mb-1">Unable to Load Report</p>
+          <p className="text-neutral-400 font-500 text-[11px] mb-5">Could not fetch sales data for the selected date. Please check your connection and try again.</p>
+          <button
+            onClick={() => fetchSummary(true)}
+            className="px-6 py-2 bg-brand-primary text-white text-[11px] font-800 uppercase tracking-wide rounded-full hover:bg-[#6b0f27] active:scale-95 transition-all cursor-pointer shadow-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   const {
     completedOrders = { count: 0, totalAmount: 0 },
@@ -375,7 +312,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                   <td className="py-2 px-4 text-right text-brand-primary font-900">${salesReceived.grandTotal.toFixed(2)}</td>
                 </tr>
                 <tr>
-                  <td className="py-1.5 px-4 text-neutral-500 text-[11px]">Credit Card - Tips</td>
+                  <td className="py-1.5 px-4 text-neutral-500 text-[11px]">Prepaid - Tips</td>
                   <td className="py-1.5 px-4 text-right font-600 text-neutral-500">${salesReceived.tips.toFixed(2)}</td>
                 </tr>
                 <tr className="bg-neutral-900 text-white font-900">
@@ -747,7 +684,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                   <tbody className="font-800 text-neutral-900">
                     <tr>
                       <td className={`py-3 px-4 text-center font-900 ${moneyToBeCollected.cash >= 0 ? 'text-emerald-600' : 'text-rose-600 font-black'}`}>
-                        ${moneyToBeCollected.cash.toFixed(2)}
+                        {moneyToBeCollected.cash < 0 ? `-$${Math.abs(moneyToBeCollected.cash).toFixed(2)}` : `$${moneyToBeCollected.cash.toFixed(2)}`}
                       </td>
                       <td className="py-3 px-4 text-center text-purple-700 font-900">${moneyToBeCollected.card.toFixed(2)}</td>
                       <td className="py-3 px-4 text-center text-blue-700 font-800">${moneyToBeCollected.accountPay.toFixed(2)}</td>
