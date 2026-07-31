@@ -189,7 +189,8 @@ export default function BranchMenuPage() {
   const visibleProducts = filteredProducts.slice(startIndex, endIndex);
 
   return (
-    <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
+    <EmployeePermissionGuard permissionKey="menus">
+      <main className="h-screen flex flex-col overflow-hidden bg-brand-bg text-neutral-900 font-sans">
       {/* Navbar Header */}
       <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
@@ -528,9 +529,17 @@ export default function BranchMenuPage() {
                     className={`w-7 h-7 rounded-full flex items-center justify-center font-800 transition-all ${
                       activePage === totalPages || totalPages === 0
                         ? 'bg-transparent text-neutral-300 cursor-not-allowed'
-            </div>
+                        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 cursor-pointer'
+                    }`}
+                  >
+                    &rarr;
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
+      </div>
 
         {/* Sidebar Drawer Component */}
         <POSSidebarDrawer

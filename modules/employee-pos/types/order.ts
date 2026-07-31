@@ -71,6 +71,6 @@ export interface Order {
   notes: string;
   status: "pending" | "preparing" | "ready" | "completed" | "cancelled";
   receptionCompleted?: boolean;
-  statusHistory?: Array<{ status: string; changedAt: string; note?: string }>;
+  statusHistory?: Array<{ status: string; changedAt: string; note?: string; userName?: string }>;
   createdAt: string;
 }
