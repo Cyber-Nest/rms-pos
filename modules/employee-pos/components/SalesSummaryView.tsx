@@ -684,7 +684,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                   <tbody className="font-800 text-neutral-900">
                     <tr>
                       <td className={`py-3 px-4 text-center font-900 ${moneyToBeCollected.cash >= 0 ? 'text-emerald-600' : 'text-rose-600 font-black'}`}>
-                        ${moneyToBeCollected.cash.toFixed(2)}
+                        {moneyToBeCollected.cash < 0 ? `-$${Math.abs(moneyToBeCollected.cash).toFixed(2)}` : `$${moneyToBeCollected.cash.toFixed(2)}`}
                       </td>
                       <td className="py-3 px-4 text-center text-purple-700 font-900">${moneyToBeCollected.card.toFixed(2)}</td>
                       <td className="py-3 px-4 text-center text-blue-700 font-800">${moneyToBeCollected.accountPay.toFixed(2)}</td>
