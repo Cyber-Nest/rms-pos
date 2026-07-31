@@ -779,7 +779,7 @@ export default function DeliveryMap() {
               </svg>
             </div>
             <span className="text-[11px] font-semibold text-neutral-700">
-              Chicken Delight
+              {restaurantLocation.name}
             </span>
           </div>
 

@@ -169,9 +169,19 @@ export default function SettingsDashboard() {
   };
 
   // ── Main Settings Submit Handler ──
-  const handleMainSettingsSubmit = (e: React.FormEvent) => {
+  const handleMainSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveSettingsToBackend({ mainSettings }, 'Main Settings updated successfully!');
+    await saveSettingsToBackend({ mainSettings }, 'Main Settings updated successfully!');
+    // Also update rms_branch localStorage so delivery map picks up new lat/lng immediately
+    try {
+      const raw = localStorage.getItem('rms_branch');
+      if (raw) {
+        const b = JSON.parse(raw);
+        b.lat = Number(mainSettings.latitude) || b.lat;
+        b.lng = Number(mainSettings.longitude) || b.lng;
+        localStorage.setItem('rms_branch', JSON.stringify(b));
+      }
+    } catch (e) {}
   };
 
   // ── Tax & Fees Submit Handler ──
