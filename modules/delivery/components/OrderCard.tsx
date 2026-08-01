@@ -235,7 +235,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                           />
                           <div className="flex flex-col min-w-0">
                             <span className="font-semibold text-neutral-900 truncate">
-                              {driver.name}
+                              {driver.name} {driver.driverId ? `(#${driver.driverId})` : ""}
                             </span>
                             <span
                               className={`text-[9px] font-bold ${
@@ -265,8 +265,8 @@ export default function OrderCard({ order }: OrderCardProps) {
             {/* Left side: Driver details */}
             <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700 min-w-0 mr-2">
               <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-red-600" />
-              <span className="truncate max-w-[85px] font-bold">
-                {assignedDriver.name}
+              <span className="truncate max-w-[120px] font-bold">
+                {assignedDriver.name} {assignedDriver.driverId ? `(#${assignedDriver.driverId})` : ""}
               </span>
               {assignedDriver.assignedVehicle && (
                 <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider">
