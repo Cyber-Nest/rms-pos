@@ -86,7 +86,14 @@ export default function CarriersPanel() {
                     <User size={16} />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[13px] font-semibold text-neutral-900">{driver.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px] font-semibold text-neutral-900">{driver.name}</span>
+                      {driver.driverId && (
+                        <span className="text-[10px] font-bold text-neutral-500 bg-neutral-100 border border-neutral-200 px-1.5 py-0.2 rounded font-mono">
+                          #{driver.driverId}
+                        </span>
+                      )}
+                    </div>
                     <span className="flex items-center gap-1 text-[11px] text-neutral-500">
                       <Phone size={10} />
                       {driver.phone}

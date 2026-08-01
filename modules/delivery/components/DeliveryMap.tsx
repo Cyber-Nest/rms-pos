@@ -312,7 +312,9 @@ function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
   return (
     <Marker position={pos} icon={icon}>
       <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>
-        <div className="font-semibold text-xs px-1">{driver.name}</div>
+        <div className="font-semibold text-xs px-1">
+          {driver.name} {driver.driverId ? `(#${driver.driverId})` : ""}
+        </div>
       </Tooltip>
       <Popup className="delivery-popup">
         <div className="flex flex-col gap-1.5 p-3 px-4 min-w-[180px]">
@@ -325,7 +327,7 @@ function AnimatedDriverMarker({ driver }: AnimatedDriverMarkerProps) {
             </div>
             <div className="flex flex-col">
               <strong className="text-[13px] font-bold text-neutral-900">
-                {driver.name}
+                {driver.name} {driver.driverId ? `(#${driver.driverId})` : ""}
               </strong>
               <span className="text-[10.5px] text-neutral-500 font-medium">
                 {driver.status === "on-delivery"
@@ -817,7 +819,7 @@ export default function DeliveryMap() {
                   <Car size={10} strokeWidth={2.5} />
                 </div>
                 <span className="text-[11px] font-semibold text-neutral-700">
-                  {driver.name}
+                  {driver.name} {driver.driverId ? `(#${driver.driverId})` : ""}
                 </span>
               </div>
             );

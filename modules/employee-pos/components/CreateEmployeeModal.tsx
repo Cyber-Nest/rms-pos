@@ -254,8 +254,8 @@ export default function CreateEmployeeModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="fixed inset-0" onClick={onClose} />
       
-      {/* 2-Column Wide Dialog Box */}
-      <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden z-10 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col font-sans">
+      {/* Dialog Box (Compact for Driver, 2-Column Wide for other roles) */}
+      <div className={`relative w-full ${role === "driver" ? "max-w-md" : "max-w-3xl"} bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden z-10 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col font-sans transition-all`}>
         
         {/* Fixed Header */}
         <div className="bg-[#18181B] text-white px-6 py-4 flex items-center justify-between border-b border-neutral-800 shrink-0 select-none">
@@ -268,7 +268,7 @@ export default function CreateEmployeeModal({
                 {employeeToEdit ? "Edit Employee Account" : "Create New Employee Account"}
               </h3>
               <p className="text-[11px] text-neutral-400 font-500">
-                {employeeToEdit ? `ID: ${employeeToEdit.employeeId}` : "Assign basic details, role passcode, and tab access permissions"}
+                {employeeToEdit ? `ID: ${employeeToEdit.employeeId}` : "Assign basic details, role passcode, and credentials"}
               </p>
             </div>
           </div>
@@ -283,7 +283,7 @@ export default function CreateEmployeeModal({
 
         {/* Form Container (Scrollable Middle Content) */}
         <form id="create-emp-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={`grid grid-cols-1 ${role === "driver" ? "" : "md:grid-cols-2"} gap-6`}>
             
             {/* ── Left Column: Basic Employee Info ── */}
             <div className="space-y-4">
@@ -418,107 +418,109 @@ export default function CreateEmployeeModal({
               </div>
             </div>
 
-            {/* ── Right Column: Tab Access & Permissions ── */}
-            <div className="space-y-4 flex flex-col">
-              <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={15} className="text-brand-primary" />
-                  <h4 className="text-xs font-900 text-neutral-800 uppercase tracking-wider">
-                    Tab Access Permissions
-                  </h4>
+            {/* ── Right Column: Tab Access & Permissions (Only shown for non-driver roles) ── */}
+            {role !== "driver" && (
+              <div className="space-y-4 flex flex-col">
+                <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={15} className="text-brand-primary" />
+                    <h4 className="text-xs font-900 text-neutral-800 uppercase tracking-wider">
+                      Tab Access Permissions
+                    </h4>
+                  </div>
+                  {role !== "manager" && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAllPerms(!allSelected)}
+                      className="text-[10px] font-800 text-brand-primary hover:underline flex items-center gap-1 cursor-pointer select-none"
+                    >
+                      {allSelected ? <Square size={11} /> : <CheckSquare size={11} />}
+                      {allSelected ? "Deselect All" : "Select All"}
+                    </button>
+                  )}
                 </div>
-                {role !== "manager" && (
-                  <button
-                    type="button"
-                    onClick={() => handleSelectAllPerms(!allSelected)}
-                    className="text-[10px] font-800 text-brand-primary hover:underline flex items-center gap-1 cursor-pointer select-none"
-                  >
-                    {allSelected ? <Square size={11} /> : <CheckSquare size={11} />}
-                    {allSelected ? "Deselect All" : "Select All"}
-                  </button>
+
+                {role === "manager" ? (
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl space-y-1">
+                    <p className="text-xs font-900 text-purple-800">Manager Role Active</p>
+                    <p className="text-[11px] text-purple-700 font-500 leading-relaxed">
+                      Managers automatically have complete bypass access to all terminal routes and orders page sub-tabs.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex-1 space-y-4 overflow-y-auto pr-1 max-h-[340px]">
+                    {/* POS Main Routes */}
+                    <div>
+                      <span className="text-[10px] font-900 text-amber-800 uppercase tracking-wider block mb-2">
+                        POS Main Routes
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PERMISSION_OPTIONS.filter(p => p.group === 'POS Main Routes').map(perm => {
+                          const isAlwaysOn = (perm as any).alwaysOn === true;
+                          const isChecked = isAlwaysOn ? true : !!permissions[perm.key];
+                          return (
+                            <label
+                              key={perm.key}
+                              className={`flex items-center gap-2 p-2 rounded-xl border text-[11px] font-700 select-none transition-all ${
+                                isAlwaysOn
+                                  ? "bg-emerald-50/70 border-emerald-200 text-emerald-800 opacity-90 cursor-not-allowed"
+                                  : isChecked
+                                  ? "bg-brand-primary/5 border-brand-primary/40 text-brand-primary cursor-pointer"
+                                  : "bg-neutral-50 border-neutral-200 text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={isAlwaysOn}
+                                onChange={(e) => !isAlwaysOn && handlePermissionToggle(perm.key, e.target.checked)}
+                                className="w-3.5 h-3.5 accent-brand-primary rounded cursor-pointer disabled:cursor-not-allowed"
+                              />
+                              <span className="truncate flex-1">{perm.label}</span>
+                              {isAlwaysOn && (
+                                <span className="text-[9px] font-800 text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded shrink-0">
+                                  Default
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Orders Page Sub-Tabs */}
+                    <div>
+                      <span className="text-[10px] font-900 text-blue-800 uppercase tracking-wider block mb-2">
+                        Orders Page Sub-Tabs
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PERMISSION_OPTIONS.filter(p => p.group === 'Orders Page Tabs').map(perm => {
+                          const isChecked = !!permissions[perm.key];
+                          return (
+                            <label
+                              key={perm.key}
+                              className={`flex items-center gap-2 p-2 rounded-xl border text-[11px] font-700 cursor-pointer transition-all select-none ${
+                                isChecked
+                                  ? "bg-brand-primary/5 border-brand-primary/40 text-brand-primary"
+                                  : "bg-neutral-50 border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => handlePermissionToggle(perm.key, e.target.checked)}
+                                className="w-3.5 h-3.5 accent-brand-primary rounded"
+                              />
+                              <span className="truncate">{perm.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {role === "manager" ? (
-                <div className="p-4 bg-purple-50 border border-purple-200 rounded-xl space-y-1">
-                  <p className="text-xs font-900 text-purple-800">Manager Role Active</p>
-                  <p className="text-[11px] text-purple-700 font-500 leading-relaxed">
-                    Managers automatically have complete bypass access to all terminal routes and orders page sub-tabs.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex-1 space-y-4 overflow-y-auto pr-1 max-h-[340px]">
-                  {/* POS Main Routes */}
-                  <div>
-                    <span className="text-[10px] font-900 text-amber-800 uppercase tracking-wider block mb-2">
-                      POS Main Routes
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {PERMISSION_OPTIONS.filter(p => p.group === 'POS Main Routes').map(perm => {
-                        const isAlwaysOn = (perm as any).alwaysOn === true;
-                        const isChecked = isAlwaysOn ? true : !!permissions[perm.key];
-                        return (
-                          <label
-                            key={perm.key}
-                            className={`flex items-center gap-2 p-2 rounded-xl border text-[11px] font-700 select-none transition-all ${
-                              isAlwaysOn
-                                ? "bg-emerald-50/70 border-emerald-200 text-emerald-800 opacity-90 cursor-not-allowed"
-                                : isChecked
-                                ? "bg-brand-primary/5 border-brand-primary/40 text-brand-primary cursor-pointer"
-                                : "bg-neutral-50 border-neutral-200 text-neutral-700 hover:bg-neutral-100 cursor-pointer"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              disabled={isAlwaysOn}
-                              onChange={(e) => !isAlwaysOn && handlePermissionToggle(perm.key, e.target.checked)}
-                              className="w-3.5 h-3.5 accent-brand-primary rounded cursor-pointer disabled:cursor-not-allowed"
-                            />
-                            <span className="truncate flex-1">{perm.label}</span>
-                            {isAlwaysOn && (
-                              <span className="text-[9px] font-800 text-emerald-700 bg-emerald-100 px-1 py-0.2 rounded shrink-0">
-                                Default
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Orders Page Sub-Tabs */}
-                  <div>
-                    <span className="text-[10px] font-900 text-blue-800 uppercase tracking-wider block mb-2">
-                      Orders Page Sub-Tabs
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {PERMISSION_OPTIONS.filter(p => p.group === 'Orders Page Tabs').map(perm => {
-                        const isChecked = !!permissions[perm.key];
-                        return (
-                          <label
-                            key={perm.key}
-                            className={`flex items-center gap-2 p-2 rounded-xl border text-[11px] font-700 cursor-pointer transition-all select-none ${
-                              isChecked
-                                ? "bg-brand-primary/5 border-brand-primary/40 text-brand-primary"
-                                : "bg-neutral-50 border-neutral-200 text-neutral-700 hover:bg-neutral-100"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => handlePermissionToggle(perm.key, e.target.checked)}
-                              className="w-3.5 h-3.5 accent-brand-primary rounded"
-                            />
-                            <span className="truncate">{perm.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
           </div>
         </form>

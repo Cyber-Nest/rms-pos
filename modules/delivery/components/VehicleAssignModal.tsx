@@ -43,7 +43,9 @@ export default function VehicleAssignModal() {
             <X size={18} />
           </button>
           <div className="flex items-center gap-2.5">
-            <span className="text-sm font-semibold text-neutral-900">{driver.name}</span>
+            <span className="text-sm font-semibold text-neutral-900">
+              {driver.name} {driver.driverId ? `(#${driver.driverId})` : ""}
+            </span>
             <div
               className="w-[38px] h-[38px] rounded-full border-[2.5px] bg-neutral-100 flex items-center justify-center text-neutral-500"
               style={{
