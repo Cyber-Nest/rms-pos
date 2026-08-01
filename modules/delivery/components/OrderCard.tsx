@@ -68,7 +68,9 @@ export default function OrderCard({ order }: OrderCardProps) {
     ? drivers.find((d) => d.id === order.assignedDriverId)
     : null;
   const availableDrivers = getDriversWithVehicles().filter(
-    (d) => d.status === "available" || d.id === order.assignedDriverId,
+    (d) =>
+      Boolean(d.posCheckedIn) &&
+      (d.status === "available" || d.status === "offline" || d.id === order.assignedDriverId),
   );
 
   let elapsedMinsFromAppearance = 0;
@@ -214,25 +216,43 @@ export default function OrderCard({ order }: OrderCardProps) {
                       No drivers with vehicles available
                     </div>
                   ) : (
-                    availableDrivers.map((driver) => (
-                      <button
-                        key={driver.id}
-                        disabled={isUpdating}
-                        className="flex items-center gap-2 w-full px-3.5 py-2.5 text-xs font-medium text-neutral-900 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 cursor-pointer text-left disabled:opacity-55"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAssign(driver.id);
-                        }}
-                      >
-                        <div className="w-2 h-2 rounded-full shrink-0 bg-green-600" />
-                        <span>{driver.name}</span>
-                        {driver.assignedVehicle && (
-                          <span className="text-[9px] font-bold text-brand-primary bg-brand-primary-light px-1.5 py-0.5 rounded ml-auto whitespace-nowrap shrink-0">
-                            V#{driver.assignedVehicle.number}
-                          </span>
-                        )}
-                      </button>
-                    ))
+                    availableDrivers.map((driver) => {
+                      const isOnline = driver.status === "available";
+                      return (
+                        <button
+                          key={driver.id}
+                          disabled={isUpdating}
+                          className="flex items-center gap-2 w-full px-3.5 py-2 text-xs font-medium text-neutral-900 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 cursor-pointer text-left disabled:opacity-55"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAssign(driver.id);
+                          }}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              isOnline ? "bg-green-600 animate-pulse" : "bg-neutral-400"
+                            }`}
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-neutral-900 truncate">
+                              {driver.name}
+                            </span>
+                            <span
+                              className={`text-[9px] font-bold ${
+                                isOnline ? "text-green-600" : "text-neutral-400"
+                              }`}
+                            >
+                              {isOnline ? "Online" : "Offline"}
+                            </span>
+                          </div>
+                          {driver.assignedVehicle && (
+                            <span className="text-[9px] font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded ml-auto whitespace-nowrap shrink-0">
+                              V#{driver.assignedVehicle.number}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
                   )}
                 </div>
               )}

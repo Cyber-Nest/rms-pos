@@ -395,12 +395,13 @@ export default function DeliveryMap() {
     restaurantLocation.coordinates.lng,
   ];
 
-  // Get active drivers (on-delivery, returning or available)
+  // Get active drivers (checked in today AND online/on-duty)
   const activeDrivers = drivers.filter(
     (d) =>
-      d.status === "on-delivery" ||
-      d.status === "available" ||
-      d.status === "returning",
+      Boolean(d.posCheckedIn) &&
+      (d.status === "on-delivery" ||
+        d.status === "available" ||
+        d.status === "returning"),
   );
 
   // Apply radial offset to prevent overlapping markers at the restaurant or identical coordinates
@@ -504,7 +505,10 @@ export default function DeliveryMap() {
 
   // Delivery destination markers
   const deliveryMarkers = visibleOrders.filter(
-    (o) => o.status === "en-route" || o.status === "assign",
+    (o) =>
+      o.status === "en-route" ||
+      o.status === "assign" ||
+      (o.status === "delivered" && selectedOrderId === o.id),
   );
 
   const handleZoomIn = () => mapRef.current?.zoomIn();
@@ -593,6 +597,12 @@ export default function DeliveryMap() {
         {/* Delivery Destination Markers */}
         {deliveryMarkers.map((order) => {
           const getOrderPinColor = () => {
+            if (order.status === "delivered") {
+              return "#059669"; // Emerald Green for Delivered Order Pin
+            }
+            if (order.status === "en-route") {
+              return "#2563EB"; // Blue for En-Route Order Pin
+            }
             let elapsedMins = 0;
             if (order.orderTiming === "later" && order.scheduledAt) {
               const showUpTime =
@@ -632,12 +642,18 @@ export default function DeliveryMap() {
                     </strong>
                     <span
                       className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
-                        order.status === "en-route"
+                        order.status === "delivered"
+                          ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                          : order.status === "en-route"
                           ? "bg-blue-50 text-blue-600 border border-blue-200"
                           : "bg-amber-50 text-amber-600 border border-amber-200"
                       }`}
                     >
-                      {order.status === "en-route" ? "En Route" : "Pending"}
+                      {order.status === "delivered"
+                        ? "Delivered"
+                        : order.status === "en-route"
+                        ? "En Route"
+                        : "Pending"}
                     </span>
                   </div>
                   <span className="text-[11px] text-neutral-600 leading-snug">

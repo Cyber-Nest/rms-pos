@@ -157,13 +157,13 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getDriversWithVehicles: () => {
     const { drivers } = get();
     return drivers.filter(
-      (d) => d.assignedVehicle !== null && d.status === "available",
+      (d) => Boolean(d.posCheckedIn) && d.assignedVehicle !== null,
     );
   },
 
   // ── Local UI State Actions ──
-  setActiveTab: (tab) => set({ activeTab: tab }),
-  setActiveFilter: (filter) => set({ activeFilter: filter }),
+  setActiveTab: (tab) => set({ activeTab: tab, selectedOrderId: null }),
+  setActiveFilter: (filter) => set({ activeFilter: filter, selectedOrderId: null }),
   setCarrierFilter: (filter) => set({ carrierFilter: filter }),
   selectOrder: (orderId) => set({ selectedOrderId: orderId }),
   selectDriver: (driverId) => set({ selectedDriverId: driverId }),
