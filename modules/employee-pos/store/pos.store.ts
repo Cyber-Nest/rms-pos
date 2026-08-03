@@ -223,6 +223,7 @@ export const usePosStore = create<PosState>((set, get) => ({
 
   setOrderType: (type) => {
     set({ orderType: type });
+    get().calculateTotals();
     get().fetchNextOrderNumber();
     const {
       cartItems,
@@ -691,6 +692,14 @@ export const usePosStore = create<PosState>((set, get) => ({
       }
     }
 
+    const rawDeliveryFee = Number(get().branchTaxFees?.deliveryFee ?? 4.99);
+    const deliveryFee =
+      orderType === "delivery"
+        ? isNaN(rawDeliveryFee)
+          ? 4.99
+          : rawDeliveryFee
+        : 0;
+
     const payload = {
       orderType,
       orderSource,
@@ -712,6 +721,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       subtotal,
       taxRate: TAX_RATE,
       tax,
+      deliveryFee,
       discount,
       discountType,
       promoCode,
