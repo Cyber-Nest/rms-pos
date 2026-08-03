@@ -12,18 +12,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const DEFAULT_RESTAURANT_COORDS = { lat: 22.1818, lng: 78.7618 };
 
 // Read restaurant info from rms_branch stored at login
-const getRestaurantInfoFromStorage = (): { name: string; lat: number; lng: number } => {
-  if (typeof window === "undefined") return { name: "Restaurant", ...DEFAULT_RESTAURANT_COORDS };
+const getRestaurantInfoFromStorage = (): { name: string; lat: number | null; lng: number | null } => {
+  if (typeof window === "undefined") return { name: "Restaurant", lat: null, lng: null };
   try {
     const raw = localStorage.getItem("rms_branch");
     if (raw) {
       const b = JSON.parse(raw);
-      const lat = b.lat && !isNaN(Number(b.lat)) ? Number(b.lat) : DEFAULT_RESTAURANT_COORDS.lat;
-      const lng = b.lng && !isNaN(Number(b.lng)) ? Number(b.lng) : DEFAULT_RESTAURANT_COORDS.lng;
+      const lat = b.lat && !isNaN(Number(b.lat)) && Number(b.lat) !== 0 ? Number(b.lat) : null;
+      const lng = b.lng && !isNaN(Number(b.lng)) && Number(b.lng) !== 0 ? Number(b.lng) : null;
       return { name: b.name || "Restaurant", lat, lng };
     }
   } catch (e) {}
-  return { name: "Restaurant", ...DEFAULT_RESTAURANT_COORDS };
+  return { name: "Restaurant", lat: null, lng: null };
 };
 
 const getBranchConfig = () => {

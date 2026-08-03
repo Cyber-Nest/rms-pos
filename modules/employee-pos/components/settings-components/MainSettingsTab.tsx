@@ -64,8 +64,71 @@ export default function MainSettingsTab({
     setIsEditing(false);
   };
 
+  const hasLocation = Boolean(
+    mainSettings.latitude &&
+    mainSettings.longitude &&
+    !isNaN(Number(mainSettings.latitude)) &&
+    !isNaN(Number(mainSettings.longitude)) &&
+    Number(mainSettings.latitude) !== 0 &&
+    Number(mainSettings.longitude) !== 0
+  );
+
   return (
     <form onSubmit={handleFormSubmit} className="space-y-6">
+      {/* Location Setup & Instruction Banner (Only shown if location is pending) */}
+      {!hasLocation && (
+        <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold flex-shrink-0 shadow-sm mt-0.5">
+                <MapPin size={20} className="text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h4 className="text-xs font-900 text-neutral-900 tracking-tight">Branch GPS Location Coordinates</h4>
+                <p className="text-[11px] font-600 text-neutral-700 mt-0.5">
+                  Set your exact Latitude & Longitude below so Super Admin can activate your restaurant to <strong>Go Live 🚀</strong>.
+                </p>
+              </div>
+            </div>
+
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleFetchGPS}
+                className="px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-800 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0 shadow-sm cursor-pointer active:scale-98"
+              >
+                <MapPin size={14} />
+                <span>Fetch Current GPS</span>
+              </button>
+            )}
+          </div>
+
+          {/* Step-by-Step Instructions */}
+          <div className="p-3 bg-white/80 rounded-xl border border-orange-200/70 text-[11px] text-neutral-700 space-y-1">
+            <p className="font-800 text-orange-900 uppercase tracking-wider text-[10px]">
+              📍 How to set or update location:
+            </p>
+            <ol className="list-decimal list-inside space-y-0.5 font-600 text-neutral-700">
+              {!isEditing ? (
+                <li>
+                  Click the <strong>&quot;Edit Settings&quot;</strong> button at the bottom right of this page to unlock fields.
+                </li>
+              ) : (
+                <li>
+                  Fields unlocked! Click <strong>&quot;Fetch Current GPS&quot;</strong> above, or manually type your <strong>Latitude &amp; Longitude</strong> fields below.
+                </li>
+              )}
+              <li>
+                Click the Map Pin icon <MapPin size={11} className="inline text-orange-600" /> inside the Latitude box to auto-detect your current GPS coordinates.
+              </li>
+              <li>
+                Click <strong>&quot;Save Changes&quot;</strong> at the bottom to send coordinates to Super Admin.
+              </li>
+            </ol>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         
         {/* Timezone */}
@@ -123,7 +186,7 @@ export default function MainSettingsTab({
         </div>
 
         {/* Reporting Start Time */}
-        <div className="flex flex-col gap-1.5">
+        {/* <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-800 text-neutral-600 uppercase tracking-wider">
             Reporting Start Time <span className="text-red-500">*</span>
           </label>
@@ -140,7 +203,6 @@ export default function MainSettingsTab({
           />
         </div>
 
-        {/* Reporting End Time */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-800 text-neutral-600 uppercase tracking-wider">
             Reporting End Time <span className="text-red-500">*</span>
@@ -156,7 +218,7 @@ export default function MainSettingsTab({
                 : 'bg-neutral-100/70 border-neutral-200 text-neutral-600 cursor-not-allowed'
             }`}
           />
-        </div>
+        </div> */}
 
         {/* Latitude */}
         <div className="flex flex-col gap-1.5">

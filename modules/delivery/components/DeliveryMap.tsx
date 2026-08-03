@@ -200,11 +200,16 @@ function MapBoundsUpdater() {
             ]);
           }
         }
-        // Include restaurant
-        points.push([
-          restaurantLocation.coordinates.lat,
-          restaurantLocation.coordinates.lng,
-        ]);
+        // Include restaurant (if valid coordinates configured)
+        if (
+          restaurantLocation.coordinates.lat &&
+          restaurantLocation.coordinates.lng
+        ) {
+          points.push([
+            restaurantLocation.coordinates.lat,
+            restaurantLocation.coordinates.lng,
+          ]);
+        }
 
         const bounds = L.latLngBounds(points);
         map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
@@ -393,8 +398,12 @@ export default function DeliveryMap() {
   }, []);
 
   const center: [number, number] = [
-    restaurantLocation.coordinates.lat,
-    restaurantLocation.coordinates.lng,
+    restaurantLocation.coordinates.lat && restaurantLocation.coordinates.lat !== 0
+      ? restaurantLocation.coordinates.lat
+      : 22.1818,
+    restaurantLocation.coordinates.lng && restaurantLocation.coordinates.lng !== 0
+      ? restaurantLocation.coordinates.lng
+      : 78.7618,
   ];
 
   // Get active drivers (checked in today AND online/on-duty)
@@ -420,15 +429,15 @@ export default function DeliveryMap() {
           driver.currentLocation && driver.currentLocation.lat
             ? driver.currentLocation
             : {
-                lat: restaurantLocation.coordinates.lat,
-                lng: restaurantLocation.coordinates.lng,
+                lat: restaurantLocation.coordinates.lat || 0,
+                lng: restaurantLocation.coordinates.lng || 0,
               },
       }));
 
     const coordinateGroups: { [key: string]: typeof enriched } = {};
     enriched.forEach((driver) => {
-      const lat = driver.currentLocation.lat;
-      const lng = driver.currentLocation.lng;
+      const lat = driver.currentLocation.lat || 0;
+      const lng = driver.currentLocation.lng || 0;
       const key = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
       if (!coordinateGroups[key]) {
         coordinateGroups[key] = [];
@@ -437,8 +446,8 @@ export default function DeliveryMap() {
     });
 
     return enriched.map((driver) => {
-      const lat = driver.currentLocation.lat;
-      const lng = driver.currentLocation.lng;
+      const lat = driver.currentLocation.lat || 0;
+      const lng = driver.currentLocation.lng || 0;
       const key = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
       const group = coordinateGroups[key];
 
@@ -549,47 +558,53 @@ export default function DeliveryMap() {
         />
         <MapBoundsUpdater />
 
-        {/* Restaurant Marker */}
-        <Marker
-          position={[
-            restaurantLocation.coordinates.lat,
-            restaurantLocation.coordinates.lng,
-          ]}
-          icon={createRestaurantIcon()}
-        >
-          <Popup className="delivery-popup">
-            <div className="flex flex-col gap-1.5 p-3 px-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-brand-primary/15 flex items-center justify-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#8a1538"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
-                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
-                    <path d="M2 7h20" />
-                  </svg>
+        {restaurantLocation.coordinates.lat &&
+          restaurantLocation.coordinates.lng &&
+          !(
+            restaurantLocation.coordinates.lat === 0 &&
+            restaurantLocation.coordinates.lng === 0
+          ) && (
+            <Marker
+              position={[
+                restaurantLocation.coordinates.lat,
+                restaurantLocation.coordinates.lng,
+              ]}
+              icon={createRestaurantIcon()}
+            >
+              <Popup className="delivery-popup">
+                <div className="flex flex-col gap-1.5 p-3 px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-brand-primary/15 flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#8a1538"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                        <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
+                        <path d="M2 7h20" />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col">
+                      <strong className="text-[13px] font-bold text-neutral-900">
+                        {restaurantLocation.name}
+                      </strong>
+                      <span className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
+                        Base Station
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <strong className="text-[13px] font-bold text-neutral-900">
-                    {restaurantLocation.name}
-                  </strong>
-                  <span className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">
-                    Base Station
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
+              </Popup>
+            </Marker>
+          )}
 
         {/* Driver Markers */}
         {jitteredDrivers.map((driver) => (
