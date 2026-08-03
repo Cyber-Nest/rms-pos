@@ -136,6 +136,7 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         localStorage.removeItem('rms_active_employee');
         localStorage.removeItem('rms_terminal_locked');
         localStorage.removeItem('rms_draft_cart');
+        localStorage.removeItem('rms_superadmin_impersonation'); // Clear impersonation flag
         document.cookie = 'rms_terminal_locked=; path=/; max-age=0; SameSite=Lax';
         document.cookie = 'rms_branch_session=; path=/; max-age=0; SameSite=Lax';
         document.cookie = 'rms_branch_token=; path=/; max-age=0; SameSite=Lax';

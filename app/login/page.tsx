@@ -73,6 +73,7 @@ export default function BranchLoginPage() {
         if (typeof window !== 'undefined') {
           localStorage.setItem('rms_branch', JSON.stringify(branchData));
           localStorage.setItem('rms_terminal_locked', 'false'); // Unlock terminal for Manager
+          localStorage.removeItem('rms_superadmin_impersonation'); // Clear any leftover impersonation flag
           const maxAge = 30 * 24 * 60 * 60;
           document.cookie = `rms_terminal_locked=false; path=/; max-age=${maxAge}; SameSite=Lax`;
           document.cookie = `rms_branch_session=true; path=/; max-age=${maxAge}; SameSite=Lax`;

@@ -72,6 +72,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     localStorage.removeItem('rms_branch');
     localStorage.removeItem('rms_active_employee');
     localStorage.removeItem('rms_terminal_locked');
+    localStorage.removeItem('rms_superadmin_impersonation'); // Clear impersonation flag
     // Clear JS-readable cookies (Next.js middleware uses these)
     document.cookie = 'rms_terminal_locked=; path=/; max-age=0; SameSite=Lax';
     document.cookie = 'rms_branch_session=; path=/; max-age=0; SameSite=Lax';
