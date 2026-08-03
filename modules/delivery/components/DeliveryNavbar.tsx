@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Truck, Clock, ArrowLeft, Menu, Power } from "lucide-react";
 import { useDeliveryStore } from "../store/deliveryStore";
 
@@ -11,6 +12,7 @@ interface DeliveryNavbarProps {
 export default function DeliveryNavbar({
   onToggleSidebar,
 }: DeliveryNavbarProps) {
+  const router = useRouter();
   const orders = useDeliveryStore((s) => s.orders);
   const [currentTime, setCurrentTime] = useState("");
   const [branchName, setBranchName] = useState("Restaurant");
@@ -50,8 +52,8 @@ export default function DeliveryNavbar({
       <div className="flex items-center gap-3">
         <button
           className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/8 text-white hover:bg-white/15 transition-colors cursor-pointer"
-          onClick={() => window.history.back()}
-          title="Go back"
+          onClick={() => router.push("/employee/pos")}
+          title="Back to POS Terminal"
         >
           <ArrowLeft size={18} />
         </button>
