@@ -129,6 +129,19 @@ export default function CheckoutModal() {
     type: "takeout" | "delivery" | "drive-through" | "dine-in",
   ) => {
     setOrderType(type);
+    if (type === "delivery") {
+      if (
+        !selectedCustomer ||
+        !selectedCustomer.name ||
+        !selectedCustomer.name.trim() ||
+        !selectedCustomer.phone ||
+        !selectedCustomer.phone.trim() ||
+        !selectedCustomer.address ||
+        !selectedCustomer.address.trim()
+      ) {
+        setShowCustomer(true);
+      }
+    }
   };
 
   const handleOrderTimingChange = (timing: "now" | "later") => {
@@ -144,7 +157,27 @@ export default function CheckoutModal() {
     if (submittingRef.current) return;
     submittingRef.current = true;
 
-    // Validate
+    // Validate Delivery Order Customer Info
+    if (orderType === "delivery") {
+      if (
+        !selectedCustomer ||
+        !selectedCustomer.name ||
+        !selectedCustomer.name.trim() ||
+        !selectedCustomer.phone ||
+        !selectedCustomer.phone.trim() ||
+        !selectedCustomer.address ||
+        !selectedCustomer.address.trim()
+      ) {
+        toast.error(
+          "Customer Name, Phone, and Delivery Address are required for Delivery orders.",
+        );
+        setShowCustomer(true);
+        submittingRef.current = false;
+        return;
+      }
+    }
+
+    // Validate 3rd Party Orders
     if (orderSource === "doordash" || orderSource === "ubereats") {
       if (
         !selectedCustomer ||
@@ -961,6 +994,16 @@ export default function CheckoutModal() {
                       </span>
                       <span className="text-[10px] font-600 text-green-600">
                         -${discount.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {orderType === "delivery" && (
+                    <div className="flex items-center justify-between font-medium">
+                      <span className="text-[10px] text-brand-primary font-600 flex items-center gap-1">
+                        <Truck size={10} /> Delivery Fee
+                      </span>
+                      <span className="text-[10px] font-700 text-brand-primary">
+                        +${(branchTaxFees?.deliveryFee ?? 4.99).toFixed(2)}
                       </span>
                     </div>
                   )}
