@@ -13,8 +13,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Always allow /login page (master + staff login both happen here)
-  if (pathname === "/login") {
+  // Always allow /login and /impersonate pages
+  if (pathname === "/login" || pathname.startsWith("/impersonate")) {
     return NextResponse.next();
   }
 

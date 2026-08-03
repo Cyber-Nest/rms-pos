@@ -170,7 +170,7 @@ export default function KitchenNavbar({ activePendingCount, activeConfirmedCount
 
         {/* Logout */}
         <button
-          onClick={() => { if (confirm('Exit the POS system?')) window.close(); }}
+          onClick={() => { window.close(); }}
           className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 border border-red-200 text-red-400 hover:bg-red-100 hover:text-red-600 hover:border-red-300 transition-all cursor-pointer"
           title="Exit POS"
         >

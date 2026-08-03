@@ -73,7 +73,8 @@ export default function BranchLoginPage() {
         if (typeof window !== 'undefined') {
           localStorage.setItem('rms_branch', JSON.stringify(branchData));
           localStorage.setItem('rms_terminal_locked', 'false'); // Unlock terminal for Manager
-          const maxAge = 7 * 24 * 60 * 60;
+          localStorage.removeItem('rms_superadmin_impersonation'); // Clear any leftover impersonation flag
+          const maxAge = 30 * 24 * 60 * 60;
           document.cookie = `rms_terminal_locked=false; path=/; max-age=${maxAge}; SameSite=Lax`;
           document.cookie = `rms_branch_session=true; path=/; max-age=${maxAge}; SameSite=Lax`;
           if (branchData.token) {
@@ -113,7 +114,7 @@ export default function BranchLoginPage() {
         const emp = res.data.data.employee;
         localStorage.setItem('rms_active_employee', JSON.stringify(emp));
         localStorage.setItem('rms_terminal_locked', 'false'); // Unlock terminal for Staff
-        const maxAge = 7 * 24 * 60 * 60;
+        const maxAge = 30 * 24 * 60 * 60;
         document.cookie = `rms_terminal_locked=false; path=/; max-age=${maxAge}; SameSite=Lax`;
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('rms_active_employee_changed'));

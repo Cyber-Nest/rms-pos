@@ -152,12 +152,9 @@ export default function EmployeeManagementView() {
     setIsModalOpen(true);
   };
 
-  const handleToggleActive = async (emp: Employee) => {
+  const executeToggleActive = async (emp: Employee) => {
     const branchId = getBranchId();
     if (!branchId) return;
-
-    const actionText = emp.isActive ? "deactivate" : "reactivate";
-    if (!confirm(`Are you sure you want to ${actionText} ${emp.name}?`)) return;
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
@@ -172,6 +169,34 @@ export default function EmployeeManagementView() {
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Operation failed");
     }
+  };
+
+  const handleToggleActive = (emp: Employee) => {
+    const actionText = emp.isActive ? "deactivate" : "reactivate";
+    toast((t) => (
+      <div className="flex flex-col gap-2 p-1 text-xs">
+        <p className="font-700 text-neutral-900">Are you sure you want to {actionText} {emp.name}?</p>
+        <div className="flex items-center justify-end gap-2 mt-1">
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-2.5 py-1 font-600 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              executeToggleActive(emp);
+            }}
+            className={`px-2.5 py-1 font-700 text-white rounded-lg cursor-pointer shadow-sm ${
+              emp.isActive ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"
+            }`}
+          >
+            Confirm {actionText}
+          </button>
+        </div>
+      </div>
+    ), { duration: 5000, position: "top-center" });
   };
 
   return (

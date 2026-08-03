@@ -48,6 +48,6 @@ export interface Driver {
 
 export interface RestaurantLocation {
   name: string;
-  coordinates: { lat: number; lng: number };
+  coordinates: { lat: number | null; lng: number | null };
 }
 

@@ -111,8 +111,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
     }
   };
 
-  const handleCancelOrder = async () => {
-    if (!confirm('Are you sure you want to cancel this order?')) return;
+  const executeCancelOrder = async () => {
     setUpdating(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -128,6 +127,31 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleCancelOrder = () => {
+    toast((t) => (
+      <div className="flex flex-col gap-2 p-1 text-xs">
+        <p className="font-700 text-neutral-900">Are you sure you want to cancel this order?</p>
+        <div className="flex items-center justify-end gap-2 mt-1">
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-2.5 py-1 font-600 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg cursor-pointer"
+          >
+            No, Keep Order
+          </button>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              executeCancelOrder();
+            }}
+            className="px-2.5 py-1 font-700 bg-red-600 hover:bg-red-700 text-white rounded-lg cursor-pointer shadow-sm"
+          >
+            Yes, Cancel Order
+          </button>
+        </div>
+      </div>
+    ), { duration: 5000, position: 'top-center' });
   };
 
   const handleCollectPayment = async () => {
