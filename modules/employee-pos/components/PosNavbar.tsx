@@ -162,6 +162,15 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
     return perms[link.key] === true;
   });
 
+  const [isImpersonated, setIsImpersonated] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isImp = localStorage.getItem('rms_superadmin_impersonation') === 'true';
+      setIsImpersonated(isImp);
+    }
+  }, []);
+
   return (
     <>
       {isLocationPending && (
@@ -215,6 +224,11 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
               <span className="text-[12px] font-800 text-neutral-800 whitespace-nowrap">
                 {branchInfo.name}
               </span>
+              {isImpersonated && (
+                <span className="ml-1 px-2 py-0.5 bg-amber-500 text-white text-[9px] font-900 rounded-md uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                  <span>Super Admin View</span>
+                </span>
+              )}
             </div>
           ) : null}
 
