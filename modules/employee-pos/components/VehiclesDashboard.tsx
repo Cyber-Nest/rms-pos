@@ -195,15 +195,39 @@ export default function VehiclesDashboard() {
     }
   };
 
-  const handleDeleteVehicle = async (id: string) => {
-    if (confirm('Are you sure you want to delete this vehicle? If it is assigned to a driver, it will be unassigned.')) {
-      try {
-        await deleteVehicle(id);
-        toast.success('Vehicle deleted successfully.');
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || 'Failed to delete vehicle.');
-      }
+  const executeDeleteVehicle = async (id: string) => {
+    try {
+      await deleteVehicle(id);
+      toast.success('Vehicle deleted successfully.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to delete vehicle.');
     }
+  };
+
+  const handleDeleteVehicle = (id: string) => {
+    toast((t) => (
+      <div className="flex flex-col gap-2 p-1 text-xs max-w-xs">
+        <p className="font-700 text-neutral-900">Are you sure you want to delete this vehicle?</p>
+        <p className="text-[10.5px] text-neutral-600">If assigned to a driver, it will be unassigned.</p>
+        <div className="flex items-center justify-end gap-2 mt-1">
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-2.5 py-1 font-600 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              toast.dismiss(t.id);
+              executeDeleteVehicle(id);
+            }}
+            className="px-2.5 py-1 font-700 bg-red-600 hover:bg-red-700 text-white rounded-lg cursor-pointer shadow-sm"
+          >
+            Delete Vehicle
+          </button>
+        </div>
+      </div>
+    ), { duration: 5000, position: 'top-center' });
   };
 
   return (

@@ -118,7 +118,7 @@ export default function DeliveryNavbar({
         {/* Exit/Logout Button */}
         {/* <button
           onClick={() => {
-            if (confirm("Exit the system?")) window.close();
+            window.close();
           }}
           className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all cursor-pointer"
           title="Exit POS"
