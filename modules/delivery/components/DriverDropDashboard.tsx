@@ -1486,14 +1486,14 @@ export default function DriverDropDashboard() {
                   )}
                   <span>Download PDF</span>
                 </button>
-                <button
+                {/* <button
                   type="button"
                   onClick={handleTriggerPrint}
                   className="px-4 py-1.5 bg-brand-primary text-white text-[11px] font-800 uppercase rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:bg-brand-primary/90"
                 >
                   <Printer size={14} />
                   <span>Print Now</span>
-                </button>
+                </button> */}
               </div>
             </div>
           </div>

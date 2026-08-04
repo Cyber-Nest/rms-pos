@@ -129,7 +129,7 @@ export default function OrdersDashboard() {
     { key: "item_sales", label: "Item Sales" },
     { key: "hourly_sales", label: "Hourly Sales Report" },
     { key: "cash_out_report", label: "Cash Out Report" },
-    { key: "cash_out_summary", label: "Cash Out Summary" },
+    // { key: "cash_out_summary", label: "Cash Out Summary" },
     { key: "monthly_sales_summary", label: "Monthly Sales Summary" },
     { key: "failed_transaction", label: "Failed Transaction" },
     { key: "refund_orders", label: "Refund Orders" },
