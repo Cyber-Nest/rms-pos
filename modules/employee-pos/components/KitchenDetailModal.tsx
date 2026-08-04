@@ -910,14 +910,17 @@ export default function KitchenDetailModal({
 
                 {/* Unpaid/Paid toggle pill */}
                 {isUnpaid ? (
-                  <button
-                    onClick={handleMarkAsPaid}
-                    disabled={updating}
-                    className="px-4 py-2 rounded-full text-[11.5px] font-700 uppercase tracking-wider border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
-                    title="Click to mark as PAID"
-                  >
-                    Unpaid (Pay Now)
-                  </button>
+                  // <button
+                  //   onClick={handleMarkAsPaid}
+                  //   disabled={updating}
+                  //   className="px-4 py-2 rounded-full text-[11.5px] font-700 uppercase tracking-wider border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                  //   title="Click to mark as PAID"
+                  // >
+                  //   Unpaid (Pay Now)
+                  // </button>
+                  <span className="px-4 py-2 rounded-full text-[11.5px] font-700 select-none uppercase tracking-wider border border-red-250 text-red-700 bg-red-50">
+                    Unpaid
+                  </span>
                 ) : (
                   <span className="px-4 py-2 rounded-full text-[11.5px] font-700 select-none uppercase tracking-wider border border-emerald-250 text-emerald-700 bg-emerald-50">
                     Paid
