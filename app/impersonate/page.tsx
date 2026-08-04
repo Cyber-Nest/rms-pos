@@ -40,6 +40,9 @@ function ImpersonateContent() {
             localStorage.setItem("rms_superadmin_impersonation", "true");
             localStorage.setItem("rms_terminal_locked", "false");
 
+            // Clear any stale lock cookies first
+            document.cookie = "rms_terminal_locked=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
             // Set cookies so Next.js middleware allows navigation 
             const maxAge = 24 * 60 * 60; // 24 hours for impersonation sessions
             const secureSuffix = window.location.protocol === "https:" ? "; Secure" : "";
