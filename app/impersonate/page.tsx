@@ -42,14 +42,12 @@ function ImpersonateContent() {
 
             // Set cookies so Next.js middleware allows navigation 
             const maxAge = 24 * 60 * 60; // 24 hours for impersonation sessions
-            const isSecure = window.location.protocol === "https:";
-            const sameSite = isSecure ? "None" : "Lax";
-            const secureSuffix = isSecure ? "; Secure" : "";
+            const secureSuffix = window.location.protocol === "https:" ? "; Secure" : "";
 
-            document.cookie = `rms_terminal_locked=false; path=/; max-age=${maxAge}; SameSite=${sameSite}${secureSuffix}`;
-            document.cookie = `rms_branch_session=true; path=/; max-age=${maxAge}; SameSite=${sameSite}${secureSuffix}`;
+            document.cookie = `rms_terminal_locked=false; path=/; max-age=${maxAge}; SameSite=Lax${secureSuffix}`;
+            document.cookie = `rms_branch_session=true; path=/; max-age=${maxAge}; SameSite=Lax${secureSuffix}`;
             if (branchData.token) {
-              document.cookie = `rms_branch_token=${branchData.token}; path=/; max-age=${maxAge}; SameSite=${sameSite}${secureSuffix}`;
+              document.cookie = `rms_branch_token=${branchData.token}; path=/; max-age=${maxAge}; SameSite=Lax${secureSuffix}`;
             }
 
             // Dispatch storage event so open tabs refresh session if needed
