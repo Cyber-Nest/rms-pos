@@ -87,20 +87,24 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
           }
         }
       } catch (err: any) {
-        // If unauthenticated or branch inactive, force redirect to login
+        // If unauthenticated or branch inactive, force redirect to login ONLY if not a Super Admin impersonation session
         if (err.response?.status === 401) {
-          localStorage.removeItem('rms_branch');
-          document.cookie = 'rms_branch_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-          document.cookie = 'rms_branch_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-          router.push('/login');
-          return;
+          const isImp = typeof window !== 'undefined' && localStorage.getItem('rms_superadmin_impersonation') === 'true';
+          if (!isImp) {
+            localStorage.removeItem('rms_branch');
+            document.cookie = 'rms_branch_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie = 'rms_branch_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            router.push('/login');
+            return;
+          }
         }
       } finally {
         if (isMounted) setLoadingBranchInfo(false);
       }
 
-      // If no branch info found at all, redirect to login
-      if (!raw) {
+      // If no branch info found at all and not impersonating, redirect to login
+      const isImpSession = typeof window !== 'undefined' && localStorage.getItem('rms_superadmin_impersonation') === 'true';
+      if (!raw && !isImpSession) {
         router.push('/login');
       }
     };
