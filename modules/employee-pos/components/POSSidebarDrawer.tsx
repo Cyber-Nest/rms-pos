@@ -102,8 +102,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     { key: 'setting', label: 'Setting', icon: Settings },
     { key: 'employees', label: 'Employee Management', icon: UserCheck },
     { key: 'permissions', label: 'Permissions', icon: ShieldCheck },
-    { key: 'update_profile', label: 'Update Profile', icon: UserCheck },
-    { key: 'change_password', label: 'Change Password', icon: Lock },
+    { key: 'update_profile', label: 'Profile & Security', icon: UserCheck },
     { key: 'reports', label: 'Reports', icon: BarChart3 },
     { key: 'master_logout', label: 'Master Logout', icon: LogOut, isLogout: true },
   ];
@@ -259,6 +258,10 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                         window.location.href = '/employee/permissions';
                       } else if (item.key === 'setting') {
                         window.location.href = '/employee/settings';
+                      } else if (item.key === 'update_profile') {
+                        window.location.href = '/employee/profile?tab=profile';
+                      } else if (item.key === 'change_password') {
+                        window.location.href = '/employee/profile?tab=password';
                       } else if (item.key === 'menus') {
                         window.location.href = '/employee/menu';
                       } else if (
@@ -267,9 +270,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                         item.key === 'expense_payout' || 
                         item.key === 'sales_summary' || 
                         item.key === 'transactions' ||
-                        item.key === 'reports' ||
-                        item.key === 'update_profile' ||
-                        item.key === 'change_password'
+                        item.key === 'reports'
                       ) {
                         let targetTab = item.key;
                         if (item.key === 'transactions') targetTab = 'orders';
