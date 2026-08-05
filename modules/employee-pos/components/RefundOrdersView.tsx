@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useState, useMemo } from 'react';
-import { Eye, Smartphone, Store, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, Smartphone, Store, ChevronLeft, ChevronRight, RotateCcw, XCircle } from 'lucide-react';
 import { Order } from '../types';
 
 interface RefundOrdersViewProps {
@@ -39,22 +37,56 @@ export default function RefundOrdersView({
     }
   };
 
-  // ── Render Status Badge ──
-  const renderOrderStatusBadge = (status: string) => {
+  // ── Render Order Status Badge ──
+  const renderOrderStatusBadge = (order: Order) => {
+    const isRefunded = order.paymentStatus === 'refunded' || !!order.refundedAt;
+    if (isRefunded) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 border bg-purple-50 text-purple-750 border-purple-200/80">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+          Refunded
+        </span>
+      );
+    }
+    if (order.status === 'cancelled') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 border bg-rose-50 text-rose-750 border-rose-200/80">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          Cancelled
+        </span>
+      );
+    }
     return (
-      <span className="px-2.5 py-1 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1.5 border bg-red-50 text-red-700 border-red-200/60">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-        Refunded
+      <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 border bg-neutral-100 text-neutral-700 border-neutral-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-neutral-500" />
+        {order.status}
       </span>
     );
   };
 
   // ── Render Payment Status Badge ──
-  const renderPaymentStatusBadge = (status: string) => {
+  const renderPaymentStatusBadge = (order: Order) => {
+    const isRefunded = order.paymentStatus === 'refunded' || !!order.refundedAt;
+    if (isRefunded) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          Refund Complete
+        </span>
+      );
+    }
+    if (order.paymentStatus === 'paid') {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200/80">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Paid (Cancelled)
+        </span>
+      );
+    }
     return (
-      <span className="px-2.5 py-1 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-        Refund Complete
+      <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 bg-neutral-100 text-neutral-600 border border-neutral-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
+        Unpaid Cancelled
       </span>
     );
   };
@@ -63,7 +95,7 @@ export default function RefundOrdersView({
   const filteredRefundOrders = useMemo(() => {
     return orders.filter((order) => {
       // 1. Must be refunded or cancelled to show in refund lists
-      const isRefunded = order.paymentStatus === 'refunded' || order.status === 'cancelled';
+      const isRefunded = order.paymentStatus === 'refunded' || order.status === 'cancelled' || !!order.refundedAt;
       if (!isRefunded) return false;
 
       // 2. Date filter (if selectedDate is set)
@@ -83,7 +115,14 @@ export default function RefundOrdersView({
 
       // 4. Status Filter
       if (statusFilter !== '') {
-        if (order.status !== statusFilter) return false;
+        if (statusFilter === 'refunded') {
+          const isRef = order.paymentStatus === 'refunded' || !!order.refundedAt;
+          if (!isRef) return false;
+        } else if (statusFilter === 'cancelled') {
+          if (order.status !== 'cancelled') return false;
+        } else {
+          if (order.status !== statusFilter) return false;
+        }
       }
 
       return true;
@@ -109,6 +148,7 @@ export default function RefundOrdersView({
             <tr>
               <th className="px-5 py-3.5">Order #</th>
               <th className="px-5 py-3.5">Customer Name</th>
+              <th className="px-5 py-3.5 text-center">Record Type</th>
               <th className="px-5 py-3.5 text-right">Sub Total</th>
               <th className="px-5 py-3.5 text-right">Grand Total</th>
               <th className="px-5 py-3.5">Order Type</th>
@@ -174,6 +214,21 @@ export default function RefundOrdersView({
                       </div>
                     </td>
 
+                    {/* Record Type (Refund vs Cancelled) */}
+                    <td className="px-5 py-4 whitespace-nowrap text-center">
+                      {order.paymentStatus === 'refunded' || !!order.refundedAt ? (
+                        <span className="px-2.5 py-1 rounded-md text-[9.5px] font-900 uppercase tracking-wider border bg-purple-50 text-purple-750 border-purple-200/80 inline-flex items-center gap-1">
+                          <RotateCcw size={10} />
+                          <span>REFUND</span>
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-md text-[9.5px] font-900 uppercase tracking-wider border bg-rose-50 text-rose-750 border-rose-200/80 inline-flex items-center gap-1">
+                          <XCircle size={10} />
+                          <span>CANCELLED</span>
+                        </span>
+                      )}
+                    </td>
+
                     {/* Sub Total */}
                     <td className="px-5 py-4 text-right font-750 text-neutral-500 text-[11.5px]">
                       ${order.subtotal.toFixed(2)}
@@ -224,13 +279,13 @@ export default function RefundOrdersView({
                     </td>
 
                     {/* Payment */}
-                    <td className="px-5 py-4">
-                      {renderPaymentStatusBadge(order.paymentStatus)}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {renderPaymentStatusBadge(order)}
                     </td>
 
                     {/* Order Status */}
-                    <td className="px-5 py-4">
-                      {renderOrderStatusBadge(order.status)}
+                    <td className="px-5 py-4 whitespace-nowrap">
+                      {renderOrderStatusBadge(order)}
                     </td>
 
                     {/* Order Date */}
@@ -254,7 +309,7 @@ export default function RefundOrdersView({
               })
             ) : (
               <tr>
-                <td colSpan={10} className="px-5 py-16 text-center text-neutral-400 font-700">
+                <td colSpan={11} className="px-5 py-16 text-center text-neutral-400 font-700">
                   No data available in table
                 </td>
               </tr>

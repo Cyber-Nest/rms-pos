@@ -52,9 +52,12 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
   }, [syncActiveEmployee]);
 
   const handleSwitchToManager = () => {
+    const isImp = typeof window !== 'undefined' && localStorage.getItem('rms_superadmin_impersonation') === 'true';
     localStorage.removeItem('rms_active_employee');
-    localStorage.setItem('rms_terminal_locked', 'true');
-    document.cookie = 'rms_terminal_locked=true; path=/; max-age=604800; SameSite=Lax';
+    if (!isImp) {
+      localStorage.setItem('rms_terminal_locked', 'true');
+      document.cookie = 'rms_terminal_locked=true; path=/; max-age=604800; SameSite=Lax';
+    }
     window.dispatchEvent(new Event('rms_active_employee_changed'));
     toast.success('Staff logged out');
     window.location.href = '/login';
