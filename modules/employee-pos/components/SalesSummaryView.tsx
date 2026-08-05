@@ -479,9 +479,16 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td colSpan={2} className="py-3 px-4 text-center text-neutral-400 font-600">No Record Found.</td>
-                </tr>
+                {refundOrders && refundOrders.count > 0 ? (
+                  <tr className="font-650 text-neutral-800">
+                    <td className="py-2.5 px-4 text-center font-800 bg-neutral-50">{refundOrders.count}</td>
+                    <td className="py-2.5 px-4 text-right font-800 text-rose-600">${refundOrders.totalAmount.toFixed(2)}</td>
+                  </tr>
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="py-3 px-4 text-center text-neutral-400 font-600">No Record Found.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -62,7 +62,7 @@ export interface Order {
   // Payment
   paymentTiming: "pay-now" | "pay-later";
   paymentType: "one-time" | "split";
-  paymentStatus: "paid" | "unpaid";
+  paymentStatus: "paid" | "unpaid" | "refunded";
   payments: SplitPayment[];
   // Scheduling
   orderTiming: "now" | "later";

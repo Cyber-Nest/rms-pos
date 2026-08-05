@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Printer, RefreshCw, CreditCard } from 'lucide-react';
+import { X, Printer, RefreshCw, CreditCard, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Order, CartItem, SplitPayment } from '../types';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -21,7 +21,77 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
   const [payMethod, setPayMethod] = useState<'cash' | 'card' | 'debit' | 'credit'>('cash');
   const [cashGivenInput, setCashGivenInput] = useState('');
 
+  // Refund State
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [refunding, setRefunding] = useState(false);
+
+  // Cancel State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+
   if (!order) return null;
+
+  // Check Manager / Admin permission
+  const activeEmp = typeof window !== 'undefined'
+    ? (() => {
+        try {
+          const raw = localStorage.getItem('rms_active_employee');
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      })()
+    : null;
+
+  const isManagerOrAdmin =
+    !activeEmp ||
+    activeEmp.role === 'manager' ||
+    activeEmp.role === 'admin' ||
+    activeEmp.isBranchAdmin === true ||
+    activeEmp.permissions?.refund_orders === true;
+
+  const isPosOrder =
+    order.orderSource === 'pos' ||
+    (order as any).orderPlaced === 'POS SYSTEM' ||
+    !['online', 'doordash', 'skip', 'ubereats'].includes(order.orderSource);
+
+  const canRefund =
+    isManagerOrAdmin &&
+    isPosOrder &&
+    order.status !== 'cancelled' &&
+    order.paymentStatus !== 'refunded';
+
+  const handleExecuteRefund = async () => {
+    if (refunding || !order) return;
+    setRefunding(true);
+    try {
+      let activeEmpName = "Manager";
+      if (activeEmp && activeEmp.name) {
+        activeEmpName = activeEmp.name;
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${apiUrl}/orders/${order._id}/refund`, {
+        reason: refundReason,
+        userName: activeEmpName,
+      });
+
+      if (res.data.success) {
+        toast.success(`Order ${order.orderNumber} refunded successfully!`);
+        setShowRefundModal(false);
+        setRefundReason('');
+        order.status = 'cancelled';
+        order.paymentStatus = 'refunded';
+        onRefresh();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to refund order');
+    } finally {
+      setRefunding(false);
+    }
+  };
 
   const handleDownloadPdf = async () => {
     if (isPrinting || !order) return;
@@ -111,47 +181,37 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
     }
   };
 
-  const executeCancelOrder = async () => {
-    setUpdating(true);
+  const handleExecuteCancel = async () => {
+    if (cancelling || !order) return;
+    setCancelling(true);
     try {
+      let activeEmpName = "Manager";
+      if (activeEmp && activeEmp.name) {
+        activeEmpName = activeEmp.name;
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const res = await axios.delete(`${apiUrl}/orders/${order._id}`);
+      const res = await axios.post(`${apiUrl}/orders/${order._id}/cancel`, {
+        reason: cancelReason,
+        userName: activeEmpName,
+      });
 
       if (res.data.success) {
-        toast.success('Order cancelled successfully');
-        onRefresh();
+        toast.success(`Order ${order.orderNumber} cancelled successfully!`);
+        setShowCancelModal(false);
+        setCancelReason('');
         order.status = 'cancelled';
+        onRefresh();
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to cancel order');
     } finally {
-      setUpdating(false);
+      setCancelling(false);
     }
   };
 
   const handleCancelOrder = () => {
-    toast((t) => (
-      <div className="flex flex-col gap-2 p-1 text-xs">
-        <p className="font-700 text-neutral-900">Are you sure you want to cancel this order?</p>
-        <div className="flex items-center justify-end gap-2 mt-1">
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className="px-2.5 py-1 font-600 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg cursor-pointer"
-          >
-            No, Keep Order
-          </button>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id);
-              executeCancelOrder();
-            }}
-            className="px-2.5 py-1 font-700 bg-red-600 hover:bg-red-700 text-white rounded-lg cursor-pointer shadow-sm"
-          >
-            Yes, Cancel Order
-          </button>
-        </div>
-      </div>
-    ), { duration: 5000, position: 'top-center' });
+    setShowCancelModal(true);
   };
 
   const handleCollectPayment = async () => {
@@ -500,6 +560,24 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                         Cancel Order
                       </button>
                     )}
+
+                    {/* Refund button (Only for Manager / Admin on POS orders) */}
+                    {canRefund && (
+                      <button
+                        onClick={() => setShowRefundModal(true)}
+                        className="w-full py-2 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white text-[11.5px] font-800 rounded-full active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 uppercase tracking-wider shadow-sm shadow-red-500/20"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Refund Order</span>
+                      </button>
+                    )}
+
+                    {/* Refunded Badge if already refunded */}
+                    {order.paymentStatus === 'refunded' && (
+                      <div className="w-full py-2 bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-800 rounded-full text-center uppercase tracking-wider">
+                        ✓ Order Refunded
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -682,6 +760,131 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
         </div>
 
       </div>
+
+      {/* ── Refund Confirmation Dialog Modal ── */}
+      {showRefundModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 border border-neutral-200 animate-scale-up">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 border border-red-200 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-900 text-neutral-900 leading-tight">Confirm Order Refund</h3>
+                <p className="text-[11px] text-neutral-500 font-500">Order {order.orderNumber} · Total ${order.total.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-700 text-neutral-700 block">
+                Refund Reason (Optional)
+              </label>
+              <textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="e.g. Customer returned items, Incorrect charge, Manager approval..."
+                rows={3}
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 text-[12px] text-neutral-800 focus:outline-none focus:border-red-500 resize-none font-sans"
+              />
+            </div>
+
+            {/* <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800 font-600">
+              ⚠️ Warning: This will mark the order as Refunded & Cancelled. This action cannot be undone.
+            </div> */}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRefundModal(false);
+                  setRefundReason('');
+                }}
+                disabled={refunding}
+                className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteRefund}
+                disabled={refunding}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer shadow-sm shadow-red-500/30 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {refunding ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={13} />
+                    <span>Confirm Refund</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cancel Order Confirmation Dialog Modal ── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 border border-neutral-200 animate-scale-up font-sans">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-900 text-neutral-900 leading-tight">Confirm Order Cancellation</h3>
+                <p className="text-[11px] text-neutral-500 font-500">Order {order.orderNumber} · Total ${order.total.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-700 text-neutral-700 block">
+                Cancellation Reason (Optional)
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Out of stock, Customer changed mind, Kitchen delay..."
+                rows={3}
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 text-[12px] text-neutral-800 focus:outline-none focus:border-red-500 resize-none font-sans"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelReason('');
+                }}
+                disabled={cancelling}
+                className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteCancel}
+                disabled={cancelling}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer shadow-sm shadow-red-500/30 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {cancelling ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>Cancelling...</span>
+                  </>
+                ) : (
+                  <span>Confirm Cancel</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
