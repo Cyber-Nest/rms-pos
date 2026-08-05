@@ -119,9 +119,12 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
   // Employee Logout: clears active staff session, locks terminal, goes to /login
   const handleEmployeeLogout = () => {
     if (confirm(`Logout ${activeEmployee?.name}`)) {
+      const isImp = typeof window !== 'undefined' && localStorage.getItem('rms_superadmin_impersonation') === 'true';
       localStorage.removeItem('rms_active_employee');
-      localStorage.setItem('rms_terminal_locked', 'true');
-      document.cookie = 'rms_terminal_locked=true; path=/; max-age=604800; SameSite=Lax';
+      if (!isImp) {
+        localStorage.setItem('rms_terminal_locked', 'true');
+        document.cookie = 'rms_terminal_locked=true; path=/; max-age=604800; SameSite=Lax';
+      }
       window.dispatchEvent(new Event('rms_active_employee_changed'));
       router.push('/login');
     }

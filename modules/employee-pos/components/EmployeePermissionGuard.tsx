@@ -36,6 +36,13 @@ export default function EmployeePermissionGuard({
       if (typeof window === "undefined") return;
 
       try {
+        // ── 0. Super Admin impersonation sessions always have full access ──
+        const isImpersonation = localStorage.getItem("rms_superadmin_impersonation") === "true";
+        if (isImpersonation) {
+          setIsAllowed(true);
+          return;
+        }
+
         const terminalLocked = localStorage.getItem("rms_terminal_locked");
         const raw = emp
           ? JSON.stringify(emp)

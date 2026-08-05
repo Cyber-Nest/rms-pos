@@ -36,12 +36,20 @@ function ImpersonateContent() {
           const branchData = res.data.data;
 
           if (typeof window !== "undefined") {
+            // ──cleanup of ALL stale session data before setting new ──
+            localStorage.removeItem("rms_branch");
+            localStorage.removeItem("rms_active_employee");
+            localStorage.removeItem("rms_terminal_locked");
+            localStorage.removeItem("rms_superadmin_impersonation");
+            localStorage.removeItem("rms_draft_cart");
+            document.cookie = "rms_terminal_locked=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie = "rms_branch_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie = "rms_branch_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+            // ── Set fresh impersonation session data ──
             localStorage.setItem("rms_branch", JSON.stringify(branchData));
             localStorage.setItem("rms_superadmin_impersonation", "true");
             localStorage.setItem("rms_terminal_locked", "false");
-
-            // Clear any stale lock cookies first
-            document.cookie = "rms_terminal_locked=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 
             // Set cookies so Next.js middleware allows navigation 
             const maxAge = 24 * 60 * 60; // 24 hours for impersonation sessions

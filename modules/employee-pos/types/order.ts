@@ -41,6 +41,7 @@ export interface PromoApplied {
 }
 
 export interface Order {
+  refundedAt: any;
   deliveryFee: number | undefined;
   tip?: number;
   kitchenCleared: any;
