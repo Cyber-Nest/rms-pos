@@ -218,6 +218,14 @@ export default function KitchenOrderCard({
             </div>
           ))}
         </div>
+
+        {/* Order Level Delivery / Prep Note */}
+        {order.notes && (
+          <div className="text-[10px] text-amber-900 font-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 leading-snug">
+            <span className="font-900 uppercase text-[8.5px] block text-amber-800 tracking-wider">Note / Instructions:</span>
+            "{order.notes}"
+          </div>
+        )}
       </div>
 
       {/* ── Ticket Footer ── */}

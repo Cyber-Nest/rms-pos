@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Printer, RefreshCw, CreditCard, RotateCcw, AlertTriangle } from 'lucide-react';
+import { X, Printer, RefreshCw, CreditCard, RotateCcw, AlertTriangle, FileText } from 'lucide-react';
 import { Order, CartItem, SplitPayment } from '../types';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -369,6 +369,21 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
               </button>
             </div>
           </div>
+
+          {/* Delivery Instructions / Order Note Banner */}
+          {order.notes && (
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-900 animate-scale-up">
+              <FileText size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-900 text-amber-800 uppercase tracking-wider">
+                  {order.orderType === 'delivery' ? 'Delivery Instructions Note:' : 'Customer Order Note:'}
+                </p>
+                <p className="text-xs font-700 mt-0.5 leading-relaxed text-amber-950">
+                  "{order.notes}"
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Dual Column Layout (Items on Left, Financials on Right) */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">

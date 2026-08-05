@@ -3,6 +3,8 @@ import { SelectedModifier } from './modifier';
 export interface CartItem {
   id: string; // unique composite key (menuItemId + optionIds joined)
   menuItemId: string;
+  categoryId?: string;
+  categoryName?: string;
   name: string;
   image?: string;
   basePrice: number;

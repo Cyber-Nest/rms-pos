@@ -14,7 +14,7 @@ type Mode = 'promo' | 'discount';
 type DiscountSubType = 'percentage' | 'flat';
 
 export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountModalProps) {
-  const { subtotal, applyPromo, applyManualDiscount, appliedPromo, manualDiscountType, manualDiscountValue, removeDiscount } = usePosStore();
+  const { cartItems, subtotal, applyPromo, applyManualDiscount, appliedPromo, manualDiscountType, manualDiscountValue, removeDiscount } = usePosStore();
 
   const [mode, setMode] = useState<Mode>('promo');
   const [promoCode, setPromoCode] = useState('');
@@ -35,10 +35,24 @@ export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountMod
     setLoading(true);
     setError('');
     try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id || b.id || b.branchId;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await axios.post(`${apiUrl}/promos/validate`, {
         code: promoCode.trim(),
+        channel: 'pos',
+        branchId,
         subtotal,
+        items: cartItems,
       });
       if (res.data.success) {
         applyPromo(res.data.data);

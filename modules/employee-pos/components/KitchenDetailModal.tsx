@@ -10,6 +10,7 @@ import {
   Minus,
   RefreshCw,
   AlertTriangle,
+  FileText,
 } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -941,6 +942,21 @@ export default function KitchenDetailModal({
 
         {/* ── Scrollable Body Wrapper ── */}
         <div className="flex-1 overflow-y-auto bg-brand-bg flex flex-col min-h-0">
+          {/* Order Level Delivery Instructions Note */}
+          {localOrder.notes && (
+            <div className="mx-5 mt-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-950 font-sans">
+              <FileText size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-900 text-amber-800 uppercase tracking-wider">
+                  {localOrder.orderType === 'delivery' ? 'Delivery Instructions Note:' : 'Customer Order Note:'}
+                </p>
+                <p className="text-xs font-700 mt-0.5 leading-relaxed">
+                  "{localOrder.notes}"
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── Middle section (2 Columns side-by-side) ── */}
           <div className="flex flex-col lg:flex-row p-5 gap-5 items-start">
             {/* Left Column: Items Table List */}

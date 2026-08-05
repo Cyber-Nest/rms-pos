@@ -285,9 +285,16 @@ export const usePosStore = create<PosState>((set, get) => ({
         note: note || item.note,
       };
     } else {
+      const catObj = get().categories.find(
+        (c) => c.id === menuItem.categoryId || c.name === menuItem.categoryId
+      );
+      const categoryName = catObj?.name || (menuItem as any).categoryName || (menuItem as any).category || "";
+
       const newItem: CartItem = {
         id: cartItemId,
         menuItemId: menuItem.id,
+        categoryId: menuItem.categoryId,
+        categoryName: categoryName,
         name: menuItem.name,
         image: menuItem.image,
         basePrice: menuItem.price,
