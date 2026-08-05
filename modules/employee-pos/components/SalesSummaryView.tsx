@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { 
   Printer, Calendar, SlidersHorizontal, RefreshCw, PlusCircle, 
-  Receipt, DollarSign, ArrowUpRight, CheckCircle, XCircle, FileText, Truck
+  Receipt, DollarSign, ArrowUpRight, CheckCircle, XCircle, FileText, Truck, Tag
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -278,6 +278,44 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
             </div>
           </div>
 
+          {/* 1.5. PROMO CODE & DISCOUNT SUMMARY */}
+          <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
+            <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
+              <span>Promo Code & Discount Summary</span>
+              <Tag size={14} />
+            </div>
+            <table className="w-full text-left text-[12px]">
+              <thead>
+                <tr className="bg-neutral-100/80 text-neutral-600 font-800 text-[10px] uppercase tracking-wider border-b border-neutral-200/80">
+                  <th className="py-2 px-4">Promo Code</th>
+                  <th className="py-2 px-4 text-center">Redeemed</th>
+                  <th className="py-2 px-4 text-right">Total Discount ($)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200/60 font-650 text-neutral-800">
+                {financials.promoSummary && financials.promoSummary.length > 0 ? (
+                  financials.promoSummary.map((promo: any) => (
+                    <tr key={promo.code}>
+                      <td className="py-2 px-4 font-mono font-800 text-neutral-900">{promo.code}</td>
+                      <td className="py-2 px-4 text-center font-700">{promo.count} times</td>
+                      <td className="py-2 px-4 text-right font-800 text-amber-600">-${Number(promo.totalDiscount).toFixed(2)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="py-4 text-center text-neutral-400 text-[11px] font-600 italic">
+                      No promo codes redeemed for this period
+                    </td>
+                  </tr>
+                )}
+                <tr className="bg-neutral-900 text-white font-900">
+                  <td className="py-2.5 px-4 uppercase text-[10.5px]" colSpan={2}>Total Discount Given</td>
+                  <td className="py-2.5 px-4 text-right text-sm text-amber-400 font-900">-${financials.discount.toFixed(2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           {/* 2. SALES RECEIVED (Left Table) */}
           <div className="bg-white border border-neutral-200 rounded-xl shadow-xs overflow-hidden">
             <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider">
@@ -479,9 +517,16 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td colSpan={2} className="py-3 px-4 text-center text-neutral-400 font-600">No Record Found.</td>
-                </tr>
+                {refundOrders && refundOrders.count > 0 ? (
+                  <tr className="font-650 text-neutral-800">
+                    <td className="py-2.5 px-4 text-center font-800 bg-neutral-50">{refundOrders.count}</td>
+                    <td className="py-2.5 px-4 text-right font-800 text-rose-600">${refundOrders.totalAmount.toFixed(2)}</td>
+                  </tr>
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="py-3 px-4 text-center text-neutral-400 font-600">No Record Found.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

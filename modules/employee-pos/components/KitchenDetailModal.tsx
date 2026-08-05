@@ -9,6 +9,8 @@ import {
   Plus,
   Minus,
   RefreshCw,
+  AlertTriangle,
+  FileText,
 } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -98,6 +100,11 @@ export default function KitchenDetailModal({
   const [localOrder, setLocalOrder] = useState<Order | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editItems, setEditItems] = useState<any[]>([]);
+
+  // Cancel Modal State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   const isItemVisible = (item: any) => {
     if (!categoryFilter || categoryFilter === "all") return true;
@@ -588,14 +595,31 @@ export default function KitchenDetailModal({
 
   // Cancel order
   const executeCancelOrder = async () => {
-    setUpdating(true);
+    if (cancelling || isDraft || !localOrder) return;
+    setCancelling(true);
     try {
+      let activeEmpName = "Manager";
+      if (typeof window !== "undefined") {
+        const rawEmp = localStorage.getItem("rms_active_employee");
+        if (rawEmp) {
+          try {
+            const emp = JSON.parse(rawEmp);
+            if (emp && emp.name) activeEmpName = emp.name;
+          } catch (e) {}
+        }
+      }
+
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-      const res = await axios.delete(`${apiUrl}/orders/${localOrder._id}`);
+      const res = await axios.post(`${apiUrl}/orders/${localOrder._id}/cancel`, {
+        reason: cancelReason,
+        userName: activeEmpName,
+      });
 
       if (res.data.success) {
         toast.success("Order cancelled successfully.");
+        setShowCancelModal(false);
+        setCancelReason("");
         onStatusChange();
         onClose();
       } else {
@@ -606,45 +630,13 @@ export default function KitchenDetailModal({
         err.response?.data?.message || err.message || "Failed to cancel order",
       );
     } finally {
-      setUpdating(false);
+      setCancelling(false);
     }
   };
 
   const handleCancelOrder = () => {
     if (isDraft || !localOrder) return;
-
-    toast(
-      (t) => (
-        <div className="flex flex-col gap-2 p-1.5 min-w-[220px]">
-          <p className="text-[11px] font-700 text-red-600 uppercase tracking-wide">
-            Confirm Cancellation
-          </p>
-          <p className="text-[10px] text-neutral-500 font-500">
-            Are you sure you want to CANCEL order {localOrder.orderNumber}?
-          </p>
-          <div className="flex justify-end gap-2 mt-1.5">
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="px-2.5 py-1 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[10px] font-700 transition-all cursor-pointer border border-neutral-200"
-            >
-              No, Keep it
-            </button>
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                executeCancelOrder();
-              }}
-              className="px-2.5 py-1 rounded bg-[#DC2626] hover:bg-red-700 text-white text-[10px] font-700 transition-all cursor-pointer"
-            >
-              Yes, Cancel
-            </button>
-          </div>
-        </div>
-      ),
-      {
-        duration: 10000,
-      },
-    );
+    setShowCancelModal(true);
   };
 
   const handlePrintInvoice = async () => {
@@ -950,6 +942,21 @@ export default function KitchenDetailModal({
 
         {/* ── Scrollable Body Wrapper ── */}
         <div className="flex-1 overflow-y-auto bg-brand-bg flex flex-col min-h-0">
+          {/* Order Level Delivery Instructions Note */}
+          {localOrder.notes && (
+            <div className="mx-5 mt-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-950 font-sans">
+              <FileText size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-900 text-amber-800 uppercase tracking-wider">
+                  {localOrder.orderType === 'delivery' ? 'Delivery Instructions Note:' : 'Customer Order Note:'}
+                </p>
+                <p className="text-xs font-700 mt-0.5 leading-relaxed">
+                  "{localOrder.notes}"
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── Middle section (2 Columns side-by-side) ── */}
           <div className="flex flex-col lg:flex-row p-5 gap-5 items-start">
             {/* Left Column: Items Table List */}
@@ -1487,6 +1494,65 @@ export default function KitchenDetailModal({
           </div>
         </div>
       </div>
+
+      {/* ── Cancel Order Confirmation Dialog Modal ── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/70 p-4 animate-fade-in font-sans">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 border border-neutral-200 animate-scale-up">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-900 text-neutral-900 leading-tight">Confirm Order Cancellation</h3>
+                <p className="text-[11px] text-neutral-500 font-500">Order {localOrder.orderNumber} · Total ${localOrder.total.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-700 text-neutral-700 block">
+                Cancellation Reason (Optional)
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Item unavailable, Customer request, Wrong entry..."
+                rows={3}
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 text-[12px] text-neutral-800 focus:outline-none focus:border-red-500 resize-none font-sans"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelReason('');
+                }}
+                disabled={cancelling}
+                className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                onClick={executeCancelOrder}
+                disabled={cancelling}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer shadow-sm shadow-red-500/30 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {cancelling ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>Cancelling...</span>
+                  </>
+                ) : (
+                  <span>Confirm Cancel</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

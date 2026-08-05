@@ -104,6 +104,14 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
           </p>
         </div>
 
+        {/* Customer Delivery Notes */}
+        {order.notes && (
+          <div className="border border-black p-2 my-2 text-center text-[10.5px] font-800 leading-snug uppercase">
+            <p className="underline mb-0.5">NOTE / DELIVERY INSTRUCTIONS:</p>
+            <p className="font-900">"{order.notes}"</p>
+          </div>
+        )}
+
         {/* Items Table Header */}
         <div className="border-t border-b border-dashed border-neutral-800 py-1.5 my-2 font-800 text-[10.5px] grid grid-cols-12 uppercase">
           <span className="col-span-7">ITEMS</span>

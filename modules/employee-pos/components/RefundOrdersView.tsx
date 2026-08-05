@@ -62,8 +62,8 @@ export default function RefundOrdersView({
   // ── Filter Refunded/Cancelled Transactions ──
   const filteredRefundOrders = useMemo(() => {
     return orders.filter((order) => {
-      // 1. Must be cancelled to show in refund lists (representing refunded state)
-      const isRefunded = order.status === 'cancelled';
+      // 1. Must be refunded or cancelled to show in refund lists
+      const isRefunded = order.paymentStatus === 'refunded' || order.status === 'cancelled';
       if (!isRefunded) return false;
 
       // 2. Date filter (if selectedDate is set)
