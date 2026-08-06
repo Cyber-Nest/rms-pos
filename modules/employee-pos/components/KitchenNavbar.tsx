@@ -93,7 +93,7 @@ export default function KitchenNavbar({ activePendingCount, activeConfirmedCount
 
         {/* Orders Link */}
         {/* Orders Link */}
-        {(!activeEmployee || activeEmployee.role === 'manager' || ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'].some(k => activeEmployee.permissions?.[k] === true)) && (
+        {(!activeEmployee || activeEmployee.role === 'manager' || ['orders', 'orders_list', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'].some(k => activeEmployee.permissions?.[k] === true)) && (
           <a
             href="/employee/orders"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50 text-[12px] font-600 text-neutral-700 hover:border-brand-primary/30 hover:bg-brand-primary-light hover:text-brand-primary transition-all cursor-pointer"

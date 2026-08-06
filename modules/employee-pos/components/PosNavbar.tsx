@@ -164,7 +164,7 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
     if (link.key === 'pos') return true;
     const perms = activeEmployee.permissions || {};
     if (link.key === 'orders') {
-      const orderSubTabKeys = ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'];
+      const orderSubTabKeys = ['orders', 'orders_list', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'];
       return orderSubTabKeys.some(k => perms[k] === true);
     }
     return perms[link.key] === true;
