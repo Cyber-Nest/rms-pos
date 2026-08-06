@@ -129,7 +129,7 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
     // Non-manager employee: check employee permissions object
     const perms = activeEmployee.permissions || {};
     if (item.key === 'transactions' || item.key === 'orders') {
-      const orderSubTabKeys = ['orders', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'];
+      const orderSubTabKeys = ['orders', 'orders_list', 'dashboard', 'sales_summary', 'expense_payout', 'reports', 'item_sales', 'hourly_sales', 'cash_out_summary', 'monthly_sales_summary', 'failed_transaction', 'refund_orders'];
       return orderSubTabKeys.some(k => perms[k] === true);
     }
     return perms[item.key] === true;

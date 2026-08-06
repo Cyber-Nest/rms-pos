@@ -8,6 +8,7 @@ import axios from "axios";
 // All Orders sub-tabs that require their own permission key
 const ORDERS_SUBTAB_KEYS = [
   "dashboard",
+  "orders_list",
   "sales_summary",
   "expense_payout",
   "reports",
