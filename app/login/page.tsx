@@ -36,19 +36,44 @@ export default function BranchLoginPage() {
 
   // ── Check master session on load ─────────────────────────────────────────
   const checkMasterSession = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
+    const rawBranch = localStorage.getItem('rms_branch');
+    const isImp = localStorage.getItem('rms_superadmin_impersonation') === 'true';
+    let token = '';
+    if (rawBranch) {
+      try {
+        const parsed = JSON.parse(rawBranch);
+        token = parsed.token || '';
+        if (parsed.name) setMasterBranchName(parsed.name);
+      } catch (e) {}
+    }
+
+    if (!token && !isImp) {
+      setMasterActive(false);
+      return;
+    }
+
     try {
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await axios.get(`${API_URL}/branches/check-session`, {
+        headers,
         withCredentials: true,
         timeout: 4000,
       });
       if (res.data.success) {
         setMasterActive(true);
-        setMasterBranchName(res.data.data?.name || '');
+        if (res.data.data?.name) setMasterBranchName(res.data.data.name);
         setActiveTab('staff'); // Auto-switch to Staff tab if master is already logged in
       } else {
         setMasterActive(false);
       }
     } catch {
+      // If server token validation fails, clear client storage
+      localStorage.removeItem('rms_branch');
+      localStorage.removeItem('rms_superadmin_impersonation');
       setMasterActive(false);
     }
   }, [API_URL]);
