@@ -29,7 +29,6 @@ function ImpersonateContent() {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
         const res = await axios.get(`${API_URL}/branches/verify-impersonation`, {
           params: { ticket },
-          withCredentials: true,
         });
 
         if (res.data.success && res.data.data) {
