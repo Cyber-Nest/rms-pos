@@ -21,14 +21,12 @@ interface OnlineOrder {
 
 export default function OnlineOrderBanner() {
   const [activeOrder, setActiveOrder] = useState<OnlineOrder | null>(null);
-  const [timeLeft, setTimeLeft] = useState(30); // 30 seconds timer
+  const [timeLeft, setTimeLeft] = useState(30);
 
-  // Programmatic bell chime notification sound
   const playChime = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       
-      // Note 1 (D5)
       const osc1 = audioCtx.createOscillator();
       const gain1 = audioCtx.createGain();
       osc1.connect(gain1);
@@ -40,7 +38,6 @@ export default function OnlineOrderBanner() {
       osc1.start(audioCtx.currentTime);
       osc1.stop(audioCtx.currentTime + 0.2);
 
-      // Note 2 (A5, slightly delayed)
       setTimeout(() => {
         const osc2 = audioCtx.createOscillator();
         const gain2 = audioCtx.createGain();
@@ -58,28 +55,37 @@ export default function OnlineOrderBanner() {
     }
   };
 
-  // Subscribe to Pusher
   useEffect(() => {
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const bStr = localStorage.getItem('rms_branch');
+      if (bStr) {
+        try {
+          const b = JSON.parse(bStr);
+          branchId = b._id || b.id;
+        } catch (e) {}
+      }
+    }
+
+    const channelName = branchId ? `orders-${branchId}` : 'orders';
     const pusher = getPusherClient();
-    const channel = pusher.subscribe('orders');
+    const channel = pusher.subscribe(channelName);
 
     channel.bind('new-order', (data: any) => {
-      // ONLY trigger banner for Online Orders
       if (data.orderSource === 'online') {
         console.log('Online order received in POS banner:', data);
         setActiveOrder(data);
-        setTimeLeft(30); // Reset timer to 30 seconds
-        playChime(); // Play the audio alert
+        setTimeLeft(30);
+        playChime();
       }
     });
 
     return () => {
       channel.unbind_all();
-      pusher.unsubscribe('orders');
+      pusher.unsubscribe(channelName);
     };
   }, []);
 
-  // Timer Countdown Logic
   useEffect(() => {
     if (!activeOrder) return;
 
@@ -97,7 +103,6 @@ export default function OnlineOrderBanner() {
 
   if (!activeOrder) return null;
 
-  // Format Scheduled Date Time if present
   const formatScheduledTime = (isoString?: string | null) => {
     if (!isoString) return '';
     try {
@@ -136,10 +141,8 @@ export default function OnlineOrderBanner() {
         }
       `}</style>
       <div className="fixed top-20 right-5 z-50 max-w-[320px] w-full banner-animate select-none">
-        {/* Main Card Container */}
         <div className="relative bg-white text-neutral-800 rounded-xl border border-neutral-200 shadow-xl overflow-hidden">
           
-          {/* Header Row */}
           <div className="px-4 py-2.5 bg-neutral-50 flex items-center justify-between border-b border-neutral-200/50">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -158,10 +161,8 @@ export default function OnlineOrderBanner() {
             </button>
           </div>
 
-          {/* Body Content */}
           <div className="p-4 space-y-3">
             
-            {/* Title & Type */}
             <div className="flex justify-between items-center">
               <h4 className="text-[15px] font-900 text-neutral-900 leading-none">
                 Order #{activeOrder.orderNumber}
@@ -175,7 +176,6 @@ export default function OnlineOrderBanner() {
               </span>
             </div>
 
-            {/* Scheduled Date Time */}
             {activeOrder.orderTiming === 'later' && activeOrder.scheduledAt && (
               <div className="flex items-center gap-2 text-[11px] text-rose-700 bg-rose-50/50 p-2.5 rounded-lg border border-rose-100/60">
                 <Calendar size={12} className="stroke-[2.5] text-rose-600 flex-shrink-0" />
@@ -183,7 +183,6 @@ export default function OnlineOrderBanner() {
               </div>
             )}
 
-            {/* Items Summary list */}
             <div className="space-y-1.5 pt-0.5">
               <span className="text-[9px] font-800 tracking-wider text-neutral-400 uppercase flex items-center gap-1.5 mb-1">
                 <ShoppingBag size={11} className="stroke-[2.5]" /> Meals & Items
@@ -202,7 +201,6 @@ export default function OnlineOrderBanner() {
 
           </div>
 
-          {/* Progress countdown bar */}
           <div className="w-full bg-neutral-100 h-1">
             <div 
               className="bg-rose-600 h-full transition-all duration-1000 ease-linear"

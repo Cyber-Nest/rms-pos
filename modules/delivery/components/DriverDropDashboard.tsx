@@ -554,6 +554,11 @@ export default function DriverDropDashboard() {
       const res = await axios.post(
         `${apiUrl}/delivery/driver-drop/settle`,
         payload,
+        {
+          params: { branchId },
+          headers: { "x-branch-id": branchId },
+          withCredentials: true,
+        }
       );
       if (res.data.success) {
         toast.success(

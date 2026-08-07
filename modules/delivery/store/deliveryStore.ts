@@ -287,10 +287,11 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   assignDriver: async (orderId, driverId) => {
     try {
+      const config = getBranchConfig();
       const res = await axios.post(`${API_URL}/delivery/assign`, {
         orderId,
         driverId,
-      });
+      }, config);
       if (res.data.success) {
         // Re-fetch to sync state across dashboard
         await Promise.all([get().fetchOrders(), get().fetchDrivers()]);
@@ -398,7 +399,8 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   markDriverAvailable: async (driverId) => {
     try {
-      const res = await axios.post(`${API_URL}/delivery/driver/${driverId}/complete-active`);
+      const config = getBranchConfig();
+      const res = await axios.post(`${API_URL}/delivery/driver/${driverId}/complete-active`, {}, config);
       if (res.data.success) {
         await Promise.all([get().fetchDrivers(), get().fetchOrders()]);
       }
