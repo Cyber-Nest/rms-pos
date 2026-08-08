@@ -29,6 +29,7 @@ export interface Vehicle {
 }
 
 export interface Driver {
+  isDutyOnline(isDutyOnline: any): boolean;
   id: string;
   _id?: string;
   driverId?: string;

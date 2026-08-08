@@ -345,7 +345,14 @@ export default function CreateEmployeeModal({
                     <input
                       type="text"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      maxLength={14}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        if (!digits) setPhone("");
+                        else if (digits.length <= 3) setPhone(`(${digits}`);
+                        else if (digits.length <= 6) setPhone(`(${digits.slice(0, 3)}) ${digits.slice(3)}`);
+                        else setPhone(`(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`);
+                      }}
                       placeholder="(587) 365-5401"
                       className="w-full pl-8 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs font-600 text-neutral-800 focus:outline-none focus:border-brand-primary focus:bg-white transition-all"
                     />

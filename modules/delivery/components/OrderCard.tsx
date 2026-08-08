@@ -262,18 +262,40 @@ export default function OrderCard({ order }: OrderCardProps) {
 
         {order.status === "en-route" && assignedDriver && (
           <div className="flex items-center justify-between w-full mt-1.5 animate-fade-in">
-            {/* Left side: Driver details */}
-            <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700 min-w-0 mr-2">
-              <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-red-600" />
-              <span className="truncate max-w-[120px] font-bold">
-                {assignedDriver.name} {assignedDriver.driverId ? `(#${assignedDriver.driverId})` : ""}
-              </span>
-              {assignedDriver.assignedVehicle && (
-                <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider">
-                  V#{assignedDriver.assignedVehicle.number}
-                </span>
-              )}
-            </div>
+            {/* Left side: Driver details & Online/Offline status */}
+            {(() => {
+              const isDriverOnline =
+                assignedDriver.status === "available" ||
+                assignedDriver.status === "on-delivery" ||
+                Boolean(assignedDriver.isDutyOnline);
+              return (
+                <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700 min-w-0 mr-2">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      isDriverOnline ? "bg-green-600 animate-pulse" : "bg-red-600"
+                    }`}
+                  />
+                  <span className="truncate max-w-[110px] font-bold">
+                    {assignedDriver.name}{" "}
+                    {assignedDriver.driverId ? `(#${assignedDriver.driverId})` : ""}
+                  </span>
+                  <span
+                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                      isDriverOnline
+                        ? "text-green-700 bg-green-50 border border-green-200"
+                        : "text-neutral-500 bg-neutral-100 border border-neutral-200"
+                    }`}
+                  >
+                    {isDriverOnline ? "Online" : "Offline"}
+                  </span>
+                  {assignedDriver.assignedVehicle && (
+                    <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider">
+                      V#{assignedDriver.assignedVehicle.number}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Right side: Unassign & Mark Delivered buttons side-by-side */}
             <div className="flex items-center gap-2 shrink-0">
