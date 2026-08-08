@@ -263,36 +263,54 @@ export default function DriverDropDashboard() {
       };
     }
 
+    const totalOrders = orders.length;
+    const calcSales = orders.reduce((sum, o) => sum + o.total, 0);
+    const calcPrepaidSales = orders.filter((o) => o.pd === "PP").reduce((sum, o) => sum + o.total, 0);
+    const calcPrepaidTips = orders.reduce((sum, o) => sum + (o.prepaidTip || 0), 0);
+    const calcTerminalSales = orders.filter((o) => o.pd === "TM").reduce((sum, o) => sum + o.total, 0);
+    const calcTerminalTips = orders.reduce((sum, o) => sum + (o.terminalTip || 0), 0);
+    const calcCashSales = orders.filter((o) => o.pd === "CS").reduce((sum, o) => sum + o.total, 0);
+    const calcBaseCommission = totalOrders * 6.0;
+
     if (selectedDriver?.isSettled && selectedDriver?.settlementSummary) {
       const s = selectedDriver.settlementSummary;
+      const prepaidSales = s.prepaidSales ?? calcPrepaidSales;
+      const prepaidTips = s.prepaidTips ?? calcPrepaidTips;
+      const totalSales = s.totalSales ?? calcSales;
+      const terminalSales = s.terminalSales ?? calcTerminalSales;
+      const terminalTips = s.terminalTips ?? calcTerminalTips;
+      const cashSales = s.cashSales ?? calcCashSales;
+      const baseComm = s.driverBaseCommission || (totalOrders * 6.0);
+      const extraComm = s.additionalCommission || 0;
+      const totalComm = s.driverTotalCommission || (baseComm + extraComm);
+      const tipsEarned = s.totalTipsEarned ?? (prepaidTips + terminalTips);
+      const totalEarning = s.totalDriverEarning || (totalComm + tipsEarned);
+
       return {
-        totalOrders: s.totalOrders || orders.length,
+        totalOrders: s.totalOrders || totalOrders,
         totalCancels: 0,
-        totalSales: s.totalSales || 0,
-        prepaidSales: s.prepaidSales || 0,
-        prepaidTips: s.prepaidTips || 0,
-        totalNewSales: s.totalNewSales || 0,
-        terminalSales: s.terminalSales || 0,
-        terminalTips: s.terminalTips || 0,
-        cashSales: s.cashSales || 0,
+        totalSales,
+        prepaidSales,
+        prepaidTips,
+        totalNewSales: s.totalNewSales ?? Math.max(0, totalSales - prepaidSales - prepaidTips),
+        terminalSales,
+        terminalTips,
+        cashSales,
         saleDue: s.saleDue || 0,
-        driverBaseCommission: s.driverBaseCommission || ((s.totalOrders || 0) * 6),
-        driverAdditionalCommission: s.additionalCommission || 0,
-        driverTotalCommission: s.driverTotalCommission || ((s.driverBaseCommission || 0) + (s.additionalCommission || 0)),
-        totalTipsEarned: s.totalTipsEarned || 0,
-        totalDriverEarning: s.totalDriverEarning || 0,
-        netCashPayoutToDriver: s.netCashPayoutToDriver || s.totalDriverEarning || 0,
+        driverBaseCommission: baseComm,
+        driverAdditionalCommission: extraComm,
+        driverTotalCommission: totalComm,
+        totalTipsEarned: tipsEarned,
+        totalDriverEarning: totalEarning,
+        netCashPayoutToDriver: s.netCashPayoutToDriver || totalEarning,
         ratePerOrder: 6.0,
       };
     }
 
-    const totalOrders = orders.length;
     const totalCancels = 0;
-    const totalSales = orders.reduce((sum, o) => sum + o.total, 0);
-
-    const prepaidOrders = orders.filter((o) => o.pd === "PP");
-    const prepaidSales = prepaidOrders.reduce((sum, o) => sum + o.total, 0);
-    const prepaidTips = orders.reduce((sum, o) => sum + o.prepaidTip, 0);
+    const totalSales = calcSales;
+    const prepaidSales = calcPrepaidSales;
+    const prepaidTips = calcPrepaidTips;
 
     const totalNewSales = totalSales - prepaidSales - prepaidTips;
 

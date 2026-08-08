@@ -303,9 +303,12 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   unassignDriver: async (orderId) => {
     try {
-      const res = await axios.post(`${API_URL}/delivery/unassign`, {
-        orderId,
-      });
+      const config = getBranchConfig();
+      const res = await axios.post(
+        `${API_URL}/delivery/unassign`,
+        { orderId },
+        config
+      );
       if (res.data.success) {
         await Promise.all([get().fetchOrders(), get().fetchDrivers()]);
       }
@@ -316,11 +319,16 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   markDelivered: async (orderId) => {
     try {
+      const config = getBranchConfig();
       // Find assignment for this order first
       const resTrack = await axios.get(`${API_URL}/delivery/track/${orderId}`);
       if (resTrack.data.success && resTrack.data.data.assigned) {
         const assignmentId = resTrack.data.data.assignmentId;
-        const resDeliver = await axios.patch(`${API_URL}/delivery/driver/deliver/${assignmentId}`);
+        const resDeliver = await axios.patch(
+          `${API_URL}/delivery/driver/deliver/${assignmentId}`,
+          {},
+          config
+        );
         if (resDeliver.data.success) {
           await Promise.all([get().fetchOrders(), get().fetchDrivers()]);
         }
