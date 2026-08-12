@@ -37,7 +37,12 @@ export default function StoreQrModal({ isOpen, onClose }: StoreQrModalProps) {
           setIsLoading(true);
 
           // Fetch signed HMAC QR token from backend
-          const token = localStorage.getItem("rms_branch_token");
+          const getCookie = (name: string) =>
+            document.cookie
+              .split("; ")
+              .find((row) => row.startsWith(`${name}=`))
+              ?.split("=")[1] ?? null;
+          const token = getCookie("rms_branch_token");
 
           fetch(`${apiUrl}/delivery/qr-token/${branchId}`, {
             credentials: "include",
