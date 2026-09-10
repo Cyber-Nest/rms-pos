@@ -732,6 +732,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       discount,
       discountType,
       promoCode,
+      promoApplyCount: appliedPromo?.applyCount || 1,
       total,
       paymentTiming,
       paymentType,

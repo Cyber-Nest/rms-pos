@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Tag, Percent, DollarSign, CheckCircle } from 'lucide-react';
+import { X, Tag, Percent, DollarSign, CheckCircle, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { usePosStore } from '../store/pos.store';
 
@@ -18,10 +18,91 @@ export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountMod
 
   const [mode, setMode] = useState<Mode>('promo');
   const [promoCode, setPromoCode] = useState('');
+  const [applyCount, setApplyCount] = useState<number>(1);
   const [discountSubType, setDiscountSubType] = useState<DiscountSubType>('flat');
   const [discountValue, setDiscountValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [availablePromos, setAvailablePromos] = useState<string[]>([]);
+  const [fetchingPromos, setFetchingPromos] = useState(false);
+
+  const totalCartItemsCount = React.useMemo(() => {
+    return (cartItems || []).reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+  }, [cartItems]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    if (totalCartItemsCount <= 1) {
+      setApplyCount(1);
+    } else if (applyCount > totalCartItemsCount) {
+      setApplyCount(totalCartItemsCount);
+    }
+  }, [isOpen, totalCartItemsCount]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    let branchId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      const rawBranch = localStorage.getItem('rms_branch');
+      if (rawBranch) {
+        try {
+          const b = JSON.parse(rawBranch);
+          branchId = b._id || b.id || b.branchId;
+        } catch (e) {}
+      }
+    }
+
+    const fetchPromos = async () => {
+      setFetchingPromos(true);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const res = await axios.get(`${apiUrl}/promos`, {
+          params: {
+            status: 'active',
+            channel: 'pos',
+            branchId: branchId || '',
+            fields: 'code,applicableChannel,applicableBranchScope,branchIds,startDate,expiresAt,usageLimit,usedCount,isActive',
+            limit: 100,
+          },
+        });
+        if (res.data?.success && Array.isArray(res.data?.data?.promos)) {
+          const now = new Date();
+          const validCodes = res.data.data.promos
+            .filter((p: any) => {
+              if (!p.isActive) return false;
+              if (p.applicableChannel !== 'both' && p.applicableChannel !== 'pos') return false;
+              if (p.startDate && now < new Date(p.startDate)) return false;
+              if (p.expiresAt && now > new Date(p.expiresAt)) return false;
+              if (p.usageLimit !== null && p.usedCount >= p.usageLimit) return false;
+
+              // Branch scope filtering: only show promo if applicable to all branches OR current branch matches
+              if (
+                p.applicableBranchScope === 'specific_branches' &&
+                Array.isArray(p.branchIds) &&
+                p.branchIds.length > 0
+              ) {
+                if (!branchId) return false;
+                const match = p.branchIds.some(
+                  (b: any) => String(b).toLowerCase() === String(branchId).toLowerCase()
+                );
+                if (!match) return false;
+              }
+              return true;
+            })
+            .map((p: any) => p.code);
+
+          setAvailablePromos(validCodes);
+        }
+      } catch (err) {
+        console.warn('Failed to load active promos for POS:', err);
+      } finally {
+        setFetchingPromos(false);
+      }
+    };
+
+    fetchPromos();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -53,6 +134,7 @@ export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountMod
         branchId,
         subtotal,
         items: cartItems,
+        applyCount,
       });
       if (res.data.success) {
         applyPromo(res.data.data);
@@ -62,7 +144,6 @@ export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountMod
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to validate promo code.';
-      // Try to get axios response error
       const axiosErr = err as { response?: { data?: { message?: string } } };
       setError(axiosErr?.response?.data?.message || msg);
     } finally {
@@ -137,7 +218,9 @@ export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountMod
                 <CheckCircle size={14} className="text-green-600 flex-shrink-0" />
                 <div>
                   <p className="text-[11px] font-700 text-green-800">
-                    {appliedPromo ? `Promo "${appliedPromo.code}" applied` : 'Manual discount applied'}
+                    {appliedPromo
+                      ? `Promo "${appliedPromo.code}"${appliedPromo.applyCount && appliedPromo.applyCount > 1 ? ` (${appliedPromo.applyCount}x)` : ''} applied`
+                      : 'Manual discount applied'}
                   </p>
                   <p className="text-[10px] text-green-600">
                     {appliedPromo
@@ -177,18 +260,82 @@ export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountMod
             </div>
           </div>
 
-          {/* Promo Code Input */}
+          {/* Promo Code Input & Suggested Promo Code Badges */}
           {mode === 'promo' && (
-            <div className="space-y-2">
-              <label className="block text-[10px] font-600 text-neutral-600 uppercase tracking-wide">Promo Code</label>
-              <input
-                type="text"
-                placeholder="Enter Promo Code"
-                value={promoCode}
-                onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setError(''); }}
-                onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
-                className="w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-[12px] font-600 text-neutral-800 bg-neutral-50 focus:outline-none focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/10 tracking-widest placeholder:tracking-normal placeholder:font-400 placeholder:text-neutral-400 transition-all"
-              />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-600 text-neutral-600 uppercase tracking-wide">Promo Code</label>
+                <input
+                  type="text"
+                  placeholder="Enter Promo Code"
+                  value={promoCode}
+                  onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setError(''); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
+                  className="w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-[12px] font-600 text-neutral-800 bg-neutral-50 focus:outline-none focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/10 tracking-widest placeholder:tracking-normal placeholder:font-400 placeholder:text-neutral-400 transition-all"
+                />
+              </div>
+
+              {/* Apply Count (Multiplier) Quantity Control - Only show if > 1 items in cart */}
+              {totalCartItemsCount > 1 && (
+                <div className="flex items-center justify-between bg-neutral-50 p-2.5 rounded-xl border border-neutral-200">
+                  <div>
+                    <span className="text-[11px] font-700 text-neutral-800 block">Apply Quantity</span>
+                    <span className="text-[9.5px] text-neutral-400">
+                      Apply up to {totalCartItemsCount} times ({totalCartItemsCount} items in cart)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white border border-neutral-200 rounded-lg p-1">
+                    <button
+                      type="button"
+                      onClick={() => setApplyCount((prev) => Math.max(1, prev - 1))}
+                      disabled={applyCount <= 1}
+                      className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold bg-neutral-100 hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed text-neutral-700 cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <span className="w-7 text-center font-mono font-bold text-xs text-neutral-900">{applyCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => setApplyCount((prev) => Math.min(totalCartItemsCount, prev + 1))}
+                      disabled={applyCount >= totalCartItemsCount}
+                      className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold bg-neutral-100 hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed text-neutral-700 cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Available Promo Code Names (Badges) with Loader */}
+              {fetchingPromos ? (
+                <div className="flex items-center gap-2 text-[11px] text-neutral-400 font-500 pt-1">
+                  <Loader2 size={13} className="animate-spin text-brand-primary" />
+                  <span>Loading available promo codes...</span>
+                </div>
+              ) : availablePromos.length > 0 ? (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[10px] font-600 text-neutral-400 uppercase tracking-wider">Available Promos</p>
+                  <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
+                    {availablePromos.map((code) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => {
+                          setPromoCode(code);
+                          setError('');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-800 tracking-wider uppercase border transition-all cursor-pointer ${
+                          promoCode === code
+                            ? 'bg-brand-primary text-white border-brand-primary shadow-xs'
+                            : 'bg-orange-50/70 border-orange-200/80 text-brand-primary hover:bg-orange-100/90 hover:border-brand-primary/40'
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 

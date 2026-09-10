@@ -79,7 +79,7 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
         </div>
 
         {/* Order Header */}
-        <div className="text-center space-y-1 mb-3">
+        <div className="text-center space-y-1 mb-2">
           <h1 className="text-lg font-900 tracking-tight uppercase">
             Order # : {order.orderNumber.replace(/^[#A-Za-z\-]+/, "")}
           </h1>
@@ -103,6 +103,52 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
             })()}
           </p>
         </div>
+
+        {/* Order Taken By (Left Aligned, Above Customer Details) */}
+        <div className="my-1.5 text-left text-[10px]">
+          <p className="font-700 text-neutral-800 uppercase">
+            Order Taken By : {(order as any).placedBy || (order as any).employeeName || (order as any).userName || "Manager"}
+          </p>
+        </div>
+
+        {/* Customer Details */}
+        {(() => {
+          const c = order.customer;
+          const hasValidDetails =
+            c &&
+            ((c.name && c.name.trim() !== "" && c.name.trim() !== "No Name") ||
+              (c.phone && c.phone.trim() !== "") ||
+              (c.address && c.address.trim() !== "") ||
+              (c.driverNotes && c.driverNotes.trim() !== ""));
+          if (!hasValidDetails) return null;
+          return (
+            <div className="border border-dashed border-neutral-400 p-2 my-2 text-left text-[10px] space-y-0.5">
+              <p className="font-800 uppercase text-[10.5px] mb-1 border-b border-dashed border-neutral-300 pb-0.5 text-left">
+                CUSTOMER DETAILS
+              </p>
+              {c.name && c.name.trim() !== "" && c.name.trim() !== "No Name" && (
+                <p className="font-700">
+                  Name : <span className="font-600">{c.name}</span>
+                </p>
+              )}
+              {c.phone && c.phone.trim() !== "" && (
+                <p className="font-700">
+                  Phone : <span className="font-600">{c.phone}</span>
+                </p>
+              )}
+              {c.address && c.address.trim() !== "" && (
+                <p className="font-700">
+                  Address : <span className="font-600">{c.address}{c.postalCode ? `, ${c.postalCode}` : ""}</span>
+                </p>
+              )}
+              {c.driverNotes && c.driverNotes.trim() !== "" && (
+                <p className="font-700">
+                  Driver Notes : <span className="font-600">{c.driverNotes}</span>
+                </p>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Customer Delivery Notes */}
         {order.notes && (
@@ -210,8 +256,8 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
           </div>
         </div>
 
-        {/* Transaction Record Section matching payment type */}
-        {(() => {
+        {/* Transaction Record Section matching payment type (Only rendered when PAID) */}
+        {order.paymentStatus === "paid" && (() => {
           const firstPayment =
             order.payments && order.payments.length > 0
               ? order.payments[0]
