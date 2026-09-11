@@ -183,13 +183,6 @@ export default function KitchenDetailModal({
   ) => {
     if (isDraft || !localOrder) return;
 
-    if (nextStatus === "completed" && localOrder.paymentStatus === "unpaid") {
-      toast.error(
-        "Cannot complete an unpaid order. Please collect payment and mark as Paid first.",
-      );
-      return;
-    }
-
     setUpdating(true);
     try {
       let activeEmpName = "Manager";

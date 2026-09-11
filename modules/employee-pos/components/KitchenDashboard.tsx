@@ -116,6 +116,74 @@ export default function KitchenDashboard() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  // ── Web Audio Kitchen Notification Bell/Chime Sound ──────────
+  const globalAudioCtxRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = () => {
+    if (typeof window === 'undefined') return null;
+    if (!globalAudioCtxRef.current) {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        globalAudioCtxRef.current = new AudioCtx();
+      }
+    }
+    if (globalAudioCtxRef.current && globalAudioCtxRef.current.state === 'suspended') {
+      globalAudioCtxRef.current.resume().catch(() => {});
+    }
+    return globalAudioCtxRef.current;
+  };
+
+  const playKitchenNotificationSound = () => {
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const playTone = (freq: number, startTime: number, duration: number, peakGain = 0.85, type: OscillatorType = 'triangle') => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0.01, startTime);
+        gain.gain.exponentialRampToValueAtTime(peakGain, startTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      const now = ctx.currentTime;
+
+      // 2-Tone Crisp Kitchen Chime (A5 = 880Hz, D6 = 1174.66Hz)
+      playTone(880, now, 0.25, 0.85, 'triangle');
+      playTone(1174.66, now + 0.12, 0.45, 0.90, 'sine');
+    } catch (err) {
+      console.warn('Audio playback error in kitchen notification:', err);
+    }
+  };
+
+  // Auto-unlock AudioContext on first user click/touch/keydown so background Pusher audio works 100% reliably
+  useEffect(() => {
+    const unlock = () => {
+      getAudioContext();
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('click', unlock);
+    window.addEventListener('touchstart', unlock);
+    window.addEventListener('keydown', unlock);
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
   // ── Pusher Real-time Listener ────────────────────────────────
   useEffect(() => {
     let branchId: string | undefined = undefined;
@@ -138,6 +206,8 @@ export default function KitchenDashboard() {
       console.log('Real-time order received via Pusher:', data);
       // Re-fetch all active orders in the background
       fetchOrders();
+      // Play audio notification chime
+      playKitchenNotificationSound();
       // Show visual notification toast
       toast.success(`New Order Received: ${data.orderNumber ? '#' + data.orderNumber : ''}`, {
         duration: 4000,
