@@ -42,14 +42,14 @@ export default function MenuCard({ item, onOpenModifiers }: MenuCardProps) {
       {/* Badge */}
       {item.badge && !isOutOfStock && (
         <span
-          className={`absolute top-2 left-2 z-10 text-[8px] font-700 uppercase tracking-wider px-1.5 py-0.5 rounded-md ${BADGE_STYLES[item.badge.toLowerCase()] ?? "bg-neutral-500 text-white"}`}
+          className={`absolute top-2 left-2 z-10 text-[9px] md:text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${BADGE_STYLES[item.badge.toLowerCase()] ?? "bg-neutral-500 text-white"}`}
         >
           {item.badge}
         </span>
       )}
 
       {/* Image */}
-      <div className="h-[90px] w-full overflow-hidden bg-neutral-100 relative flex-shrink-0">
+      <div className="h-[80px] sm:h-[90px] md:h-[100px] w-full overflow-hidden bg-neutral-100 relative flex-shrink-0">
         <img
           src={item.image || 'https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=150&auto=format&fit=crop&q=60'}
           alt={item.name}
@@ -61,7 +61,7 @@ export default function MenuCard({ item, onOpenModifiers }: MenuCardProps) {
         {/* Out of Stock Overlay */}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-neutral-900/50 z-20 flex items-center justify-center">
-            <span className="bg-neutral-800 text-white text-[9px] font-900 uppercase tracking-wider px-2 py-0.5 rounded-md border border-neutral-700/80 shadow-sm">
+            <span className="bg-neutral-800 text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border border-neutral-700/80 shadow-sm">
               Out of stock
             </span>
           </div>
@@ -84,33 +84,33 @@ export default function MenuCard({ item, onOpenModifiers }: MenuCardProps) {
       </div>
 
       {/* Body */}
-      <div className="p-2.5 flex-1 flex flex-col justify-between gap-1.5">
+      <div className="p-2 md:p-2.5 flex-1 flex flex-col justify-between gap-1.5">
         <div>
-          <h4 className={`text-[11px] font-700 leading-tight transition-colors line-clamp-1 ${isOutOfStock ? "text-neutral-450" : "text-neutral-800 group-hover:text-brand-primary"}`}>
+          <h4 className={`text-[12px] md:text-[13px] font-bold leading-tight transition-colors line-clamp-1 ${isOutOfStock ? "text-neutral-450" : "text-neutral-800 group-hover:text-brand-primary"}`}>
             {item.name}
           </h4>
-          <p className="text-[9px] text-neutral-400 font-400 leading-snug line-clamp-2 mt-0.5">
+          <p className="text-[10px] md:text-[10.5px] text-neutral-500 font-medium leading-snug line-clamp-2 mt-0.5">
             {item.description}
           </p>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className={`text-[12px] font-700 ${isOutOfStock ? "text-neutral-400" : "text-neutral-900"}`}>
+          <span className={`text-[13px] md:text-[14px] font-bold ${isOutOfStock ? "text-neutral-400" : "text-neutral-900"}`}>
             ${item.price.toFixed(2)}
           </span>
           {!isOutOfStock ? (
             <button
               onClick={handleAdd}
-              className="w-6 h-6 rounded-md border border-neutral-200 flex items-center justify-center text-neutral-400 group-hover:border-brand-primary group-hover:text-brand-primary hover:bg-orange-50 transition-all cursor-pointer active:scale-90"
+              className="w-7 h-7 md:w-7 md:h-7 rounded-md border border-neutral-200 flex items-center justify-center text-neutral-400 group-hover:border-brand-primary group-hover:text-brand-primary hover:bg-orange-50 transition-all cursor-pointer active:scale-90"
             >
               {hasModifiers ? (
-                <Plus size={11} strokeWidth={2.5} />
+                <Plus size={12} strokeWidth={2.5} />
               ) : (
-                <ShoppingCart size={11} strokeWidth={2} />
+                <ShoppingCart size={12} strokeWidth={2} />
               )}
             </button>
           ) : (
-            <span className="text-[8px] font-800 uppercase text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-200/50">
+            <span className="text-[8px] font-bold uppercase text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-200/50">
               Unavailable
             </span>
           )}

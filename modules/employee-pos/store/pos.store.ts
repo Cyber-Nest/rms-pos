@@ -171,9 +171,20 @@ const syncDraftCart = (
   window.dispatchEvent(new Event("storage"));
 };
 
+const getInitialCategory = (): string => {
+  if (typeof window !== "undefined") {
+    try {
+      return localStorage.getItem("rms_pos_selected_category") || "all";
+    } catch {
+      return "all";
+    }
+  }
+  return "all";
+};
+
 export const usePosStore = create<PosState>((set, get) => ({
   // ── Initial State ────────────────────────────────────────────
-  selectedCategory: "all",
+  selectedCategory: getInitialCategory(),
   search: "",
   sortBy: "popular",
   orderType: "takeout",
@@ -217,7 +228,14 @@ export const usePosStore = create<PosState>((set, get) => ({
   nextOrderNumber: "",
 
   // ── Menu ────────────────────────────────────────────────────
-  setCategory: (category) => set({ selectedCategory: category }),
+  setCategory: (category) => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("rms_pos_selected_category", category);
+      } catch {}
+    }
+    set({ selectedCategory: category });
+  },
   setSearch: (query) => set({ search: query }),
   setSort: (sort) => set({ sortBy: sort }),
 
@@ -732,6 +750,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       discount,
       discountType,
       promoCode,
+      promoApplyCount: appliedPromo?.applyCount || 1,
       total,
       paymentTiming,
       paymentType,

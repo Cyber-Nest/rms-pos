@@ -6,25 +6,65 @@ import { usePosStore } from '../store/pos.store';
 import CustomerModal from './CustomerModal';
 
 const ORDER_TYPES = [
-  { id: 'takeout',      label: 'Takeout'       },
-  { id: 'delivery',     label: 'Delivery'      },
-  { id: 'drive-through',label: 'Drive Thru'    },
-  { id: 'dine-in',      label: 'Dine In'       },
+  { id: 'takeout',       label: 'Takeout'    },
+  { id: 'delivery',      label: 'Delivery'   },
+  { id: 'drive-through', label: 'Drive Thru' },
+  { id: 'dine-in',       label: 'Dine In'    },
 ] as const;
 
 type OT = typeof ORDER_TYPES[number]['id'];
 
-export default function OrderTypePanel() {
+interface OrderTypePanelProps {
+  compact?: boolean;
+}
+
+export default function OrderTypePanel({ compact = false }: OrderTypePanelProps) {
   const { orderType, setOrderType, selectedCustomer, cartItems } = usePosStore();
   const [showCustomer, setShowCustomer] = useState(false);
 
   const handleTypeChange = (t: OT) => {
     setOrderType(t);
-    if (t === 'delivery')      setShowCustomer(true);
+    if (t === 'delivery') setShowCustomer(true);
   };
 
+  // Compact mode: horizontal row for tablet bottom bar
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2 w-full overflow-x-auto no-scrollbar py-1">
+        {ORDER_TYPES.map(({ id, label }) => {
+          const active = orderType === id;
+          return (
+            <button
+              key={id}
+              onClick={() => handleTypeChange(id)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg border text-[11px] font-600 tracking-wide transition-all cursor-pointer active:scale-95 ${
+                active
+                  ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
+                  : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50'
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setShowCustomer(true)}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-lg border text-[11px] font-600 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+            selectedCustomer
+              ? 'bg-orange-50 border-brand-primary text-brand-primary'
+              : 'bg-white border-neutral-200 text-neutral-700'
+          }`}
+        >
+          <UserPlus size={13} />
+          {selectedCustomer ? 'Edit Customer' : 'Add Customer'}
+        </button>
+        <CustomerModal isOpen={showCustomer} onClose={() => setShowCustomer(false)} />
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-3.5 flex flex-col h-full gap-3 select-none">
+    <div className="bg-white rounded-xl border border-neutral-200 p-3.5 flex flex-col h-full gap-3 select-none w-full">
 
       <div className="flex flex-col items-center gap-2">
         <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center border border-orange-100 flex-shrink-0">
@@ -41,7 +81,7 @@ export default function OrderTypePanel() {
             <path d="M60 18C60 16 62 14 62 12" stroke="#D6D3D1" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </div>
-        <p className="text-[11px] font-600 text-neutral-700 text-center leading-tight">Choose order type</p>
+        <p className="text-[12px] font-600 text-neutral-700 text-center leading-tight">Choose order type</p>
       </div>
 
       {/* ── Order Type Grid ── */}
@@ -52,7 +92,7 @@ export default function OrderTypePanel() {
             <button
               key={id}
               onClick={() => handleTypeChange(id)}
-              className={`py-2 px-1 rounded-lg border text-[10px] font-600 text-center tracking-wide transition-all relative ${
+              className={`py-2 px-1 rounded-lg border text-[11px] font-600 text-center tracking-wide transition-all relative ${
                 active
                   ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm cursor-pointer active:scale-95'
                   : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 cursor-pointer active:scale-95'
@@ -72,16 +112,16 @@ export default function OrderTypePanel() {
         <div className="rounded-lg border border-dashed border-neutral-200 p-2.5 bg-neutral-50/50">
           {cartItems.length === 0 ? (
             <div className="text-center space-y-0.5">
-              <p className="text-[10px] font-600 text-neutral-600">No order in process</p>
-              <p className="text-[9px] text-neutral-400 font-500">Select items from the menu.</p>
+              <p className="text-[11px] font-600 text-neutral-600">No order in process</p>
+              <p className="text-[10px] text-neutral-400 font-500">Select items from the menu.</p>
             </div>
           ) : (
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-green-600">
                 <Radio size={10} className="animate-pulse" />
-                <span className="text-[9px] font-700 uppercase tracking-wide">Order Active</span>
+                <span className="text-[10px] font-700 uppercase tracking-wide">Order Active</span>
               </div>
-              <p className="text-[9px] text-neutral-500 font-500">
+              <p className="text-[10px] text-neutral-500 font-500">
                 {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in {orderType} cart
               </p>
             </div>
@@ -91,13 +131,13 @@ export default function OrderTypePanel() {
           {orderType === 'delivery' && selectedCustomer && (
             <div className="mt-2 p-2 bg-orange-50 border border-orange-100 rounded-lg space-y-0.5">
               <div className="flex items-center gap-1 text-brand-primary">
-                <UserCheck size={10} />
-                <span className="text-[9px] font-700 uppercase">Customer Attached</span>
+                <UserCheck size={11} />
+                <span className="text-[10px] font-700 uppercase">Customer Attached</span>
               </div>
-              <p className="text-[9px] text-neutral-700 font-600">{selectedCustomer.name}</p>
-              <p className="text-[8.5px] text-neutral-500">{selectedCustomer.phone}</p>
+              <p className="text-[10px] text-neutral-700 font-600">{selectedCustomer.name}</p>
+              <p className="text-[9.5px] text-neutral-500">{selectedCustomer.phone}</p>
               {selectedCustomer.address && (
-                <p className="text-[8px] text-neutral-400 leading-tight truncate">{selectedCustomer.address}</p>
+                <p className="text-[9px] text-neutral-400 leading-tight truncate">{selectedCustomer.address}</p>
               )}
             </div>
           )}
@@ -106,13 +146,13 @@ export default function OrderTypePanel() {
           {orderType !== 'delivery' && selectedCustomer && (
             <div className="mt-2 p-2 bg-orange-50 border border-orange-100 rounded-lg space-y-0.5">
               <div className="flex items-center gap-1 text-brand-primary">
-                <UserCheck size={10} />
-                <span className="text-[9px] font-700 uppercase">Customer Attached</span>
+                <UserCheck size={11} />
+                <span className="text-[10px] font-700 uppercase">Customer Attached</span>
               </div>
-              <p className="text-[9px] text-neutral-700 font-600">{selectedCustomer.name}</p>
-              <p className="text-[8.5px] text-neutral-500">{selectedCustomer.phone}</p>
+              <p className="text-[10px] text-neutral-700 font-600">{selectedCustomer.name}</p>
+              <p className="text-[9.5px] text-neutral-500">{selectedCustomer.phone}</p>
               {selectedCustomer.address && (
-                <p className="text-[8px] text-neutral-400 leading-tight truncate">{selectedCustomer.address}</p>
+                <p className="text-[9px] text-neutral-400 leading-tight truncate">{selectedCustomer.address}</p>
               )}
             </div>
           )}
@@ -124,25 +164,25 @@ export default function OrderTypePanel() {
           {orderType !== 'delivery' && (
             <button
               onClick={() => setShowCustomer(true)}
-              className={`w-full py-1.5 px-2.5 rounded-lg border text-[10px] font-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+              className={`w-full py-2 px-2.5 rounded-lg border text-[11px] font-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
                 selectedCustomer
                   ? 'bg-orange-50 border-brand-primary text-brand-primary hover:bg-orange-100'
                   : 'bg-white border-neutral-200 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50'
               }`}
             >
-              <UserPlus size={12} />
+              <UserPlus size={13} />
               {selectedCustomer ? 'Edit Customer' : 'Add Customer Info'}
             </button>
           )}
 
           {/* Disabled buttons */}
           {[
-            { icon: <Compass size={12} />, label: 'Open Items' },
-            { icon: <Gift size={12} />,    label: 'Add Gift Card' },
+            { icon: <Compass size={13} />, label: 'Open Items' },
+            { icon: <Gift size={13} />,    label: 'Add Gift Card' },
             { icon: null,                  label: 'Send Tracker'  },
           ].map(({ icon, label }) => (
             <button key={label} disabled
-              className="w-full py-1.5 px-2.5 rounded-lg border border-neutral-100 bg-neutral-50 text-neutral-300 text-[10px] font-500 flex items-center justify-center gap-1.5 cursor-not-allowed"
+              className="w-full py-2 px-2.5 rounded-lg border border-neutral-100 bg-neutral-50 text-neutral-300 text-[11px] font-500 flex items-center justify-center gap-1.5 cursor-not-allowed"
             >
               {icon}{label}
             </button>

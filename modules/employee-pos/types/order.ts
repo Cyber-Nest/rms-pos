@@ -6,6 +6,9 @@ export interface CustomerInfo {
   email?: string;
   address?: string;
   postalCode?: string;
+  driverNotes?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface VehicleInfo {
@@ -37,6 +40,7 @@ export interface PromoApplied {
   description: string;
   discountType: "percentage" | "flat";
   discountValue: number;
+  applyCount?: number;
   discountAmount: number;
 }
 
