@@ -3,4 +3,5 @@ export interface Category {
   name: string;
   image: string;
   sortOrder: number;
+  displayOrder?: number;
 }

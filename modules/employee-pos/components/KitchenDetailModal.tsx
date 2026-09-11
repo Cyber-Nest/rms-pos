@@ -11,6 +11,7 @@ import {
   RefreshCw,
   AlertTriangle,
   FileText,
+  Download,
 } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -96,6 +97,7 @@ export default function KitchenDetailModal({
   const [updating, setUpdating] = useState(false);
   const [showPrintReceipt, setShowPrintReceipt] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [localOrder, setLocalOrder] = useState<Order | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -183,13 +185,6 @@ export default function KitchenDetailModal({
   ) => {
     if (isDraft || !localOrder) return;
 
-    if (nextStatus === "completed" && localOrder.paymentStatus === "unpaid") {
-      toast.error(
-        "Cannot complete an unpaid order. Please collect payment and mark as Paid first.",
-      );
-      return;
-    }
-
     setUpdating(true);
     try {
       let activeEmpName = "Manager";
@@ -238,6 +233,15 @@ export default function KitchenDetailModal({
         onStatusChange();
 
         if (nextStatus === "completed") {
+          try {
+            axios.post(`${apiUrl}/orders/${localOrder._id}/print`, {
+              paperSize: "80mm",
+              itemsFilter: "all",
+            });
+            toast.success("Receipt sent to thermal printer!");
+          } catch (printErr) {
+            console.error("Auto print error:", printErr);
+          }
           onClose();
         }
       } else {
@@ -454,6 +458,15 @@ export default function KitchenDetailModal({
       );
       if (res.data.success) {
         toast.success("Order handed over to driver!");
+        try {
+          axios.post(`${apiUrl}/orders/${localOrder._id}/print`, {
+            paperSize: "80mm",
+            itemsFilter: "all",
+          });
+          toast.success("Receipt sent to thermal printer!");
+        } catch (printErr) {
+          console.error("Auto print error:", printErr);
+        }
         setLocalOrder((prev) =>
           prev ? { ...prev, kitchenCleared: true } : prev,
         );
@@ -611,10 +624,13 @@ export default function KitchenDetailModal({
 
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-      const res = await axios.post(`${apiUrl}/orders/${localOrder._id}/cancel`, {
-        reason: cancelReason,
-        userName: activeEmpName,
-      });
+      const res = await axios.post(
+        `${apiUrl}/orders/${localOrder._id}/cancel`,
+        {
+          reason: cancelReason,
+          userName: activeEmpName,
+        },
+      );
 
       if (res.data.success) {
         toast.success("Order cancelled successfully.");
@@ -645,6 +661,34 @@ export default function KitchenDetailModal({
     try {
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+      const res = await axios.post(`${apiUrl}/orders/${localOrder._id}/print`, {
+        paperSize: "80mm",
+        itemsFilter: "all",
+      });
+      if (res.data?.success) {
+        toast.success("Receipt sent to thermal printer!");
+      } else {
+        toast.error("Failed to print receipt");
+      }
+    } catch (thermalErr: any) {
+      console.error("Thermal print request failed:", thermalErr);
+      toast.error(
+        thermalErr.response?.data?.message ||
+          "Failed to print to thermal printer",
+      );
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (isDownloadingPdf || !localOrder) return;
+    setIsDownloadingPdf(true);
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
       const response = await axios.get(
         `${apiUrl}/orders/${localOrder._id}/pdf`,
         {
@@ -664,11 +708,11 @@ export default function KitchenDetailModal({
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success("Invoice PDF downloaded successfully!");
+      toast.success("Invoice PDF downloaded!");
     } catch (err: any) {
       toast.error("Failed to download invoice PDF");
     } finally {
-      setIsPrinting(false);
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -765,20 +809,20 @@ export default function KitchenDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[200] p-4 font-sans animate-fade-in">
+    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[200] p-2 sm:p-4 md:p-6 font-sans animate-fade-in">
       {/* Container */}
-      <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[94vh] flex flex-col overflow-hidden animate-scale-up border border-neutral-200">
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-5xl w-full max-h-[96vh] sm:max-h-[94vh] flex flex-col overflow-hidden animate-scale-up border border-neutral-200">
         {/* ── Header (Charcoal brand-dark banner matching POS) ── */}
-        <div className="bg-brand-dark text-white px-5 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="bg-brand-dark text-white px-3.5 sm:px-5 py-2.5 sm:py-3.5 flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {/* Customer Button */}
-            <span className="bg-white/10 text-white text-[11px] font-600 px-3.5 py-1.5 rounded-lg border border-white/15 select-none">
+            <span className="bg-white/10 text-white text-[10px] sm:text-[11px] font-600 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg border border-white/15 select-none">
               Customer:{" "}
               <span className="font-800 text-orange-300">
                 {localOrder.customer?.name || "N/A"}
               </span>
             </span>
-            <span className="text-[12px] font-500 text-neutral-300">
+            <span className="text-[10.5px] sm:text-[12px] font-500 text-neutral-300">
               Placed By :{" "}
               <span className="text-white font-700">
                 {localOrder.orderSource === "online"
@@ -788,32 +832,60 @@ export default function KitchenDetailModal({
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
             {!isDraft && (
-              <button
-                onClick={handlePrintInvoice}
-                disabled={isPrinting}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/25 text-[11px] font-700 px-3.5 py-1.5 rounded-lg border border-white/10 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {isPrinting ? (
-                  <>
-                    <RefreshCw size={13} className="animate-spin text-white" />
-                    Downloading...
-                  </>
-                ) : (
-                  <>
-                    <Printer size={13} />
-                    Print Invoice
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  onClick={handlePrintInvoice}
+                  disabled={isPrinting}
+                  className="flex items-center gap-1 sm:gap-1.5 bg-white/10 hover:bg-white/25 text-[10px] sm:text-[11px] font-700 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg border border-white/10 transition-all cursor-pointer disabled:opacity-50"
+                  title="Send receipt to thermal printer"
+                >
+                  {isPrinting ? (
+                    <>
+                      <RefreshCw
+                        size={12}
+                        className="animate-spin text-white"
+                      />
+                      <span className="hidden xs:inline">Printing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Printer size={12} />
+                      <span>Print Invoice</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
+                  className="flex items-center gap-1 sm:gap-1.5 bg-white/10 hover:bg-white/25 text-[10px] sm:text-[11px] font-700 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg border border-white/10 transition-all cursor-pointer disabled:opacity-50"
+                  title="Download invoice PDF file"
+                >
+                  {isDownloadingPdf ? (
+                    <>
+                      <RefreshCw
+                        size={12}
+                        className="animate-spin text-white"
+                      />
+                      <span className="hidden xs:inline">Downloading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText size={12} />
+                      <span>Download PDF</span>
+                    </>
+                  )}
+                </button>
+              </div>
             )}
-            <span className="bg-brand-primary text-white text-[11px] font-800 px-3.5 py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
+            <span className="bg-brand-primary text-white text-[10px] sm:text-[11px] font-800 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
               {formattedType}
             </span>
             <button
               onClick={onClose}
-              className="text-neutral-400 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all cursor-pointer ml-1"
+              className="text-neutral-400 hover:text-white hover:bg-white/10 p-1 sm:p-1.5 rounded-lg transition-all cursor-pointer ml-0.5"
             >
               <X size={18} />
             </button>
@@ -821,18 +893,18 @@ export default function KitchenDetailModal({
         </div>
 
         {/* ── Subheader Controls & Status Pills ── */}
-        <div className="bg-neutral-50/50 px-5 py-3.5 border-b border-neutral-200 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <span className="font-800 text-neutral-900 text-[14.5px] tracking-wide uppercase">
+        <div className="bg-neutral-50/50 px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap">
+            <span className="font-800 text-neutral-900 text-[13.5px] sm:text-[14.5px] tracking-wide uppercase">
               {localOrder.orderNumber}
             </span>
 
             {dueDate && (
-              <div className="flex items-center gap-2 bg-white border border-neutral-200 px-3 py-1.5 rounded-lg text-[11.5px] font-700 text-neutral-600">
-                <Clock size={12} className="text-neutral-450" />
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-white border border-neutral-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10.5px] sm:text-[11.5px] font-700 text-neutral-600">
+                <Clock size={12} className="text-neutral-450 shrink-0" />
                 <span>
                   Due at{" "}
-                  <span className="font-900 text-brand-primary bg-orange-50 px-2 py-0.5 rounded border border-orange-100/80 font-mono">
+                  <span className="font-900 text-brand-primary bg-orange-50 px-1.5 sm:px-2 py-0.5 rounded border border-orange-100/80 font-mono">
                     {dueDate.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -840,7 +912,7 @@ export default function KitchenDetailModal({
                   </span>
                 </span>
                 {!isDraft && (
-                  <span className="text-neutral-450 font-550">
+                  <span className="text-neutral-450 font-550 hidden xs:inline">
                     (
                     <span className="font-800 text-neutral-750">
                       {Math.max(
@@ -859,39 +931,39 @@ export default function KitchenDetailModal({
                 <button
                   onClick={() => adjustDueTime(-5)}
                   disabled={updating}
-                  className="w-7 h-7 bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 font-800 rounded-full flex items-center justify-center shadow-xs cursor-pointer disabled:opacity-50 active:scale-90 transition-all"
+                  className="w-6 h-6 sm:w-7 sm:h-7 bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 font-800 rounded-full flex items-center justify-center shadow-xs cursor-pointer disabled:opacity-50 active:scale-90 transition-all"
                 >
-                  <Minus size={12} />
+                  <Minus size={11} />
                 </button>
-                <span className="text-[11px] font-700 text-neutral-500 px-1.5">
+                <span className="text-[10px] sm:text-[11px] font-700 text-neutral-500 px-1">
                   5 Min
                 </span>
                 <button
                   onClick={() => adjustDueTime(5)}
                   disabled={updating}
-                  className="w-7 h-7 bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 font-800 rounded-full flex items-center justify-center shadow-xs cursor-pointer disabled:opacity-50 active:scale-90 transition-all"
+                  className="w-6 h-6 sm:w-7 sm:h-7 bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 font-800 rounded-full flex items-center justify-center shadow-xs cursor-pointer disabled:opacity-50 active:scale-90 transition-all"
                 >
-                  <Plus size={12} />
+                  <Plus size={11} />
                 </button>
               </div>
             )}
           </div>
 
           {/* Action Button Row */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             {isEditing ? (
               <>
                 <button
                   onClick={handleSaveOrder}
                   disabled={updating || editItems.length === 0}
-                  className="bg-brand-primary text-white text-[11.5px] font-700 px-4 py-2 rounded-full hover:bg-brand-primary-hover shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  className="bg-brand-primary text-white text-[10.5px] sm:text-[11.5px] font-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full hover:bg-brand-primary-hover shadow-xs transition-all cursor-pointer disabled:opacity-50"
                 >
                   Save Changes
                 </button>
                 <button
                   onClick={() => setIsEditing(false)}
                   disabled={updating}
-                  className="bg-neutral-100 border border-neutral-200 text-neutral-600 text-[11.5px] font-700 px-4 py-2 rounded-full hover:bg-neutral-200 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  className="bg-neutral-100 border border-neutral-200 text-neutral-600 text-[10.5px] sm:text-[11.5px] font-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full hover:bg-neutral-200 shadow-xs transition-all cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -902,19 +974,11 @@ export default function KitchenDetailModal({
 
                 {/* Unpaid/Paid toggle pill */}
                 {isUnpaid ? (
-                  // <button
-                  //   onClick={handleMarkAsPaid}
-                  //   disabled={updating}
-                  //   className="px-4 py-2 rounded-full text-[11.5px] font-700 uppercase tracking-wider border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
-                  //   title="Click to mark as PAID"
-                  // >
-                  //   Unpaid (Pay Now)
-                  // </button>
-                  <span className="px-4 py-2 rounded-full text-[11.5px] font-700 select-none uppercase tracking-wider border border-red-250 text-red-700 bg-red-50">
+                  <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10.5px] sm:text-[11.5px] font-700 select-none uppercase tracking-wider border border-red-250 text-red-700 bg-red-50">
                     Unpaid
                   </span>
                 ) : (
-                  <span className="px-4 py-2 rounded-full text-[11.5px] font-700 select-none uppercase tracking-wider border border-emerald-250 text-emerald-700 bg-emerald-50">
+                  <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10.5px] sm:text-[11.5px] font-700 select-none uppercase tracking-wider border border-emerald-250 text-emerald-700 bg-emerald-50">
                     Paid
                   </span>
                 )}
@@ -923,13 +987,13 @@ export default function KitchenDetailModal({
                   <>
                     <button
                       onClick={handleStartEdit}
-                      className="bg-orange-50 border border-brand-primary/30 text-brand-primary text-[11.5px] font-700 px-4 py-2 rounded-full hover:bg-orange-100/50 hover:border-brand-primary/50 transition-colors shadow-xs cursor-pointer"
+                      className="bg-orange-50 border border-brand-primary/30 text-brand-primary text-[10.5px] sm:text-[11.5px] font-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full hover:bg-orange-100/50 hover:border-brand-primary/50 transition-colors shadow-xs cursor-pointer"
                     >
                       Update Order
                     </button>
                     <button
                       onClick={handleReorder}
-                      className="bg-neutral-900 text-white text-[11.5px] font-700 px-4 py-2 rounded-full hover:bg-neutral-800 transition-colors shadow-xs cursor-pointer"
+                      className="bg-neutral-900 text-white text-[10.5px] sm:text-[11.5px] font-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full hover:bg-neutral-800 transition-colors shadow-xs cursor-pointer"
                     >
                       Reorder
                     </button>
@@ -944,11 +1008,13 @@ export default function KitchenDetailModal({
         <div className="flex-1 overflow-y-auto bg-brand-bg flex flex-col min-h-0">
           {/* Order Level Delivery Instructions Note */}
           {localOrder.notes && (
-            <div className="mx-5 mt-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-950 font-sans">
+            <div className="mx-3.5 sm:mx-5 mt-3 sm:mt-4 p-3 sm:p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 sm:gap-3 text-amber-950 font-sans">
               <FileText size={16} className="text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-[10px] font-900 text-amber-800 uppercase tracking-wider">
-                  {localOrder.orderType === 'delivery' ? 'Delivery Instructions Note:' : 'Customer Order Note:'}
+                  {localOrder.orderType === "delivery"
+                    ? "Delivery Instructions Note:"
+                    : "Customer Order Note:"}
                 </p>
                 <p className="text-xs font-700 mt-0.5 leading-relaxed">
                   "{localOrder.notes}"
@@ -958,15 +1024,15 @@ export default function KitchenDetailModal({
           )}
 
           {/* ── Middle section (2 Columns side-by-side) ── */}
-          <div className="flex flex-col lg:flex-row p-5 gap-5 items-start">
+          <div className="flex flex-col lg:flex-row p-3.5 sm:p-5 gap-3.5 sm:gap-5 items-start">
             {/* Left Column: Items Table List */}
             <div className="w-full lg:w-[60%] flex flex-col">
               <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden flex flex-col shadow-sm">
                 {/* Brand Dark Header row from reference screenshot */}
-                <div className="bg-brand-dark text-white px-4 py-2.5 flex text-[11px] font-800 uppercase tracking-wider select-none">
+                <div className="bg-brand-dark text-white px-3 sm:px-4 py-2 sm:py-2.5 flex text-[10.5px] sm:text-[11px] font-800 uppercase tracking-wider select-none">
                   <span className="flex-1">Items</span>
-                  <span className="w-16 text-center">Qty</span>
-                  <span className="w-24 text-right">Price</span>
+                  <span className="w-14 sm:w-16 text-center">Qty</span>
+                  <span className="w-20 sm:w-24 text-right">Price</span>
                 </div>
 
                 <div className="flex flex-col divider-y divider-neutral-100">
@@ -1219,8 +1285,7 @@ export default function KitchenDetailModal({
                       </span>
                     </div>
                   )}
-                  {((localOrder.tip as number | undefined) ?? 0) >
-                    0 && (
+                  {((localOrder.tip as number | undefined) ?? 0) > 0 && (
                     <div className="flex justify-between text-brand-primary font-bold">
                       <span>Driver Tip:</span>
                       <span className="font-mono">
@@ -1271,8 +1336,8 @@ export default function KitchenDetailModal({
           </div>
 
           {/* ── Bottom Section: logs and histories ── */}
-          <div className="border-t border-neutral-200 bg-neutral-50/30 p-5 flex flex-col gap-4 text-[11px] text-neutral-600">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border-t border-neutral-200 bg-neutral-50/30 p-3.5 sm:p-5 flex flex-col gap-3 sm:gap-4 text-[11px] text-neutral-600">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {/* Order Info */}
               <div className="bg-white rounded-xl p-4 border border-neutral-200 shadow-sm">
                 <h4 className="text-neutral-850 font-800 mb-2 border-b border-neutral-100 pb-1.5 uppercase text-[9.5px] tracking-wider select-none">
@@ -1504,8 +1569,13 @@ export default function KitchenDetailModal({
                 <AlertTriangle size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-900 text-neutral-900 leading-tight">Confirm Order Cancellation</h3>
-                <p className="text-[11px] text-neutral-500 font-500">Order {localOrder.orderNumber} · Total ${localOrder.total.toFixed(2)}</p>
+                <h3 className="text-sm font-900 text-neutral-900 leading-tight">
+                  Confirm Order Cancellation
+                </h3>
+                <p className="text-[11px] text-neutral-500 font-500">
+                  Order {localOrder.orderNumber} · Total $
+                  {localOrder.total.toFixed(2)}
+                </p>
               </div>
             </div>
 
@@ -1527,7 +1597,7 @@ export default function KitchenDetailModal({
                 type="button"
                 onClick={() => {
                   setShowCancelModal(false);
-                  setCancelReason('');
+                  setCancelReason("");
                 }}
                 disabled={cancelling}
                 className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer"

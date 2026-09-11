@@ -16,4 +16,5 @@ export interface MenuItem {
   modifierGroups?: ModifierGroup[];
   kitchenLabel?: 'chicken' | 'pizza';
   isOutOfStock?: boolean;
+  displayOrder?: number;
 }

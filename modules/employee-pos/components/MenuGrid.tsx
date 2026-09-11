@@ -18,6 +18,15 @@ export default function MenuGrid({ onOpenModifiers }: MenuGridProps) {
     return categories.find((c) => c.id === selectedCategory)?.name ?? 'All Menus';
   }, [selectedCategory, categories]);
 
+  const categoryOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    categories.forEach((cat, index) => {
+      const order = cat.sortOrder ?? cat.displayOrder ?? index + 1;
+      map.set(cat.id, order);
+    });
+    return map;
+  }, [categories]);
+
   const items = useMemo(() => {
     let list = selectedCategory === 'all' ? menuItems : menuItems.filter((i) => i.categoryId === selectedCategory);
     if (search.trim()) {
@@ -25,13 +34,30 @@ export default function MenuGrid({ onOpenModifiers }: MenuGridProps) {
       list = list.filter((i) => i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
     }
     return [...list].sort((a, b) => {
-      if (sortBy === 'popular')    return (b.isPopular ? 1 : 0) - (a.isPopular ? 1 : 0);
-      if (sortBy === 'newest')     return (b.badge === 'New' ? 1 : 0) - (a.badge === 'New' ? 1 : 0);
-      if (sortBy === 'price-low')  return a.price - b.price;
+      if (sortBy === 'newest') return (b.badge === 'New' ? 1 : 0) - (a.badge === 'New' ? 1 : 0);
+      if (sortBy === 'price-low') return a.price - b.price;
       if (sortBy === 'price-high') return b.price - a.price;
-      return 0;
+
+      // 1. Primary Sort by Category Order in "ALL MENUS" view
+      if (selectedCategory === 'all') {
+        const catOrderA = categoryOrderMap.get(a.categoryId) ?? 999;
+        const catOrderB = categoryOrderMap.get(b.categoryId) ?? 999;
+        if (catOrderA !== catOrderB) {
+          return catOrderA - catOrderB;
+        }
+      }
+
+      // 2. Secondary Sort by Item Display Order
+      const itemOrderA = a.displayOrder || 0;
+      const itemOrderB = b.displayOrder || 0;
+      if (itemOrderA > 0 && itemOrderB > 0) return itemOrderA - itemOrderB;
+      if (itemOrderA > 0 && itemOrderB === 0) return -1;
+      if (itemOrderA === 0 && itemOrderB > 0) return 1;
+
+      // 3. Tertiary Sort by Item Name
+      return a.name.localeCompare(b.name);
     });
-  }, [selectedCategory, search, sortBy, menuItems]);
+  }, [selectedCategory, search, sortBy, menuItems, categoryOrderMap]);
 
   return (
     <div className="flex flex-col h-full">

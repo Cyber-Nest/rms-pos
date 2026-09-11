@@ -201,12 +201,12 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
         </div>
       )}  
 
-      <header className="h-[64px] bg-white border-b border-neutral-200 px-5 flex items-center justify-between sticky top-0 z-40 shadow-sm font-sans">
+      <header className="h-[60px] sm:h-[64px] bg-white border-b border-neutral-200 px-3 sm:px-5 flex items-center justify-between sticky top-0 z-40 shadow-sm font-sans w-full max-w-full overflow-hidden">
         {/* ── Left: Logo + Branch + Nav Links ── */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
           {/* Logo */}
-          <Link href="/employee/pos" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-brand-primary rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+          <Link href="/employee/pos" className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-brand-primary rounded-xl flex items-center justify-center shadow-sm shrink-0">
               <ChefHat size={18} className="text-white" strokeWidth={2.5} />
             </div>
             <div className="leading-none hidden sm:block">
@@ -216,24 +216,24 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
           </Link>
 
           {/* Divider */}
-          <div className="h-7 w-px bg-neutral-200" />
+          <div className="h-6 sm:h-7 w-px bg-neutral-200 shrink-0" />
 
           {/* Active Branch Badge */}
           {loadingBranchInfo && !branchInfo ? (
-            <div className="flex items-center gap-2 bg-orange-50/60 border border-orange-200/60 rounded-xl px-3 py-1.5 shadow-xs animate-pulse">
-              <div className="w-8 h-4 bg-orange-200/80 rounded" />
-              <div className="w-24 h-4 bg-orange-200/50 rounded" />
+            <div className="flex items-center gap-2 bg-orange-50/60 border border-orange-200/60 rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-xs animate-pulse shrink-0">
+              <div className="w-7 h-4 bg-orange-200/80 rounded" />
+              <div className="w-16 sm:w-24 h-4 bg-orange-200/50 rounded hidden sm:block" />
             </div>
           ) : branchInfo ? (
-            <div className="flex items-center gap-2 bg-orange-50/80 border border-orange-200 rounded-xl px-3 py-1.5 shadow-xs">
-              <span className="px-1.5 py-0.5 bg-brand-primary text-white text-[9px] font-900 rounded uppercase flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-orange-50/80 border border-orange-200 rounded-xl px-2 py-1 sm:px-3 sm:py-1.5 shadow-xs min-w-0 max-w-[130px] sm:max-w-[220px] md:max-w-none">
+              <span className="px-1.5 py-0.5 bg-brand-primary text-white text-[9px] font-900 rounded uppercase shrink-0">
                 {branchInfo.code}
               </span>
-              <span className="text-[12px] font-800 text-neutral-800 whitespace-nowrap">
+              <span className="text-[11px] sm:text-[12px] font-800 text-neutral-800 truncate">
                 {branchInfo.name}
               </span>
               {isImpersonated && (
-                <span className="ml-1 px-2 py-0.5 bg-amber-500 text-white text-[9px] font-900 rounded-md uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                <span className="hidden xl:flex ml-1 px-2 py-0.5 bg-amber-500 text-white text-[9px] font-900 rounded-md uppercase tracking-wider items-center gap-1 shadow-2xs shrink-0">
                   <span>Super Admin View</span>
                 </span>
               )}
@@ -241,10 +241,10 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
           ) : null}
 
           {/* Divider */}
-          {navLinks.length > 0 && <div className="h-5 w-px bg-neutral-200 hidden lg:block" />}
+          {navLinks.length > 0 && <div className="h-5 w-px bg-neutral-200 shrink-0" />}
 
-          {/* Nav Navigation Links */}
-          <div className="hidden lg:flex items-center gap-1.5">
+          {/* Nav Navigation Links (Icon-only on mobile/tablet, Icon+Text on desktop) */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {navLinks.map((link) => {
               const isActive = pathname === link.href || (link.href === '/employee/pos' && (pathname === '/' || pathname === '/employee'));
               const Icon = link.icon;
@@ -253,14 +253,15 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-700 transition-all cursor-pointer border ${
+                  title={link.name}
+                  className={`flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-[11px] xl:text-[12px] font-700 transition-all cursor-pointer border ${
                     isActive
                       ? 'border-brand-primary/30 bg-brand-primary-light text-brand-primary shadow-xs'
                       : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-brand-primary/30 hover:bg-brand-primary-light hover:text-brand-primary'
                   }`}
                 >
-                  <Icon size={14} className={isActive ? 'text-brand-primary' : 'text-neutral-500'} />
-                  <span>{link.name}</span>
+                  <Icon size={15} className={isActive ? 'text-brand-primary' : 'text-neutral-500'} />
+                  <span className="hidden xl:inline whitespace-nowrap">{link.name}</span>
                 </Link>
               );
             })}
@@ -269,7 +270,7 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
 
         {/* ── Center: Global Search (Only shown on POS Terminal page) ── */}
         {pathname === '/employee/pos' && (
-          <div className="flex-1 max-w-sm mx-4 hidden md:block">
+          <div className="flex-1 max-w-[180px] lg:max-w-[260px] xl:max-w-sm mx-2 hidden md:block">
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input
@@ -277,16 +278,17 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search menu items..."
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl py-2 pl-9 pr-3 text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15 focus:bg-white transition-all"
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl py-1.5 pl-9 pr-3 text-[11px] sm:text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15 focus:bg-white transition-all"
               />
             </div>
           </div>
         )}
 
         {/* ── Right: Actions + Profile + Logout ── */}
-        <div className="flex items-center gap-3">
-          {/* Notification Bell */}
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-500 hover:text-brand-primary hover:border-brand-primary/30 hover:bg-brand-primary-light transition-all cursor-pointer">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Notification Bell (Commented out per request) */}
+          {/* 
+          <button className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-500 hover:text-brand-primary hover:border-brand-primary/30 hover:bg-brand-primary-light transition-all cursor-pointer">
             <Bell size={16} />
             {orders.length > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-brand-primary text-white text-[9px] font-700 rounded-full flex items-center justify-center px-1 border border-white">
@@ -294,23 +296,22 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
               </span>
             )}
           </button>
-
-          {/* Divider */}
-          <div className="h-7 w-px bg-neutral-200" />
+          <div className="h-6 sm:h-7 w-px bg-neutral-200 shrink-0" />
+          */}
 
           {/* Staff Profile Badge */}
           {loadingBranchInfo && !branchInfo ? (
-            <div className="w-24 h-8 bg-neutral-100 animate-pulse rounded-xl" />
+            <div className="w-8 h-8 sm:w-24 sm:h-8 bg-neutral-100 animate-pulse rounded-xl shrink-0" />
           ) : branchInfo ? (
-            <div className="flex items-center gap-2.5 bg-neutral-50/90 border border-neutral-200/80 rounded-xl px-2.5 py-1.5 shadow-2xs">
+            <div className="flex items-center gap-2 bg-neutral-50/90 border border-neutral-200/80 rounded-xl p-1 sm:px-2.5 sm:py-1.5 shadow-2xs shrink-0 max-w-[140px] sm:max-w-[180px]">
               <div className="w-7 h-7 rounded-lg bg-brand-primary text-white font-900 text-[11px] flex items-center justify-center shadow-xs uppercase shrink-0">
                 {activeEmployee ? activeEmployee.name.charAt(0) : 'A'}
               </div>
-              <div className="hidden sm:flex flex-col text-left">
-                <span className="text-[12px] font-800 text-neutral-900 leading-none">
+              <div className="hidden lg:flex flex-col text-left min-w-0">
+                <span className="text-[11px] sm:text-[12px] font-800 text-neutral-900 leading-none truncate">
                   {activeEmployee ? activeEmployee.name : `${branchInfo.code}`}
                 </span>
-                <span className="text-[9.5px] font-800 text-brand-primary uppercase tracking-wider mt-0.5 leading-none">
+                <span className="text-[9px] sm:text-[9.5px] font-800 text-brand-primary uppercase tracking-wider mt-0.5 leading-none truncate">
                   {activeEmployee ? activeEmployee.role.replace('_', ' ') : 'BRANCH ADMIN'}
                 </span>
               </div>
@@ -320,7 +321,7 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
           {/* Logout Button — Always locks screen to /login while keeping terminal active */}
           <button
             onClick={handleEmployeeLogout}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 hover:text-red-700 hover:border-red-300 transition-all cursor-pointer"
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-red-50 border border-red-200 text-red-500 hover:bg-red-100 hover:text-red-700 hover:border-red-300 transition-all cursor-pointer shrink-0"
             title={activeEmployee ? `Logout ${activeEmployee.name}` : "Lock Terminal Screen"}
           >
             <LogOut size={15} />
@@ -330,7 +331,7 @@ export default function PosNavbar({ onToggleSidebar }: PosNavbarProps) {
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-brand-primary text-white hover:bg-orange-600 transition-all cursor-pointer shadow-xs ml-1"
+              className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-brand-primary text-white hover:bg-orange-600 transition-all cursor-pointer shadow-xs shrink-0 ml-0.5"
               title="Open Menu Drawer"
             >
               <Menu size={18} />
