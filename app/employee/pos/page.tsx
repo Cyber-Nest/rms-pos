@@ -13,15 +13,17 @@ import { MenuItem } from '@/modules/employee-pos/types';
 import { usePosStore } from '@/modules/employee-pos/store/pos.store';
 import OnlineOrderBanner from '@/modules/employee-pos/components/OnlineOrderBanner';
 import EmployeePermissionGuard from '@/modules/employee-pos/components/EmployeePermissionGuard';
+import { ShoppingBag, X } from 'lucide-react';
 
 export default function PosPage() {
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { fetchMenu } = usePosStore();
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { fetchMenu, cartItems } = usePosStore();
 
   useEffect(() => {
-    // Clear any dangling draft carts from previous sessions so they don't get stuck in the Kitchen Dashboard
+    // Clear any dangling draft carts from previous sessions
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('rms_draft_cart');
       window.dispatchEvent(new Event('storage'));
@@ -42,31 +44,81 @@ export default function PosPage() {
   return (
     <EmployeePermissionGuard permissionKey="pos">
       <main className="h-screen flex flex-col overflow-hidden bg-neutral-100 text-neutral-900 font-sans">
+
         {/* Navbar */}
         <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
-        {/*Horizontal Scrollable Categories */}
+        {/* Horizontal Scrollable Categories */}
         <CategoryCarousel />
 
-        {/* Main Work Area (3-Column Layout: 20% / 55% / 25%) */}
-        <div className="flex-1 flex overflow-hidden p-3 gap-3 min-h-0">
-          {/* Left Column - Order Type & Customer Actions (20%) */}
-          <div className="w-[20%] flex-shrink-0 h-full">
+        {/* ── Main Work Area ──
+            Mobile  (<md) : full width menu, cart as bottom sheet FAB
+            Tablet  (md)  : menu + right cart panel (no left panel)
+            Laptop  (lg+) : 3-column: left panel + menu + cart
+        */}
+        <div className="flex-1 flex overflow-hidden p-2 md:p-3 gap-2 md:gap-3 min-h-0">
+
+          {/* Left Column – Order Type & Customer (lg+ only) */}
+          <div className="hidden lg:flex w-[20%] flex-shrink-0 h-full">
             <OrderTypePanel />
           </div>
 
-          {/* Center Column - Menu Items Grid (55%) */}
-          <div id="menu-grid-section" className="w-[55%] flex-shrink-0 h-full flex flex-col">
+          {/* Center Column – Menu Grid */}
+          <div
+            id="menu-grid-section"
+            className="flex-1 lg:w-[55%] lg:flex-none h-full flex flex-col min-w-0"
+          >
             <MenuGrid onOpenModifiers={handleOpenModifiers} />
           </div>
 
-          {/* Right Column - Current Cart & Totals (25%) */}
-          <div className="w-[25%] flex-shrink-0 h-full">
+          {/* Right Column – Cart (hidden on mobile, visible md+) */}
+          <div className="hidden md:flex w-[270px] lg:w-[25%] flex-shrink-0 h-full">
             <CartPanel />
           </div>
         </div>
 
-        {/* Sidebar Drawer Component */}
+        {/* ── Mobile: Floating Cart Button (< md) ── */}
+        <div className="md:hidden fixed bottom-5 right-4 z-40">
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="relative w-14 h-14 bg-brand-primary text-white rounded-full shadow-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+          >
+            <ShoppingBag size={22} />
+            {cartItems.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-800 rounded-full flex items-center justify-center px-1 border-2 border-white shadow-sm">
+                {cartItems.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ── Mobile: Cart Bottom Sheet ── */}
+        {isCartOpen && (
+          <div className="md:hidden fixed inset-0 z-50 flex flex-col justify-end">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setIsCartOpen(false)}
+            />
+            {/* Sheet Panel */}
+            <div className="relative bg-white rounded-t-3xl shadow-2xl h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-neutral-100 flex-shrink-0">
+                <span className="text-[16px] font-800 text-neutral-900">Current Order</span>
+                <button
+                  onClick={() => setIsCartOpen(false)}
+                  className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 cursor-pointer hover:bg-neutral-200 transition-all"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <CartPanel />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sidebar Drawer */}
         <POSSidebarDrawer
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
@@ -78,17 +130,17 @@ export default function PosPage() {
           }}
         />
 
-        {/* Modifier Customize Drawer Overlay */}
+        {/* Modifier Drawer Overlay */}
         <ModifierDrawer
           item={activeItem}
           isOpen={isDrawerOpen}
           onClose={handleCloseDrawer}
         />
 
-        {/* Checkout Modal Overlay */}
+        {/* Checkout Modal */}
         <CheckoutModal />
 
-        {/* Real-time Online Order Banner Alert */}
+        {/* Online Order Banner */}
         <OnlineOrderBanner />
       </main>
     </EmployeePermissionGuard>

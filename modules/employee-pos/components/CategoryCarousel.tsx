@@ -1,12 +1,21 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react';
 import { usePosStore } from '../store/pos.store';
 
 export default function CategoryCarousel() {
   const { selectedCategory, setCategory, categories, loadingMenu } = usePosStore();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadingMenu && selectedCategory && scrollRef.current) {
+      const activeEl = scrollRef.current.querySelector('[data-active="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [selectedCategory, loadingMenu, categories]);
 
   const scroll = (dir: 'left' | 'right') => {
     scrollRef.current?.scrollBy({ left: dir === 'left' ? -280 : 280, behavior: 'smooth' });
@@ -44,6 +53,7 @@ export default function CategoryCarousel() {
             return (
               <button
                 key={cat.id}
+                data-active={active ? 'true' : 'false'}
                 onClick={() => setCategory(cat.id)}
                 className={`flex-shrink-0 flex flex-col items-center gap-1.5 w-[80px] pt-2 pb-1.5 px-1 rounded-xl border transition-all duration-150 cursor-pointer active:scale-95 ${
                   active
@@ -70,7 +80,7 @@ export default function CategoryCarousel() {
                 </div>
 
                 {/* Label */}
-                <span className={`text-[9px] font-700 uppercase tracking-tight leading-tight text-center line-clamp-2 w-full px-0.5 ${active ? 'text-white' : 'text-neutral-600'}`}>
+                <span className={`text-[9px] font-bold uppercase tracking-tight leading-tight text-center line-clamp-2 w-full px-0.5 ${active ? 'text-white' : 'text-neutral-800'}`}>
                   {cat.name}
                 </span>
               </button>
