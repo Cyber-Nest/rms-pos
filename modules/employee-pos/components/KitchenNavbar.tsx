@@ -124,15 +124,15 @@ export default function KitchenNavbar({ activePendingCount, activeConfirmedCount
 
       {/* ── Right: Actions + Profile ── */}
       <div className="flex items-center gap-3">
-        {/* Notification Bell */}
-        <button className="relative w-8 h-8 flex items-center justify-center rounded-lg bg-neutral-50 border border-neutral-200 text-neutral-500 hover:text-brand-primary hover:border-brand-primary/30 hover:bg-brand-primary-light transition-all cursor-pointer">
+        {/* Notification Bell (Commented out per request) */}
+        {/* <button className="relative w-8 h-8 flex items-center justify-center rounded-lg bg-neutral-50 border border-neutral-200 text-neutral-500 hover:text-brand-primary hover:border-brand-primary/30 hover:bg-brand-primary-light transition-all cursor-pointer">
           <Bell size={16} />
           {badgeCount > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[16px] h-4 bg-brand-primary text-white text-[9px] font-700 rounded-full flex items-center justify-center px-1 border border-white">
               {badgeCount}
             </span>
           )}
-        </button>
+        </button> */}
 
         {/* Settings */}
         {/* <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-neutral-50 border border-neutral-200 text-neutral-500 hover:text-brand-primary hover:border-brand-primary/30 hover:bg-brand-primary-light transition-all cursor-pointer">
