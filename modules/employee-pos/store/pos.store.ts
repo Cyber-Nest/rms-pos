@@ -73,7 +73,15 @@ interface PosState {
   placingOrder: boolean;
   nextOrderNumber: string;
 
+  // ── Edit Order State ──────────────────────────────────────────
+  editingOrderId: string | null;
+  editingOrderNumber: string | null;
+  updatingOrder: boolean;
+
   // ── Actions ──────────────────────────────────────────────────
+  loadOrderForEditing: (order: any) => void;
+  cancelEditingOrder: () => void;
+  updateOrder: () => Promise<Order | null>;
   setCategory: (category: string) => void;
   setSearch: (query: string) => void;
   setSort: (sort: string) => void;
@@ -84,6 +92,13 @@ interface PosState {
   setTable: (table: TableInfo | null) => void;
   setVehicle: (vehicle: VehicleInfo | null) => void;
   addToCart: (
+    menuItem: MenuItem,
+    selectedModifiers: SelectedModifier[],
+    quantity?: number,
+    note?: string,
+  ) => void;
+  updateCartItem: (
+    oldCartItemId: string,
     menuItem: MenuItem,
     selectedModifiers: SelectedModifier[],
     quantity?: number,
@@ -127,7 +142,8 @@ const roundToTwo = (num: number): number =>
 
 const generateCartItemId = (
   menuItemId: string,
-  modifiers: SelectedModifier[],
+  modifiers: SelectedModifier[] = [],
+  name?: string,
 ): string => {
   const sortedOptionIds = modifiers
     .map((m) => m.optionId)
@@ -226,6 +242,9 @@ export const usePosStore = create<PosState>((set, get) => ({
   orders: [],
   placingOrder: false,
   nextOrderNumber: "",
+  editingOrderId: null,
+  editingOrderNumber: null,
+  updatingOrder: false,
 
   // ── Menu ────────────────────────────────────────────────────
   setCategory: (category) => {
@@ -345,6 +364,65 @@ export const usePosStore = create<PosState>((set, get) => ({
     toast.success(`${menuItem.name} added to cart`);
   },
 
+  updateCartItem: (oldCartItemId, menuItem, selectedModifiers, quantity = 1, note = "") => {
+    const { cartItems } = get();
+    const newCartItemId = generateCartItemId(menuItem.id, selectedModifiers);
+    const modifierSum = selectedModifiers.reduce(
+      (sum, mod) => sum + mod.price,
+      0,
+    );
+    const itemUnitCost = menuItem.price + modifierSum;
+
+    const catObj = get().categories.find(
+      (c) => c.id === menuItem.categoryId || c.name === menuItem.categoryId
+    );
+    const categoryName = catObj?.name || (menuItem as any).categoryName || (menuItem as any).category || "";
+
+    const updatedItem: CartItem = {
+      id: newCartItemId,
+      menuItemId: menuItem.id,
+      categoryId: menuItem.categoryId,
+      categoryName: categoryName,
+      name: menuItem.name,
+      image: menuItem.image,
+      basePrice: menuItem.price,
+      selectedModifiers,
+      quantity,
+      totalPrice: roundToTwo(itemUnitCost * quantity),
+      note,
+      kitchenLabel: menuItem.kitchenLabel || "chicken",
+      selectedSize: undefined
+    };
+
+    const index = cartItems.findIndex((i) => i.id === oldCartItemId);
+    let updatedCartItems: CartItem[];
+    if (index > -1) {
+      updatedCartItems = [...cartItems];
+      updatedCartItems[index] = updatedItem;
+    } else {
+      updatedCartItems = [...cartItems, updatedItem];
+    }
+
+    set({ cartItems: updatedCartItems });
+    get().calculateTotals();
+    const {
+      cartItems: curItems,
+      orderType: curType,
+      selectedCustomer: curCust,
+      subtotal,
+      tax,
+      discount,
+      total,
+    } = get();
+    syncDraftCart(curItems, curType, curCust, {
+      subtotal,
+      tax,
+      discount,
+      total,
+    });
+    toast.success(`${menuItem.name} updated in cart`);
+  },
+
   removeFromCart: (cartItemId) => {
     const item = get().cartItems.find((i) => i.id === cartItemId);
     set({ cartItems: get().cartItems.filter((i) => i.id !== cartItemId) });
@@ -443,6 +521,8 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
   clearCart: () => {
     set({
+      editingOrderId: null,
+      editingOrderNumber: null,
       cartItems: [],
       selectedCustomer: null,
       selectedTable: null,
@@ -455,6 +535,9 @@ export const usePosStore = create<PosState>((set, get) => ({
       manualDiscountType: null,
       manualDiscountValue: 0,
     });
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("rms_edit_order");
+    }
     syncDraftCart([], "takeout", null, {
       subtotal: 0,
       tax: 0,
@@ -806,6 +889,228 @@ export const usePosStore = create<PosState>((set, get) => ({
         error instanceof Error
           ? error.message
           : "Network error. Please try again.";
+      toast.error(message);
+      return null;
+    }
+  },
+
+  // ── Load Order For Editing ───────────────────────────────────
+  loadOrderForEditing: (orderData: any) => {
+    const restoredItems: CartItem[] = (orderData.items || []).map((item: any) => {
+      const modifierSum = (item.selectedModifiers || []).reduce(
+        (sum: number, mod: any) => sum + (mod.price || 0),
+        0
+      );
+      const unitPrice =
+        item.basePrice ||
+        roundToTwo((item.totalPrice || 0) / (item.quantity || 1) - modifierSum);
+      return {
+        id: generateCartItemId(item.menuItemId || item.id, item.selectedModifiers || [], item.name),
+        menuItemId: item.menuItemId || item.id,
+        categoryId: item.categoryId || "",
+        categoryName: item.categoryName || "",
+        name: item.name,
+        image: item.image || "",
+        basePrice: unitPrice,
+        selectedModifiers: item.selectedModifiers || [],
+        quantity: item.quantity || 1,
+        totalPrice:
+          item.totalPrice ||
+          roundToTwo((unitPrice + modifierSum) * (item.quantity || 1)),
+        note: item.note || "",
+        kitchenLabel: item.kitchenLabel || "chicken",
+      };
+    });
+
+    set({
+      editingOrderId: orderData.editingOrderId || orderData._id || orderData.id,
+      editingOrderNumber: orderData.orderNumber,
+      cartItems: restoredItems,
+      orderType: (orderData.orderType as PosState["orderType"]) || "takeout",
+      selectedCustomer:
+        orderData.customer &&
+        orderData.customer.name &&
+        orderData.customer.name !== "No Name"
+          ? orderData.customer
+          : null,
+      orderNotes: orderData.notes || "",
+    });
+
+    get().calculateTotals();
+    toast.success(`Order ${orderData.orderNumber} loaded for editing`);
+  },
+
+  // ── Cancel Editing Mode ───────────────────────────────────────
+  cancelEditingOrder: () => {
+    set({
+      editingOrderId: null,
+      editingOrderNumber: null,
+      cartItems: [],
+      selectedCustomer: null,
+      selectedTable: null,
+      selectedVehicle: null,
+      subtotal: 0,
+      tax: 0,
+      discount: 0,
+      total: 0,
+      orderNotes: "",
+    });
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("rms_edit_order");
+    }
+    get().calculateTotals();
+    toast("Order editing cancelled");
+  },
+
+  // ── Update Order (API) ────────────────────────────────────────
+  updateOrder: async () => {
+    const {
+      editingOrderId,
+      editingOrderNumber,
+      cartItems,
+      orderType,
+      orderSource,
+      selectedCustomer,
+      subtotal,
+      tax,
+      discount,
+      total,
+      paymentTiming,
+      paymentType,
+      paymentMethod,
+      splitPayments,
+      cashGiven,
+      changeAmount,
+      orderNotes,
+      orders,
+    } = get();
+
+    if (!editingOrderId) {
+      toast.error("No active order being edited.");
+      return null;
+    }
+
+    if (cartItems.length === 0) {
+      toast.error("Cart cannot be empty for an existing order.");
+      return null;
+    }
+
+    set({ updatingOrder: true });
+
+    let payments: SplitPayment[] = [];
+    if (paymentTiming === "pay-now") {
+      if (paymentType === "split") {
+        payments = splitPayments;
+      } else if (["doordash", "skip", "ubereats"].includes(orderSource)) {
+        payments = [
+          {
+            method: "cash",
+            amount: total,
+            cashGiven: 0,
+            changeGiven: 0,
+          },
+        ];
+      } else {
+        payments = [
+          {
+            method: paymentMethod,
+            amount: total,
+            cashGiven: paymentMethod === "cash" ? cashGiven : 0,
+            changeGiven: paymentMethod === "cash" ? changeAmount : 0,
+          },
+        ];
+      }
+    }
+
+    const rawDeliveryFee = Number(get().branchTaxFees?.deliveryFee ?? 4.99);
+    const deliveryFee =
+      orderType === "delivery"
+        ? isNaN(rawDeliveryFee)
+          ? 4.99
+          : rawDeliveryFee
+        : 0;
+
+    const payload = {
+      orderType,
+      orderSource,
+      items: cartItems.map((item) => ({
+        menuItemId: item.menuItemId,
+        name: item.name,
+        image: item.image || "",
+        basePrice: item.basePrice,
+        selectedSize: item.selectedSize || undefined,
+        selectedModifiers: item.selectedModifiers,
+        quantity: item.quantity,
+        totalPrice: item.totalPrice,
+        note: item.note || "",
+        kitchenLabel: item.kitchenLabel || "chicken",
+      })),
+      subtotal,
+      tax,
+      deliveryFee,
+      discount,
+      total,
+      paymentTiming,
+      paymentType,
+      paymentMethod,
+      payments,
+      notes: orderNotes,
+      customer:
+        selectedCustomer &&
+        selectedCustomer.name &&
+        selectedCustomer.name.trim()
+          ? selectedCustomer
+          : { name: "No Name", phone: "", email: "" },
+    };
+
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.patch(
+        `${apiUrl}/orders/${editingOrderId}`,
+        payload
+      );
+
+      if (res.data.success) {
+        const updatedOrder = res.data.data as Order;
+        const updatedOrdersList = orders.map((o) =>
+          o._id === editingOrderId ? updatedOrder : o
+        );
+
+        set({
+          orders: updatedOrdersList,
+          currentOrder: updatedOrder,
+          editingOrderId: null,
+          editingOrderNumber: null,
+          cartItems: [],
+          selectedCustomer: null,
+          selectedTable: null,
+          selectedVehicle: null,
+          subtotal: 0,
+          tax: 0,
+          discount: 0,
+          total: 0,
+          orderNotes: "",
+          updatingOrder: false,
+          checkoutOpen: false,
+        });
+
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("rms_edit_order");
+        }
+
+        toast.success(
+          `Order ${editingOrderNumber || ""} updated successfully!`
+        );
+        return updatedOrder;
+      }
+      throw new Error(res.data.message || "Failed to update order.");
+    } catch (error: unknown) {
+      set({ updatingOrder: false });
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Network error while updating order.";
       toast.error(message);
       return null;
     }

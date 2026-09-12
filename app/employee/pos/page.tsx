@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import PosNavbar from '@/modules/employee-pos/components/PosNavbar';
 import CategoryCarousel from '@/modules/employee-pos/components/CategoryCarousel';
 import OrderTypePanel from '@/modules/employee-pos/components/OrderTypePanel';
@@ -9,7 +10,7 @@ import CartPanel from '@/modules/employee-pos/components/CartPanel';
 import ModifierDrawer from '@/modules/employee-pos/components/ModifierDrawer';
 import CheckoutModal from '@/modules/employee-pos/components/CheckoutModal';
 import POSSidebarDrawer from '@/modules/employee-pos/components/POSSidebarDrawer';
-import { MenuItem } from '@/modules/employee-pos/types';
+import { MenuItem, CartItem as CartItemType } from '@/modules/employee-pos/types';
 import { usePosStore } from '@/modules/employee-pos/store/pos.store';
 import OnlineOrderBanner from '@/modules/employee-pos/components/OnlineOrderBanner';
 import EmployeePermissionGuard from '@/modules/employee-pos/components/EmployeePermissionGuard';
@@ -17,28 +18,60 @@ import { ShoppingBag, X } from 'lucide-react';
 
 export default function PosPage() {
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
+  const [editingCartItem, setEditingCartItem] = useState<CartItemType | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const { fetchMenu, cartItems } = usePosStore();
+  const { fetchMenu, cartItems, menuItems } = usePosStore();
 
   useEffect(() => {
-    // Clear any dangling draft carts from previous sessions
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('rms_draft_cart');
-      window.dispatchEvent(new Event('storage'));
+      const rawEditOrder = localStorage.getItem('rms_edit_order');
+      if (rawEditOrder) {
+        try {
+          const editData = JSON.parse(rawEditOrder);
+          localStorage.removeItem('rms_edit_order');
+          localStorage.removeItem('rms_draft_cart');
+
+          usePosStore.getState().loadOrderForEditing(editData);
+        } catch (e) {
+          console.error('Failed to load edit order data:', e);
+        }
+      } else {
+        window.localStorage.removeItem('rms_draft_cart');
+        window.dispatchEvent(new Event('storage'));
+      }
     }
     fetchMenu();
   }, [fetchMenu]);
 
   const handleOpenModifiers = (item: MenuItem) => {
+    setEditingCartItem(null);
     setActiveItem(item);
+    setIsDrawerOpen(true);
+  };
+
+  const handleEditCartItem = (cartItem: CartItemType) => {
+    const menuItem = menuItems.find(
+      (m) => m.id === cartItem.menuItemId || m.name === cartItem.name
+    ) || ({
+      id: cartItem.menuItemId,
+      name: cartItem.name,
+      price: cartItem.basePrice,
+      image: cartItem.image,
+      categoryId: cartItem.categoryId,
+      modifierGroups: [],
+    } as unknown as MenuItem);
+
+    setEditingCartItem(cartItem);
+    setActiveItem(menuItem);
     setIsDrawerOpen(true);
   };
 
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
     setActiveItem(null);
+    setEditingCartItem(null);
   };
 
   return (
@@ -73,7 +106,7 @@ export default function PosPage() {
 
           {/* Right Column – Cart (hidden on mobile, visible md+) */}
           <div className="hidden md:flex w-[270px] lg:w-[25%] flex-shrink-0 h-full">
-            <CartPanel />
+            <CartPanel onEditItem={handleEditCartItem} />
           </div>
         </div>
 
@@ -112,7 +145,7 @@ export default function PosPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-hidden">
-                <CartPanel />
+                <CartPanel onEditItem={handleEditCartItem} />
               </div>
             </div>
           </div>
@@ -133,6 +166,7 @@ export default function PosPage() {
         {/* Modifier Drawer Overlay */}
         <ModifierDrawer
           item={activeItem}
+          editingCartItem={editingCartItem}
           isOpen={isDrawerOpen}
           onClose={handleCloseDrawer}
         />

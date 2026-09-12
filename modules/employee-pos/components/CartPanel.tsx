@@ -11,8 +11,13 @@ import {
 import toast from "react-hot-toast";
 import { usePosStore } from "../store/pos.store";
 import CartItem from "./CartItem";
+import { CartItem as CartItemType } from "../types";
 
-export default function CartPanel() {
+interface CartPanelProps {
+  onEditItem?: (item: CartItemType) => void;
+}
+
+export default function CartPanel({ onEditItem }: CartPanelProps = {}) {
   const {
     cartItems,
     selectedCustomer,
@@ -24,6 +29,9 @@ export default function CartPanel() {
     openCheckout,
     nextOrderNumber,
     branchTaxFees,
+    editingOrderId,
+    editingOrderNumber,
+    cancelEditingOrder,
   } = usePosStore();
 
   const activeTaxRatePercent =
@@ -31,7 +39,7 @@ export default function CartPanel() {
     (branchTaxFees?.pstTaxRate ?? 0) +
     (branchTaxFees?.hstTaxRate ?? 0);
 
-  const orderNum = nextOrderNumber;
+  const orderNum = editingOrderId ? editingOrderNumber : nextOrderNumber;
 
   const validate = () => {
     if (!cartItems.length) {
@@ -47,31 +55,31 @@ export default function CartPanel() {
   };
 
   const handleClearCart = () => {
-    if (cartItems.length === 0) return;
-
+    if (!cartItems.length) return;
+    if (editingOrderId) {
+      cancelEditingOrder();
+      return;
+    }
     toast(
       (t) => (
-        <div className="flex flex-col gap-2 p-1.5 min-w-[220px]">
-          <p className="text-[12px] font-700 text-neutral-800 uppercase tracking-wide">
-            Clear Cart
-          </p>
-          <p className="text-[11px] text-neutral-500 font-550">
-            Are you sure you want to clear all items from your cart?
-          </p>
-          <div className="flex justify-end gap-2 mt-1.5">
+        <div className="flex flex-col gap-2 font-sans">
+          <span className="text-[12px] font-600 text-neutral-800">
+            Clear all items from current order cart?
+          </span>
+          <div className="flex items-center justify-end gap-2 pt-1">
             <button
               onClick={() => toast.dismiss(t.id)}
-              className="px-2.5 py-1 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[11px] font-700 transition-all cursor-pointer border border-neutral-200"
+              className="px-2.5 py-1 text-[11px] font-600 text-neutral-600 bg-neutral-100 hover:bg-neutral-200 rounded-md transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={() => {
-                toast.dismiss(t.id);
                 clearCart();
-                toast.success("Cart cleared successfully.");
+                toast.dismiss(t.id);
+                toast.success("Cart cleared");
               }}
-              className="px-2.5 py-1 rounded bg-[#DC2626] hover:bg-red-700 text-white text-[11px] font-700 transition-all cursor-pointer"
+              className="px-2.5 py-1 text-[11px] font-600 text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
             >
               Yes, Clear
             </button>
@@ -87,12 +95,12 @@ export default function CartPanel() {
   return (
     <div className="bg-white rounded-xl border border-neutral-200 flex flex-col h-full overflow-hidden select-none w-full">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 flex-shrink-0">
+      <div className={`flex items-center justify-between px-4 py-3 border-b flex-shrink-0 ${editingOrderId ? "bg-amber-50/80 border-amber-200" : "border-neutral-100"}`}>
         <div>
-          <h3 className="text-[13px] md:text-[14px] font-700 text-neutral-900 leading-tight">
-            Current Order
+          <h3 className={`text-[13px] md:text-[14px] font-700 leading-tight ${editingOrderId ? "text-amber-900" : "text-neutral-900"}`}>
+            {editingOrderId ? "Editing Order" : "Current Order"}
           </h3>
-          <span className="text-[11px] md:text-[12px] font-600 text-brand-primary tracking-wide mt-0.5 block">
+          <span className={`text-[11px] md:text-[12px] font-600 tracking-wide mt-0.5 block ${editingOrderId ? "text-amber-800 font-700" : "text-brand-primary"}`}>
             {orderNum}
           </span>
         </div>
@@ -105,8 +113,12 @@ export default function CartPanel() {
           </div>
           <button
             onClick={handleClearCart}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
-            title="Clear cart"
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all cursor-pointer ${
+              editingOrderId
+                ? "text-amber-700 hover:text-red-600 hover:bg-amber-100"
+                : "text-neutral-400 hover:text-red-500 hover:bg-red-50"
+            }`}
+            title={editingOrderId ? "Discard edits" : "Clear cart"}
           >
             <Trash2 size={15} />
           </button>
@@ -118,7 +130,7 @@ export default function CartPanel() {
         {cartItems.length > 0 ? (
           <div className="py-1">
             {cartItems.map((item) => (
-              <CartItem key={item.id} item={item} />
+              <CartItem key={item.id} item={item} onEdit={onEditItem} />
             ))}
           </div>
         ) : (
@@ -198,11 +210,13 @@ export default function CartPanel() {
             disabled={!cartItems.length}
             className={`w-full py-3 rounded-xl text-[12px] md:text-[13px] font-700 flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-[0.99] cursor-pointer ${
               cartItems.length
-                ? "bg-brand-primary text-white hover:bg-brand-primary-hover shadow-brand-primary/20"
+                ? editingOrderId
+                  ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20"
+                  : "bg-brand-primary text-white hover:bg-brand-primary-hover shadow-brand-primary/20"
                 : "bg-neutral-100 text-neutral-400 cursor-not-allowed shadow-none"
             }`}
           >
-            Create Order <ChevronRight size={14} strokeWidth={2.5} />
+            {editingOrderId ? "Update Order" : "Create Order"} <ChevronRight size={14} strokeWidth={2.5} />
           </button>
         </div>
       </div>

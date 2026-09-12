@@ -1,11 +1,16 @@
 'use client';
 
 import React from 'react';
-import { Plus, Minus, Trash2 } from 'lucide-react';
+import { Plus, Minus, Trash2, Pencil } from 'lucide-react';
 import { CartItem as CartItemType } from '../types';
 import { usePosStore } from '../store/pos.store';
 
-export default function CartItem({ item }: { item: CartItemType }) {
+interface CartItemProps {
+  item: CartItemType;
+  onEdit?: (item: CartItemType) => void;
+}
+
+export default function CartItem({ item, onEdit }: CartItemProps) {
   const { increaseQuantity, decreaseQuantity, removeFromCart } = usePosStore();
   const summary = item.selectedModifiers.map((m) => m.optionName).join(', ');
 
@@ -45,9 +50,22 @@ export default function CartItem({ item }: { item: CartItemType }) {
               <Plus size={8} strokeWidth={3} />
             </button>
           </div>
+
+          {/* Edit Pencil Button */}
+          {onEdit && (
+            <button
+              onClick={() => onEdit(item)}
+              title="Edit customization"
+              className="w-6 h-6 flex items-center justify-center text-sky-600 bg-sky-50 hover:bg-sky-100 hover:text-sky-700 rounded-md transition-all cursor-pointer"
+            >
+              <Pencil size={11} />
+            </button>
+          )}
+
           {/* Delete */}
           <button
             onClick={() => removeFromCart(item.id)}
+            title="Remove item"
             className="w-6 h-6 flex items-center justify-center text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 rounded-md transition-all cursor-pointer"
           >
             <Trash2 size={11} />

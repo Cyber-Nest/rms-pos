@@ -1,6 +1,7 @@
 import { SelectedModifier } from './modifier';
 
 export interface CartItem {
+  selectedSize?: string;
   id: string; // unique composite key (menuItemId + optionIds joined)
   menuItemId: string;
   categoryId?: string;

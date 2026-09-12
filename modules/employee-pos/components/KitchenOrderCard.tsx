@@ -135,17 +135,17 @@ export default function KitchenOrderCard({
       {/* ── Ticket Header ── */}
       <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-neutral-100 flex items-center justify-between bg-white shrink-0">
         <div className="flex flex-col gap-0.5">
-          <span className="font-800 text-[12.5px] sm:text-[13px] text-neutral-800 tracking-wide">
+          <span className="font-bold text-[13px] sm:text-[13.5px] text-neutral-800 tracking-wide">
             {order.orderNumber}
           </span>
-          <span className="text-[9.5px] sm:text-[10px] text-neutral-400 font-500">
+          <span className="text-[10px] sm:text-[10.5px] text-neutral-400 font-medium">
             {new Date(order.createdAt).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}
           </span>
         </div>
-        <span className={`px-2 py-0.5 rounded-full border text-[8.5px] sm:text-[9px] font-700 uppercase tracking-wider ${typeBadgeClass}`}>
+        <span className={`px-2 py-0.5 rounded-full border text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider ${typeBadgeClass}`}>
           {formattedType}
         </span>
       </div>
@@ -160,11 +160,11 @@ export default function KitchenOrderCard({
             >
               {/* Item Title & Qty */}
               <div className="flex items-start gap-2">
-                <span className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 rounded-full bg-orange-50 border border-orange-100 text-[11px] sm:text-[12px] font-800 text-brand-primary flex items-center justify-center">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 rounded-full bg-orange-50 border border-orange-100 text-[11px] sm:text-[12px] font-bold text-brand-primary flex items-center justify-center">
                   {item.quantity}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-neutral-800 font-700 text-[14px] sm:text-[15px] leading-tight">
+                  <p className="text-neutral-800 font-bold text-[14px] sm:text-[14.5px] leading-tight">
                     {item.name}
                   </p>
 
@@ -175,27 +175,27 @@ export default function KitchenOrderCard({
                         (mod, modIdx) => (
                           <div
                             key={modIdx}
-                            className="text-[11.5px] sm:text-[12.5px] leading-tight text-neutral-600"
+                            className="text-[11.5px] sm:text-[12px] leading-tight"
                           >
                             {mod.isRoot ? (
                               <div className="mt-1">
-                                <span className="text-[10px] sm:text-[10.5px] font-800 text-neutral-400 uppercase tracking-wider">
+                                <span className="text-[9.5px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                                   {mod.groupName}
                                 </span>
-                                <div className="flex justify-between items-baseline font-600 text-neutral-700">
+                                <div className="flex justify-between items-baseline font-semibold text-neutral-700">
                                   <span>{mod.optionName}</span>
                                   {mod.quantity > 1 && (
-                                    <span className="font-700 text-neutral-900 text-[10.5px] sm:text-[11px]">
+                                    <span className="font-bold text-neutral-800 text-[10.5px] sm:text-[11px]">
                                       x{mod.quantity}
                                     </span>
                                   )}
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex justify-between items-baseline text-neutral-500 font-500 text-[11px] sm:text-[11.5px] italic pl-1.5">
+                              <div className="flex justify-between items-baseline text-neutral-500 font-medium text-[11px] sm:text-[11.5px] pl-1.5">
                                 <span>{mod.optionName}</span>
                                 {mod.quantity > 1 && (
-                                  <span className="font-600 text-neutral-600 text-[9.5px] sm:text-[10px]">
+                                  <span className="font-semibold text-neutral-600 text-[9.5px] sm:text-[10px]">
                                     x{mod.quantity}
                                   </span>
                                 )}
@@ -209,7 +209,7 @@ export default function KitchenOrderCard({
 
                   {/* Custom Note */}
                   {item.note && (
-                    <p className="text-[9px] sm:text-[9.5px] text-amber-800 font-600 italic mt-1.5 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/50">
+                    <p className="text-[9px] sm:text-[9.5px] text-amber-800 font-semibold italic mt-1.5 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/50">
                       Note: {item.note}
                     </p>
                   )}
@@ -221,8 +221,8 @@ export default function KitchenOrderCard({
 
         {/* Order Level Delivery / Prep Note */}
         {order.notes && (
-          <div className="text-[9.5px] sm:text-[10px] text-amber-900 font-700 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 leading-snug">
-            <span className="font-900 uppercase text-[8px] sm:text-[8.5px] block text-amber-800 tracking-wider">Note / Instructions:</span>
+          <div className="text-[9.5px] sm:text-[10px] text-amber-900 font-bold bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 leading-snug">
+            <span className="font-extrabold uppercase text-[8px] sm:text-[8.5px] block text-amber-800 tracking-wider">Note / Instructions:</span>
             "{order.notes}"
           </div>
         )}
@@ -233,23 +233,23 @@ export default function KitchenOrderCard({
         {/* Row 1: Status Badge & Price */}
         <div className="flex justify-between items-center">
           {isDraft ? (
-            <span className="px-2 py-0.5 rounded-full border border-amber-250 bg-amber-50 text-amber-700 text-[8.5px] sm:text-[9px] font-700 uppercase tracking-wide">
+            <span className="px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wide">
               POS Drafting
             </span>
           ) : order.status === "pending" ? (
-            <span className="px-2 py-0.5 rounded-full border border-orange-200 bg-orange-50 text-brand-primary text-[8.5px] sm:text-[9px] font-700 uppercase tracking-wide animate-pulse">
+            <span className="px-2 py-0.5 rounded-full border border-orange-200 bg-orange-50 text-brand-primary text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wide animate-pulse">
               Confirmed
             </span>
           ) : order.status === "preparing" ? (
-            <span className="px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-[8.5px] sm:text-[9px] font-700 uppercase tracking-wide">
+            <span className="px-2 py-0.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wide">
               Preparing
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full border border-emerald-250 bg-emerald-50 text-emerald-700 text-[8.5px] sm:text-[9px] font-700 uppercase tracking-wide">
+            <span className="px-2 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wide">
               {order.orderType === "delivery" ? "Ready Delv" : "Ready Pick"}
             </span>
           )}
-          <span className="font-800 text-neutral-800 text-[12.5px] sm:text-[13px]">
+          <span className="font-bold text-neutral-800 text-[12.5px] sm:text-[13px]">
             ${order.total.toFixed(2)}
           </span>
         </div>
@@ -257,17 +257,17 @@ export default function KitchenOrderCard({
         {/* Row 2: Payment & Timer */}
         <div className="flex justify-between items-center">
           {isUnpaid ? (
-            <span className="px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-600 text-[8px] sm:text-[8.5px] font-700 uppercase tracking-wide">
+            <span className="px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-600 text-[8px] sm:text-[8.5px] font-semibold uppercase tracking-wide">
               Unpaid
             </span>
           ) : (
-            <span className="px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-600 text-[8px] sm:text-[8.5px] font-700 uppercase tracking-wide">
+            <span className="px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-600 text-[8px] sm:text-[8.5px] font-semibold uppercase tracking-wide">
               Paid
             </span>
           )}
 
           {!isDraft && (
-            <div className={`flex items-center gap-1 text-[9.5px] sm:text-[10px] font-600 ${isDelayed ? "text-red-600 font-700 animate-pulse" : "text-neutral-400"}`}>
+            <div className={`flex items-center gap-1 text-[9.5px] sm:text-[10px] font-medium ${isDelayed ? "text-red-600 font-bold animate-pulse" : "text-neutral-400"}`}>
               <Clock size={11} className={isDelayed ? "animate-bounce" : ""} />
               <span>
                 {elapsedMins} Min{elapsedMins !== 1 ? "s" : ""}

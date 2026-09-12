@@ -558,97 +558,106 @@ export default function KitchenDashboard() {
       {/* Navbar */}
       <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
-      {/* ── Filter Controls Section (Premium Responsive Low-Profile Segmented Controls) ── */}
-      <div className="bg-white border-b border-neutral-200 px-3 sm:px-6 py-2.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2.5 shadow-xs flex-shrink-0 select-none overflow-x-auto scrollbar-none">
-        {/* Status Pills */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap shrink-0 overflow-x-auto pb-1 sm:pb-0">
-          {[
-            { id: "all", label: "All", count: countAll },
-            { id: "pending", label: "Pending", count: countPending },
-            { id: "confirmed", label: "Confirmed", count: countConfirmed },
-            { id: "preparing", label: "Preparing", count: countPreparing },
-            { id: "ready", label: "Ready", count: countReady },
-          ].map((statusTab) => {
-            const active = statusFilter === statusTab.id;
-            return (
-              <button
-                key={statusTab.id}
-                onClick={() => setStatusFilter(statusTab.id as any)}
-                className={`px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-750 tracking-wide uppercase transition-all duration-150 cursor-pointer border whitespace-nowrap ${
-                  active
-                    ? "bg-brand-primary border-brand-primary text-white shadow-sm shadow-brand-primary/15"
-                    : "bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-brand-primary/30 hover:text-brand-primary hover:bg-orange-50/50"
-                }`}
-              >
-                {statusTab.label} ({statusTab.count})
-              </button>
-            );
-          })}
-        </div>
+      {/* ── Filter Strip ── */}
+      <div className="bg-white border-b border-neutral-200 shadow-xs flex-shrink-0 select-none">
+        {/* Scrollable on mobile/tablet, single row fit on laptop */}
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-start px-2.5 sm:px-4 lg:px-6 py-2 min-w-max gap-2 sm:gap-2.5 lg:gap-3">
 
-        {/* Right Filter Controls Group (Category + Order Types) */}
-        <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap shrink-0">
-          {/* Category Segment Bar — Only rendered if multiple kitchen labels exist for this branch */}
-          {availableCatTabs.length > 1 && (
-            <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200 shrink-0">
-              {availableCatTabs.map((catTab) => {
-                const active = categoryFilter === catTab.id;
-                const count =
-                  categoryCountData[
-                    catTab.id as keyof typeof categoryCountData
-                  ] ?? 0;
+            {/* ─ Status Pills ─ */}
+            <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0">
+              {[
+                { id: "all", label: "All", count: countAll },
+                { id: "pending", label: "Pending", count: countPending },
+                { id: "confirmed", label: "Confirmed", count: countConfirmed },
+                { id: "preparing", label: "Preparing", count: countPreparing },
+                { id: "ready", label: "Ready", count: countReady },
+              ].map((tab) => {
+                const active = statusFilter === tab.id;
                 return (
                   <button
-                    key={catTab.id}
-                    onClick={() => setCategoryFilter(catTab.id as any)}
-                    className={`px-3 sm:px-4 py-1 rounded-lg text-[9.5px] sm:text-[10px] font-700 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                    key={tab.id}
+                    onClick={() => setStatusFilter(tab.id as any)}
+                    className={`px-2.5 sm:px-3 lg:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] lg:text-[11.5px] xl:text-[12px] font-bold uppercase tracking-wide transition-all cursor-pointer border whitespace-nowrap ${
                       active
-                        ? "bg-brand-primary text-white shadow-xs"
-                        : "text-neutral-550 hover:text-brand-primary"
+                        ? "bg-brand-primary border-brand-primary text-white shadow-sm"
+                        : "bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-brand-primary/40 hover:text-brand-primary"
                     }`}
                   >
-                    {catTab.label} ({count})
+                    {tab.label} <span className={`font-semibold ${active ? "opacity-90" : "opacity-70"}`}>({tab.count})</span>
                   </button>
                 );
               })}
             </div>
-          )}
 
-          {/* Order Types Segment Bar */}
-          <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-50 p-1 rounded-xl border border-neutral-200 overflow-x-auto shrink-0 scrollbar-none">
-            {[
-              { id: "all", label: "All Types", count: countAll },
-              { id: "takeout", label: "Takeout", count: countTakeout },
-              {
-                id: "drive-through",
-                label: "Drive Thru",
-                count: countDriveThrough,
-              },
-              { id: "dine-in", label: "Dine In", count: countDineIn },
-              { id: "delivery", label: "Delivery", count: countDelivery },
-              { id: "online", label: "Online", count: countOnline },
-            ].map((typeTab) => {
-              const active = typeFilter === typeTab.id;
-              return (
-                <button
-                  key={typeTab.id}
-                  onClick={() => setTypeFilter(typeTab.id as any)}
-                  className={`px-2.5 sm:px-3 py-1 rounded-lg text-[9.5px] sm:text-[10px] font-700 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
-                    active
-                      ? "bg-brand-primary text-white shadow-xs"
-                      : "text-neutral-550 hover:text-brand-primary"
-                  }`}
-                >
-                  {typeTab.label} ({typeTab.count})
-                </button>
-              );
-            })}
+            {/* Divider between Status Pills and Category/Type Filters */}
+            <div className="w-px h-5 sm:h-6 bg-neutral-300 mx-1 sm:mx-1.5 lg:mx-2 shrink-0" />
+
+            {/* ─ Right side: Category + Type groups ─ */}
+            <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3 shrink-0">
+
+              {/* ─ Category Tabs (only if multiple kitchen labels) ─ */}
+              {availableCatTabs.length > 1 && (
+                <>
+                  <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-100 p-0.5 sm:p-1 rounded-lg border border-neutral-200 shrink-0">
+                    {availableCatTabs.map((catTab) => {
+                      const active = categoryFilter === catTab.id;
+                      const count = categoryCountData[catTab.id as keyof typeof categoryCountData] ?? 0;
+                      return (
+                        <button
+                          key={catTab.id}
+                          onClick={() => setCategoryFilter(catTab.id as any)}
+                          className={`px-2.5 sm:px-3 lg:px-3.5 py-1 sm:py-1.5 rounded-md text-[9.5px] sm:text-[10.5px] lg:text-[11px] xl:text-[11.5px] font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                            active
+                              ? "bg-brand-primary text-white shadow-xs"
+                              : "text-neutral-500 hover:text-brand-primary"
+                          }`}
+                        >
+                          {catTab.label} <span className={`font-semibold ${active ? "opacity-90" : "opacity-70"}`}>({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Inner divider between category and type */}
+                  <div className="w-px h-5 sm:h-6 bg-neutral-300 mx-1 shrink-0" />
+                </>
+              )}
+
+              {/* ─ Order Type Tabs ─ */}
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-100 p-0.5 sm:p-1 rounded-lg border border-neutral-200 shrink-0">
+                {[
+                  { id: "all", label: "All Types", count: countAll },
+                  { id: "takeout", label: "Takeout", count: countTakeout },
+                  { id: "drive-through", label: "Drive Thru", count: countDriveThrough },
+                  { id: "dine-in", label: "Dine In", count: countDineIn },
+                  { id: "delivery", label: "Delivery", count: countDelivery },
+                  { id: "online", label: "Online", count: countOnline },
+                ].map((tab) => {
+                  const active = typeFilter === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setTypeFilter(tab.id as any)}
+                      className={`px-2 sm:px-2.5 lg:px-3 py-1 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] lg:text-[10.5px] xl:text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                        active
+                          ? "bg-brand-primary text-white shadow-xs"
+                          : "text-neutral-500 hover:text-brand-primary"
+                      }`}
+                    >
+                      {tab.label} <span className={`font-semibold ${active ? "opacity-90" : "opacity-70"}`}>({tab.count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+            </div>
+
           </div>
         </div>
       </div>
 
-      {/* ── Main Dashboard Cards Row with pagination arrows (responsive height) ── */}
-      <div className="flex-1 p-3 sm:p-4 md:p-6 flex items-stretch justify-center gap-2 sm:gap-4 min-h-0 bg-brand-bg select-none">
+      {/* ── Main Dashboard Cards Row ── */}
+      <div className="flex-1 p-2 sm:p-3 lg:p-4 xl:p-6 flex items-stretch justify-center gap-2 sm:gap-3 lg:gap-4 min-h-0 bg-brand-bg select-none">
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">
             <div className="relative flex items-center justify-center">

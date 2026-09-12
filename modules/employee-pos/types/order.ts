@@ -45,6 +45,7 @@ export interface PromoApplied {
 }
 
 export interface Order {
+  id: string | undefined;
   refundedAt: any;
   deliveryFee: number | undefined;
   tip?: number;
