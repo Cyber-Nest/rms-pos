@@ -1135,7 +1135,7 @@ export default function KitchenDetailModal({
                           >
                             <div className="flex items-center">
                               <div className="flex-1 pr-4">
-                                <h4 className="font-700 text-[15.5px] text-neutral-800 leading-tight">
+                                <h4 className="font-bold text-[15.5px] text-neutral-800 leading-tight">
                                   {item.name}
                                 </h4>
 
@@ -1151,23 +1151,23 @@ export default function KitchenDetailModal({
                                         >
                                           {mod.isRoot ? (
                                             <div className="mt-0.5">
-                                              <span className="text-neutral-400 font-750 text-[11px] uppercase tracking-wider select-none">
+                                              <span className="text-neutral-400 font-bold text-[11px] uppercase tracking-wider select-none">
                                                 {mod.groupName}
                                               </span>
-                                              <div className="flex justify-between items-baseline text-neutral-600 font-600 pl-0.5">
+                                              <div className="flex justify-between items-baseline text-neutral-600 font-semibold pl-0.5">
                                                 <span>{mod.optionName}</span>
                                                 {mod.quantity > 1 && (
-                                                  <span className="font-700 text-neutral-800 ml-1 text-[11.5px]">
+                                                  <span className="font-bold text-neutral-800 ml-1 text-[11.5px]">
                                                     x{mod.quantity}
                                                   </span>
                                                 )}
                                               </div>
                                             </div>
                                           ) : (
-                                            <div className="flex justify-between items-baseline text-neutral-500 font-500 text-[12px] pl-1.5 italic">
+                                            <div className="flex justify-between items-baseline text-neutral-500 font-medium text-[12px] pl-1.5 italic">
                                               <span>{mod.optionName}</span>
                                               {mod.quantity > 1 && (
-                                                <span className="font-650 text-neutral-600 ml-1 text-[10.5px]">
+                                                <span className="font-semibold text-neutral-600 ml-1 text-[10.5px]">
                                                   x{mod.quantity}
                                                 </span>
                                               )}
@@ -1178,19 +1178,19 @@ export default function KitchenDetailModal({
                                     </div>
                                   )}
                                 {item.note && (
-                                  <p className="text-[9.5px] text-amber-805 font-600 italic mt-1.5 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/40 inline-block">
+                                  <p className="text-[9.5px] text-amber-800 font-semibold italic mt-1.5 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-200/40 inline-block">
                                     Note: {item.note}
                                   </p>
                                 )}
                               </div>
 
                               <div className="w-16 text-center">
-                                <span className="px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-700 text-[13px]">
+                                <span className="px-2.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 font-bold text-[13px]">
                                   {item.quantity}
                                 </span>
                               </div>
 
-                              <div className="w-24 text-right font-700 text-[12.5px] text-neutral-800 font-mono">
+                              <div className="w-24 text-right font-bold text-[12.5px] text-neutral-800 font-mono">
                                 $
                                 {(
                                   (item.totalPrice as number | undefined) ??

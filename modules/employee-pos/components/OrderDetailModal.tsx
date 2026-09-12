@@ -568,32 +568,32 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                 {order.items.map((item: CartItem, idx) => (
                   <div key={idx} className="px-4 py-3.5 grid grid-cols-12 text-[12px] text-neutral-800 items-start">
                     <div className="col-span-8 space-y-1.5">
-                      <p className="font-800 text-neutral-800 text-[15.5px]">{item.name}</p>
+                      <p className="font-bold text-neutral-800 text-[15.5px]">{item.name}</p>
                       
                       {/* Render modifiers if any */}
                       {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                        <div className="pl-3 mt-1 border-l-2 border-neutral-200 space-y-0.5 text-neutral-500 text-[12.5px] font-600">
+                        <div className="pl-3 mt-1 border-l-2 border-neutral-200 space-y-0.5 text-neutral-600 text-[12.5px] font-semibold">
                           {item.selectedModifiers.map((mod, mIdx) => (
                             <p key={mIdx}>
-                              {mod.groupName}: {mod.optionName} {mod.price > 0 ? `(+$${mod.price.toFixed(2)})` : ''}
+                              <span className="text-neutral-400 font-bold uppercase text-[10.5px]">{mod.groupName}:</span> {mod.optionName} {mod.price > 0 ? `(+$${mod.price.toFixed(2)})` : ''}
                             </p>
                           ))}
                         </div>
                       )}
                       {item.note && (
-                        <p className="text-[10px] text-amber-700 font-600 italic pl-3 mt-1">
+                        <p className="text-[10px] text-amber-800 font-semibold italic mt-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                           Note: "{item.note}"
                         </p>
                       )}
                     </div>
                     {/* Quantity Badge */}
                     <div className="col-span-2 text-center self-start pt-0.5">
-                      <span className="px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-700 text-[13px]">
+                      <span className="px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-bold text-[13px]">
                         {item.quantity}
                       </span>
                     </div>
                     {/* Price (safe fallback included) */}
-                    <div className="col-span-2 text-right font-800 text-neutral-900 self-start pt-0.5 font-mono">
+                    <div className="col-span-2 text-right font-bold text-neutral-900 self-start pt-0.5 font-mono">
                       ${((item.totalPrice as number | undefined) ?? (item.basePrice * item.quantity)).toFixed(2)}
                     </div>
                   </div>
@@ -604,53 +604,53 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
             {/* Right Col - Receipt Calculations (2/5) */}
             <div className="md:col-span-2 border border-neutral-200 bg-white rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div className="space-y-2.5 text-[12px] text-neutral-600">
-                <h3 className="text-[10.5px] font-800 text-neutral-500 uppercase tracking-wider border-b border-neutral-300 pb-2.5 mb-3 select-none">
+                <h3 className="text-[10.5px] font-bold text-neutral-500 uppercase tracking-wider border-b border-neutral-300 pb-2.5 mb-3 select-none">
                   Invoice Breakdown
                 </h3>
-                <div className="flex justify-between font-600">
+                <div className="flex justify-between font-semibold">
                   <span>Item Total :</span>
-                  <span className="text-neutral-850 font-700 font-mono">${(order.subtotal ?? 0).toFixed(2)}</span>
+                  <span className="text-neutral-850 font-bold font-mono">${(order.subtotal ?? 0).toFixed(2)}</span>
                 </div>
                 {(order.discount ?? 0) > 0 && (
-                  <div className="flex justify-between text-green-600 font-700">
+                  <div className="flex justify-between text-red-600 font-bold">
                     <span>Discount :</span>
                     <span className="font-mono">-${(order.discount ?? 0).toFixed(2)} ({order.discountType})</span>
                   </div>
                 )}
-                <div className="flex justify-between font-600">
+                <div className="flex justify-between font-semibold">
                   <span>Sub Total :</span>
-                  <span className="text-neutral-850 font-700 font-mono">
+                  <span className="text-neutral-850 font-bold font-mono">
                     ${((order.subtotal ?? 0) - (order.discount ?? 0)).toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between font-600">
+                <div className="flex justify-between font-semibold">
                   <span>GST ({((order.taxRate ?? 0) * 100).toFixed(0)}%) :</span>
-                  <span className="text-neutral-850 font-700 font-mono">${(order.tax ?? 0).toFixed(2)}</span>
+                  <span className="text-neutral-850 font-bold font-mono">${(order.tax ?? 0).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between font-600">
+                <div className="flex justify-between font-semibold">
                   <span>Total Tax :</span>
-                  <span className="text-neutral-850 font-700 font-mono">${(order.tax ?? 0).toFixed(2)}</span>
+                  <span className="text-neutral-850 font-bold font-mono">${(order.tax ?? 0).toFixed(2)}</span>
                 </div>
                 {(order.deliveryFee ?? 0) > 0 && (
-                  <div className="flex justify-between font-600">
+                  <div className="flex justify-between font-semibold">
                     <span>Delivery Fee :</span>
-                    <span className="text-neutral-850 font-700 font-mono">${(order.deliveryFee ?? 0).toFixed(2)}</span>
+                    <span className="text-neutral-850 font-bold font-mono">${(order.deliveryFee ?? 0).toFixed(2)}</span>
                   </div>
                 )}
                 {(order.tip ?? 0) > 0 && (
-                  <div className="flex justify-between font-700 text-brand-primary">
+                  <div className="flex justify-between font-bold text-brand-primary">
                     <span>Driver Tip :</span>
                     <span className="font-mono">${(order.tip ?? 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="border-t border-dashed border-neutral-300 my-2.5" />
-                <div className="flex justify-between text-[14px] font-900 text-neutral-900 pt-1">
+                <div className="flex justify-between text-[14px] font-extrabold text-neutral-900 pt-1">
                   <span>Grand Total :</span>
-                  <span className="font-mono text-red-600 font-900">${(order.total ?? 0).toFixed(2)}</span>
+                  <span className="font-mono text-brand-primary font-bold text-[14.5px]">${(order.total ?? 0).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-[14px] font-900 text-emerald-600">
+                <div className="flex justify-between text-[14px] font-extrabold text-emerald-600">
                   <span>Total Paid :</span>
-                  <span className="font-mono font-900">${order.paymentStatus === 'paid' ? (order.total ?? 0).toFixed(2) : '0.00'}</span>
+                  <span className="font-mono font-bold text-[14.5px]">${order.paymentStatus === 'paid' ? (order.total ?? 0).toFixed(2) : '0.00'}</span>
                 </div>
               </div>
 

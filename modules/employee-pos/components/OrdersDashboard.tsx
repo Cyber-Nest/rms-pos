@@ -653,10 +653,10 @@ export default function OrdersDashboard() {
                   setStartDate(singleDate);
                   setEndDate(singleDate);
                 }}
-                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
                   activeSubTab === "dashboard"
                     ? "bg-brand-primary text-white shadow-sm"
-                    : "text-neutral-500 hover:text-brand-primary"
+                    : "text-neutral-600 hover:text-brand-primary"
                 }`}
               >
                 Dashboard
@@ -672,10 +672,10 @@ export default function OrdersDashboard() {
                   setStartDate(singleDate);
                   setEndDate(singleDate);
                 }}
-                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
                   activeSubTab === "orders"
                     ? "bg-brand-primary text-white shadow-sm"
-                    : "text-neutral-500 hover:text-brand-primary"
+                    : "text-neutral-600 hover:text-brand-primary"
                 }`}
               >
                 Orders
@@ -691,10 +691,10 @@ export default function OrdersDashboard() {
                   setStartDate(singleDate);
                   setEndDate(singleDate);
                 }}
-                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
+                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
                   activeSubTab === "sales_summary"
                     ? "bg-brand-primary text-white shadow-sm"
-                    : "text-neutral-500 hover:text-brand-primary"
+                    : "text-neutral-600 hover:text-brand-primary"
                 }`}
               >
                 <span className="hidden sm:inline">Sales Summary</span>
@@ -714,10 +714,10 @@ export default function OrdersDashboard() {
                     }
                     setIsMoreDropdownOpen(!isMoreDropdownOpen);
                   }}
-                  className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                  className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-bold tracking-wide uppercase transition-all duration-150 cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                     isMoreTabActive
                       ? "bg-brand-primary text-white shadow-sm"
-                      : "text-neutral-500 hover:text-brand-primary"
+                      : "text-neutral-600 hover:text-brand-primary"
                   }`}
                 >
                   <span>{moreButtonLabel}</span>

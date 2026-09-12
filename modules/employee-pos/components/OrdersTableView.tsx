@@ -73,30 +73,30 @@ export default function OrdersTableView({
 
     switch (status) {
       case 'completed':
-        styles = 'bg-emerald-50 text-emerald-700 border-emerald-200/60';
+        styles = 'bg-emerald-50 text-emerald-700 border-emerald-200/80';
         label = 'Completed';
         break;
       case 'cancelled':
-        styles = 'bg-red-50 text-red-700 border-red-200/60';
+        styles = 'bg-red-50 text-red-700 border-red-200/80';
         label = 'Cancelled';
         break;
       case 'ready':
-        styles = 'bg-sky-50 text-sky-700 border-sky-200/60';
+        styles = 'bg-sky-50 text-sky-700 border-sky-200/80';
         label = 'Ready Pick';
         break;
       case 'preparing':
-        styles = 'bg-blue-50 text-blue-700 border-blue-200/60';
+        styles = 'bg-blue-50 text-blue-700 border-blue-200/80';
         label = 'Preparing';
         break;
       case 'pending':
       default:
-        styles = 'bg-orange-50 text-brand-primary border-brand-primary-muted/50';
+        styles = 'bg-orange-50 text-brand-primary border-orange-200/80';
         label = 'Pending';
         break;
     }
 
     return (
-      <span className={`px-2.5 py-1 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1.5 border ${styles}`}>
+      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 border ${styles}`}>
         <span className="w-1.5 h-1.5 rounded-full bg-current" />
         {label}
       </span>
@@ -117,25 +117,25 @@ export default function OrdersTableView({
     const clean = method.toLowerCase().trim();
     if (clean === 'cash') {
       return (
-        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider uppercase border bg-emerald-50 text-emerald-700 border-emerald-200">
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider uppercase border bg-emerald-50 text-emerald-700 border-emerald-200">
           CASH
         </span>
       );
     } else if (['credit', 'card', 'debit'].includes(clean)) {
       return (
-        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider uppercase border bg-purple-50 text-purple-700 border-purple-200">
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider uppercase border bg-purple-50 text-purple-700 border-purple-200">
           {clean.toUpperCase()}
         </span>
       );
     } else if (clean === 'split') {
       return (
-        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider uppercase border bg-amber-50 text-amber-700 border-amber-200">
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider uppercase border bg-amber-50 text-amber-700 border-amber-200">
           SPLIT
         </span>
       );
     } else {
       return (
-        <span className="text-neutral-400 font-700 text-[10.5px]">
+        <span className="text-neutral-400 font-semibold text-[10.5px]">
           --
         </span>
       );
@@ -147,21 +147,21 @@ export default function OrdersTableView({
     const isRefunded = order.paymentStatus === 'refunded' || !!order.refundedAt;
     if (isRefunded) {
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 border border-purple-200/80">
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 border border-purple-200">
           <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
           PAID / REF
         </span>
       );
     } else if (order.paymentStatus === 'paid') {
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
           Paid
         </span>
       );
     } else {
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1.5 bg-red-50 text-red-750 border border-red-200/60">
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200">
           <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
           Unpaid
         </span>
@@ -190,8 +190,8 @@ export default function OrdersTableView({
       
       {/* Table Container */}
       <div className="overflow-x-auto overflow-y-auto flex-1 min-h-[400px]">
-        <table className="w-full text-left text-[11px] text-neutral-600 font-600 border-collapse table-auto">
-          <thead className="bg-neutral-50/75 border-b border-neutral-200 text-neutral-550 text-[10px] font-800 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+        <table className="w-full text-left text-[11px] text-neutral-600 font-semibold border-collapse table-auto">
+          <thead className="bg-neutral-50/75 border-b border-neutral-200 text-neutral-600 text-[10px] font-bold uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
             <tr>
               <th className="px-5 py-3.5">Order #</th>
               <th className="px-5 py-3.5">Customer</th>
@@ -242,10 +242,10 @@ export default function OrdersTableView({
                       : 'NN');
 
                 const avatarClass = isSkipOrder
-                  ? 'bg-orange-50 border-orange-200 text-orange-700 font-750'
+                  ? 'bg-orange-50 border-orange-200 text-orange-700 font-bold'
                   : hasCustomer
-                    ? 'bg-brand-primary-light border-brand-primary-muted text-brand-primary'
-                    : 'bg-neutral-100 border-neutral-200 text-neutral-400';
+                    ? 'bg-brand-primary-light border-brand-primary-muted text-brand-primary font-bold'
+                    : 'bg-neutral-100 border-neutral-200 text-neutral-400 font-bold';
 
                 return (
                   <tr
@@ -254,7 +254,7 @@ export default function OrdersTableView({
                   >
                     {/* Order Number in a nice mono tag */}
                     <td className="px-5 py-4">
-                      <span className="font-mono text-[10.5px] font-700 text-neutral-700 bg-neutral-100/80 px-2.5 py-1 rounded border border-neutral-200/80 tracking-wide shadow-3xs">
+                      <span className="font-mono text-[10.5px] font-bold text-neutral-800 bg-neutral-100/80 px-2.5 py-1 rounded border border-neutral-200/80 tracking-wide shadow-3xs">
                         {shortNum}
                       </span>
                     </td>
@@ -262,19 +262,19 @@ export default function OrdersTableView({
                     {/* Customer with profile avatar initials */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-800 uppercase border ${avatarClass}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] uppercase border ${avatarClass}`}>
                           {customerInitials}
                         </div>
                         <div className="leading-tight">
                           <p className={`text-[11.5px] ${
                             isSkipOrder || hasCustomer
-                              ? 'font-800 text-neutral-800'
-                              : 'font-700 text-neutral-400'
+                              ? 'font-bold text-neutral-800'
+                              : 'font-semibold text-neutral-500'
                           }`}>
                             {isSkipOrder ? (order.customer?.name || 'No Digits') : (hasCustomer ? order.customer?.name : 'No Name')}
                           </p>
                           {!isSkipOrder && hasCustomer && hasPhone && (
-                            <p className="text-[9.5px] text-neutral-400 font-550 mt-0.5">
+                            <p className="text-[9.5px] text-neutral-400 font-normal mt-0.5">
                               {order.customer?.phone}
                             </p>
                           )}
@@ -283,20 +283,20 @@ export default function OrdersTableView({
                     </td>
 
                     {/* Sub Total */}
-                    <td className="px-5 py-4 text-right font-700 text-neutral-450 text-[11.5px]">
+                    <td className="px-5 py-4 text-right font-medium text-neutral-600 text-[11.5px]">
                       ${subTotalDisplay.toFixed(2)}
                     </td>
 
                     {/* Grand Total */}
                     <td className="px-5 py-4 text-right">
-                      <span className="font-900 text-[12.5px] text-neutral-900">
+                      <span className="font-bold text-[12.5px] text-neutral-900">
                         ${grandTotalDisplay.toFixed(2)}
                       </span>
                     </td>
 
                     {/* Order Type */}
                     <td className="px-5 py-4">
-                      <span className={`px-2.5 py-0.5 rounded-full border text-[9.5px] font-750 uppercase tracking-wider ${typeBadgeClass}`}>
+                      <span className={`px-2.5 py-0.5 rounded-full border text-[9.5px] font-bold uppercase tracking-wider ${typeBadgeClass}`}>
                         {formattedType}
                       </span>
                     </td>
@@ -304,27 +304,27 @@ export default function OrdersTableView({
                     {/* Order Placed (Source) */}
                     <td className="px-5 py-4">
                       {order.orderSource === 'pos' ? (
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-neutral-50 text-neutral-600 border-neutral-200">
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider border uppercase inline-flex items-center gap-1.5 bg-neutral-50 text-neutral-600 border-neutral-200">
                           <Store size={10} />
                           <span>POS System</span>
                         </span>
                       ) : order.orderSource === 'doordash' ? (
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-red-50 text-red-750 border-red-200/60">
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider border uppercase inline-flex items-center gap-1.5 bg-red-50 text-red-750 border-red-200/60">
                           <Smartphone size={10} />
                           <span>Online - DoorDash</span>
                         </span>
                       ) : order.orderSource === 'skip' ? (
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-orange-50 text-orange-755 border-orange-200/60">
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider border uppercase inline-flex items-center gap-1.5 bg-orange-50 text-orange-755 border-orange-200/60">
                           <Smartphone size={10} />
                           <span>Online - Skip</span>
                         </span>
                       ) : order.orderSource === 'ubereats' ? (
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-750 border-emerald-200/60">
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider border uppercase inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-750 border-emerald-200/60">
                           <Smartphone size={10} />
                           <span>Online - Uber Eats</span>
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider border uppercase inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 border-sky-100">
+                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wider border uppercase inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 border-sky-100">
                           <Smartphone size={10} />
                           <span>Online</span>
                         </span>
@@ -347,7 +347,7 @@ export default function OrdersTableView({
                     </td>
 
                     {/* Date */}
-                    <td className="px-5 py-4 text-neutral-450 font-550 text-[11px]">
+                    <td className="px-5 py-4 text-neutral-500 font-normal text-[11px]">
                       {formatDate(order.createdAt)}
                     </td>
 

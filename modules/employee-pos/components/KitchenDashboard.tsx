@@ -560,12 +560,12 @@ export default function KitchenDashboard() {
 
       {/* ── Filter Strip ── */}
       <div className="bg-white border-b border-neutral-200 shadow-xs flex-shrink-0 select-none">
-        {/* Scrollable on mobile/tablet, full-width on laptop */}
-        <div className="overflow-x-auto lg:overflow-visible scrollbar-hide">
-          <div className="flex items-center justify-start lg:justify-between px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2 lg:py-3 min-w-max lg:min-w-0 lg:w-full">
+        {/* Scrollable on mobile/tablet, single row fit on laptop */}
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex items-center justify-start px-2.5 sm:px-4 lg:px-6 py-2 min-w-max gap-2 sm:gap-2.5 lg:gap-3">
 
             {/* ─ Status Pills ─ */}
-            <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2">
+            <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0">
               {[
                 { id: "all", label: "All", count: countAll },
                 { id: "pending", label: "Pending", count: countPending },
@@ -578,28 +578,28 @@ export default function KitchenDashboard() {
                   <button
                     key={tab.id}
                     onClick={() => setStatusFilter(tab.id as any)}
-                    className={`px-2 sm:px-3 lg:px-4 py-0.5 sm:py-1 lg:py-1.5 rounded-full text-[9px] sm:text-[10.5px] lg:text-[11.5px] font-750 uppercase tracking-wide transition-all cursor-pointer border whitespace-nowrap ${
+                    className={`px-2.5 sm:px-3 lg:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] lg:text-[11.5px] xl:text-[12px] font-bold uppercase tracking-wide transition-all cursor-pointer border whitespace-nowrap ${
                       active
                         ? "bg-brand-primary border-brand-primary text-white shadow-sm"
-                        : "bg-neutral-50 border-neutral-200 text-neutral-500 hover:border-brand-primary/40 hover:text-brand-primary"
+                        : "bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-brand-primary/40 hover:text-brand-primary"
                     }`}
                   >
-                    {tab.label} <span className={`font-600 ${active ? "opacity-80" : "opacity-60"}`}>({tab.count})</span>
+                    {tab.label} <span className={`font-semibold ${active ? "opacity-90" : "opacity-70"}`}>({tab.count})</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Divider — only shown on mobile/tablet where items are inline without justify-between */}
-            <div className="w-px h-5 lg:h-6 bg-neutral-200 mx-2 sm:mx-3 lg:hidden shrink-0" />
+            {/* Divider between Status Pills and Category/Type Filters */}
+            <div className="w-px h-5 sm:h-6 bg-neutral-300 mx-1 sm:mx-1.5 lg:mx-2 shrink-0" />
 
             {/* ─ Right side: Category + Type groups ─ */}
-            <div className="flex items-center gap-1.5 lg:gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3 shrink-0">
 
               {/* ─ Category Tabs (only if multiple kitchen labels) ─ */}
               {availableCatTabs.length > 1 && (
                 <>
-                  <div className="flex items-center gap-0.5 lg:gap-1 bg-neutral-100 p-0.5 lg:p-1 rounded-lg border border-neutral-200 shrink-0">
+                  <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-100 p-0.5 sm:p-1 rounded-lg border border-neutral-200 shrink-0">
                     {availableCatTabs.map((catTab) => {
                       const active = categoryFilter === catTab.id;
                       const count = categoryCountData[catTab.id as keyof typeof categoryCountData] ?? 0;
@@ -607,24 +607,24 @@ export default function KitchenDashboard() {
                         <button
                           key={catTab.id}
                           onClick={() => setCategoryFilter(catTab.id as any)}
-                          className={`px-2 sm:px-3 lg:px-4 py-0.5 sm:py-1 lg:py-1.5 rounded-md text-[9px] sm:text-[10px] lg:text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                          className={`px-2.5 sm:px-3 lg:px-3.5 py-1 sm:py-1.5 rounded-md text-[9.5px] sm:text-[10.5px] lg:text-[11px] xl:text-[11.5px] font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
                             active
                               ? "bg-brand-primary text-white shadow-xs"
                               : "text-neutral-500 hover:text-brand-primary"
                           }`}
                         >
-                          {catTab.label} ({count})
+                          {catTab.label} <span className={`font-semibold ${active ? "opacity-90" : "opacity-70"}`}>({count})</span>
                         </button>
                       );
                     })}
                   </div>
-                  {/* Inner divider between category and type — hidden on lg where gap handles it */}
-                  <div className="w-px h-5 lg:h-6 bg-neutral-200 lg:hidden shrink-0" />
+                  {/* Inner divider between category and type */}
+                  <div className="w-px h-5 sm:h-6 bg-neutral-300 mx-1 shrink-0" />
                 </>
               )}
 
               {/* ─ Order Type Tabs ─ */}
-              <div className="flex items-center gap-0.5 lg:gap-1 bg-neutral-100 p-0.5 lg:p-1 rounded-lg border border-neutral-200 shrink-0">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-100 p-0.5 sm:p-1 rounded-lg border border-neutral-200 shrink-0">
                 {[
                   { id: "all", label: "All Types", count: countAll },
                   { id: "takeout", label: "Takeout", count: countTakeout },
@@ -638,13 +638,13 @@ export default function KitchenDashboard() {
                     <button
                       key={tab.id}
                       onClick={() => setTypeFilter(tab.id as any)}
-                      className={`px-2 sm:px-2.5 lg:px-4 py-0.5 sm:py-1 lg:py-1.5 rounded-md text-[9px] sm:text-[10px] lg:text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                      className={`px-2 sm:px-2.5 lg:px-3 py-1 sm:py-1.5 rounded-md text-[9px] sm:text-[10px] lg:text-[10.5px] xl:text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
                         active
                           ? "bg-brand-primary text-white shadow-xs"
                           : "text-neutral-500 hover:text-brand-primary"
                       }`}
                     >
-                      {tab.label} ({tab.count})
+                      {tab.label} <span className={`font-semibold ${active ? "opacity-90" : "opacity-70"}`}>({tab.count})</span>
                     </button>
                   );
                 })}
