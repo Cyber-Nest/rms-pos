@@ -401,16 +401,19 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
   const displayCustomerName = hasCustomer ? order.customer?.name : 'No Name';
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in font-sans">
-      <div className="bg-neutral-50 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-start sm:items-center justify-center sm:p-4 overflow-y-auto animate-fade-in font-sans">
+      <div className="bg-neutral-50 rounded-none sm:rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col sm:my-4 lg:my-8 max-h-screen sm:max-h-[95vh] lg:max-h-[90vh]">
         
-        {/* ── Top Header Navigation Bar (Charcoal theme matching POS & Pizza Hut) ── */}
-        <div className="bg-brand-dark text-white px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="bg-white/10 text-white text-[11px] font-600 px-3 py-1.5 rounded-lg border border-white/15 select-none">
-              Customer: {displayCustomerName}
+        {/* ── Top Header Navigation Bar ── */}
+        <div className="bg-brand-dark text-white px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 border-b border-neutral-800">
+          {/* Left: Customer info + action buttons */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
+            {/* Customer badge */}
+            <span className="bg-white/10 text-white text-[10px] sm:text-[11px] font-600 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-white/15 select-none whitespace-nowrap truncate max-w-[90px] sm:max-w-none">
+              <span className="hidden sm:inline">Customer: </span>{displayCustomerName}
             </span>
-            <span className="text-[11.5px] opacity-75 font-600 mr-1">
+            {/* Order source - hidden on mobile */}
+            <span className="text-[11.5px] opacity-75 font-600 mr-1 hidden lg:inline">
               Order By: {
                 order.orderSource === 'pos' ? 'Employee Terminal' :
                 order.orderSource === 'doordash' ? 'Online - DoorDash' :
@@ -421,23 +424,23 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
             </span>
 
             {!order.orderNumber.startsWith('#DRAFT') && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Print Invoice Button */}
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* Print Invoice Button - icon only on mobile/tablet */}
                 <button
                   onClick={handleSilentPrint}
                   disabled={silentPrinting}
-                  className="flex items-center gap-1.5 py-1.5 px-3 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="flex items-center gap-1.5 py-1.5 px-2 sm:px-3 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
                   title="Print receipt to thermal printer"
                 >
                   <Printer size={13} className={silentPrinting ? 'animate-spin' : ''} />
-                  <span>Print Invoice</span>
+                  <span className="hidden md:inline">Print Invoice</span>
                 </button>
 
-                {/* Send Receipt Email Button */}
+                {/* Send Receipt Email Button - icon only on mobile/tablet */}
                 <button
                   onClick={() => handleSendEmailReceipt()}
                   disabled={sendingEmail}
-                  className="flex items-center gap-1.5 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="flex items-center gap-1.5 py-1.5 px-2 sm:px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
                   title="Send receipt through email"
                 >
                   {sendingEmail ? (
@@ -445,10 +448,10 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                   ) : (
                     <Mail size={13} />
                   )}
-                  <span>{sendingEmail ? 'Sending...' : 'Send Receipt'}</span>
+                  <span className="hidden md:inline">{sendingEmail ? 'Sending...' : 'Send Receipt'}</span>
                 </button>
 
-                {/* Download PDF Button */}
+                {/* Download PDF Button - icon only (always) */}
                 <button
                   onClick={handleDownloadPdf}
                   disabled={isPrinting}
@@ -462,21 +465,22 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                   )}
                 </button>
 
-                {/* Edit Order Button */}
+                {/* Edit Order Button - icon only on mobile/tablet */}
                 <button
                   onClick={handleEditOrder}
                   disabled={editingOrderLoading}
-                  className="flex items-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="flex items-center gap-1.5 py-1.5 px-2 sm:px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
                   title="Load order into cart to edit"
                 >
                   <Pencil size={13} className={editingOrderLoading ? "animate-spin" : ""} />
-                  <span>Edit Order</span>
+                  <span className="hidden md:inline">Edit Order</span>
                 </button>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-brand-primary text-white text-[11px] font-800 px-3.5 py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
+          {/* Right: order type badge + close */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <span className="bg-brand-primary text-white text-[10px] sm:text-[11px] font-800 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
               {order.orderType.replace('-', ' ')}
             </span>
             <button
@@ -489,7 +493,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
         </div>
 
         {/* ── Main Scrollable Body ── */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
           
           {/* Order Meta Info Section */}
           <div className="bg-white border border-neutral-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">

@@ -809,21 +809,21 @@ export default function KitchenDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-center justify-center z-[200] p-2 sm:p-4 md:p-6 font-sans animate-fade-in">
+    <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-[2px] flex items-start sm:items-center justify-center z-[200] sm:p-3 md:p-6 font-sans animate-fade-in">
       {/* Container */}
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-5xl w-full max-h-[96vh] sm:max-h-[94vh] flex flex-col overflow-hidden animate-scale-up border border-neutral-200">
-        {/* ── Header (Charcoal brand-dark banner matching POS) ── */}
-        <div className="bg-brand-dark text-white px-3.5 sm:px-5 py-2.5 sm:py-3.5 flex flex-wrap md:flex-nowrap items-center justify-between gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            {/* Customer Button */}
-            <span className="bg-white/10 text-white text-[10px] sm:text-[11px] font-600 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg border border-white/15 select-none">
-              Customer:{" "}
+      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl max-w-5xl w-full max-h-screen sm:max-h-[95vh] lg:max-h-[94vh] flex flex-col overflow-hidden animate-scale-up border border-neutral-200">
+        {/* ── Header ── */}
+        <div className="bg-brand-dark text-white px-3 sm:px-5 py-2 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3">
+          {/* Left: Customer + Placed By */}
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+            <span className="bg-white/10 text-white text-[9.5px] sm:text-[11px] font-600 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg border border-white/15 select-none whitespace-nowrap truncate max-w-[80px] sm:max-w-none">
+              <span className="hidden sm:inline">Customer: </span>
               <span className="font-800 text-orange-300">
                 {localOrder.customer?.name || "N/A"}
               </span>
             </span>
-            <span className="text-[10.5px] sm:text-[12px] font-500 text-neutral-300">
-              Placed By :{" "}
+            <span className="text-[10.5px] font-500 text-neutral-300 hidden lg:inline">
+              Placed By:{" "}
               <span className="text-white font-700">
                 {localOrder.orderSource === "online"
                   ? "Online System"
@@ -832,60 +832,47 @@ export default function KitchenDetailModal({
             </span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
+          {/* Right: action buttons + type badge + close */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {!isDraft && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                {/* Print Invoice — icon only on mobile */}
                 <button
                   onClick={handlePrintInvoice}
                   disabled={isPrinting}
-                  className="flex items-center gap-1 sm:gap-1.5 bg-white/10 hover:bg-white/25 text-[10px] sm:text-[11px] font-700 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg border border-white/10 transition-all cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-1 sm:gap-1.5 bg-white/10 hover:bg-white/25 text-[10px] sm:text-[11px] font-700 p-1.5 sm:px-3.5 sm:py-1.5 rounded-lg border border-white/10 transition-all cursor-pointer disabled:opacity-50"
                   title="Send receipt to thermal printer"
                 >
                   {isPrinting ? (
-                    <>
-                      <RefreshCw
-                        size={12}
-                        className="animate-spin text-white"
-                      />
-                      <span className="hidden xs:inline">Printing...</span>
-                    </>
+                    <RefreshCw size={12} className="animate-spin text-white" />
                   ) : (
-                    <>
-                      <Printer size={12} />
-                      <span>Print Invoice</span>
-                    </>
+                    <Printer size={12} />
                   )}
+                  <span className="hidden md:inline">{isPrinting ? "Printing..." : "Print Invoice"}</span>
                 </button>
 
+                {/* Download PDF — icon only on mobile */}
                 <button
                   onClick={handleDownloadPdf}
                   disabled={isDownloadingPdf}
-                  className="flex items-center gap-1 sm:gap-1.5 bg-white/10 hover:bg-white/25 text-[10px] sm:text-[11px] font-700 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg border border-white/10 transition-all cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-1 sm:gap-1.5 bg-white/10 hover:bg-white/25 text-[10px] sm:text-[11px] font-700 p-1.5 sm:px-3.5 sm:py-1.5 rounded-lg border border-white/10 transition-all cursor-pointer disabled:opacity-50"
                   title="Download invoice PDF file"
                 >
                   {isDownloadingPdf ? (
-                    <>
-                      <RefreshCw
-                        size={12}
-                        className="animate-spin text-white"
-                      />
-                      <span className="hidden xs:inline">Downloading...</span>
-                    </>
+                    <RefreshCw size={12} className="animate-spin text-white" />
                   ) : (
-                    <>
-                      <FileText size={12} />
-                      <span>Download PDF</span>
-                    </>
+                    <Download size={12} />
                   )}
+                  <span className="hidden md:inline">{isDownloadingPdf ? "Downloading..." : "Download PDF"}</span>
                 </button>
               </div>
             )}
-            <span className="bg-brand-primary text-white text-[10px] sm:text-[11px] font-800 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
+            <span className="bg-brand-primary text-white text-[9.5px] sm:text-[11px] font-800 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
               {formattedType}
             </span>
             <button
               onClick={onClose}
-              className="text-neutral-400 hover:text-white hover:bg-white/10 p-1 sm:p-1.5 rounded-lg transition-all cursor-pointer ml-0.5"
+              className="text-neutral-400 hover:text-white hover:bg-white/10 p-1 sm:p-1.5 rounded-lg transition-all cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -893,7 +880,7 @@ export default function KitchenDetailModal({
         </div>
 
         {/* ── Subheader Controls & Status Pills ── */}
-        <div className="bg-neutral-50/50 px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-neutral-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="bg-neutral-50/50 px-3 sm:px-5 py-2 sm:py-3.5 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
           <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap">
             <span className="font-800 text-neutral-900 text-[13.5px] sm:text-[14.5px] tracking-wide uppercase">
               {localOrder.orderNumber}
@@ -949,8 +936,9 @@ export default function KitchenDetailModal({
             )}
           </div>
 
-          {/* Action Button Row */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          {/* Action Button Row — scrollable on mobile */}
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap w-fit">
             {isEditing ? (
               <>
                 <button
@@ -1001,6 +989,7 @@ export default function KitchenDetailModal({
                 )}
               </>
             )}
+          </div>
           </div>
         </div>
 

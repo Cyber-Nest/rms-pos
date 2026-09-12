@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import PosNavbar from "./PosNavbar";
 import DashboardView from "./DashboardView";
@@ -114,6 +114,8 @@ export default function OrdersDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const [moreDropdownPos, setMoreDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const [empPerms, setEmpPerms] = useState<Record<string, boolean>>({});
   const [managerMode, setManagerMode] = useState(false);
 
@@ -600,10 +602,10 @@ export default function OrdersDashboard() {
       <PosNavbar onToggleSidebar={() => setIsSidebarOpen(true)} />
 
       {/* ── Secondary Control Bar (Dashboard / Orders / Sales tabs + Filters) ── */}
-      <div className="bg-white border-b border-neutral-200 px-6 py-3.5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 shadow-sm flex-shrink-0 select-none">
-        {/* Left Side: Sub-tabs and Main Header Text */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <h1 className="text-xl font-900 text-neutral-900 tracking-tight leading-none min-w-[140px]">
+      <div className="bg-white border-b border-neutral-200 px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 sm:gap-3 lg:gap-4 shadow-sm flex-shrink-0 select-none">
+        {/* Top Row: Title + Tabs — scrollable on mobile, inline on laptop */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 lg:shrink-0">
+          <h1 className="text-sm sm:text-base lg:text-lg font-900 text-neutral-900 tracking-tight leading-none shrink-0">
             {activeSubTab === "dashboard"
               ? "Dashboard"
               : activeSubTab === "orders"
@@ -623,21 +625,25 @@ export default function OrdersDashboard() {
                             : activeSubTab === "item_wise_sales"
                               ? "Item Wise Sales"
                               : activeSubTab === "hourly_sales"
-                                ? "Hourly Sales Report"
+                                ? "Hourly Sales"
                                 : activeSubTab === "cash_out_report"
-                                  ? "Cash Out Report"
+                                  ? "Cash Out"
                                   : activeSubTab === "cash_out_summary"
-                                    ? "Cash Out Summary"
+                                    ? "Cash Out"
                                     : activeSubTab === "monthly_sales_summary"
-                                      ? "Monthly Sales Summary"
+                                      ? "Monthly Sales"
                                       : activeSubTab === "failed_transaction"
-                                        ? "Failed Transactions"
+                                        ? "Failed Txns"
                                         : activeSubTab === "refund_orders"
-                                          ? "Refund Orders"
-                                          : "Expense/Payout"}
+                                          ? "Refunds"
+                                          : "Expense"}
           </h1>
+          {/* Divider */}
+          <div className="h-5 w-px bg-neutral-200 shrink-0" />
 
-          <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200">
+          {/* Tabs — horizontally scrollable on mobile */}
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 bg-neutral-100 p-1 rounded-xl border border-neutral-200 w-fit">
             {/* Dashboard tab – always shown if employee has permission */}
             {canAccessTab("dashboard") && (
               <button
@@ -647,7 +653,7 @@ export default function OrdersDashboard() {
                   setStartDate(singleDate);
                   setEndDate(singleDate);
                 }}
-                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
                   activeSubTab === "dashboard"
                     ? "bg-brand-primary text-white shadow-sm"
                     : "text-neutral-500 hover:text-brand-primary"
@@ -666,7 +672,7 @@ export default function OrdersDashboard() {
                   setStartDate(singleDate);
                   setEndDate(singleDate);
                 }}
-                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
                   activeSubTab === "orders"
                     ? "bg-brand-primary text-white shadow-sm"
                     : "text-neutral-500 hover:text-brand-primary"
@@ -685,22 +691,30 @@ export default function OrdersDashboard() {
                   setStartDate(singleDate);
                   setEndDate(singleDate);
                 }}
-                className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer ${
+                className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer whitespace-nowrap ${
                   activeSubTab === "sales_summary"
                     ? "bg-brand-primary text-white shadow-sm"
                     : "text-neutral-500 hover:text-brand-primary"
                 }`}
               >
-                Sales Summary
+                <span className="hidden sm:inline">Sales Summary</span>
+                <span className="sm:hidden">Sales</span>
               </button>
             )}
 
             {/* More Dropdown – only shown if employee has access to at least one more-tab */}
             {MORE_TABS.length > 0 && (
-              <div className="relative">
+              <div className="relative shrink-0">
                 <button
-                  onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
-                  className={`px-4 py-1.5 rounded-lg text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer flex items-center gap-1 ${
+                  ref={moreButtonRef}
+                  onClick={() => {
+                    if (!isMoreDropdownOpen && moreButtonRef.current) {
+                      const rect = moreButtonRef.current.getBoundingClientRect();
+                      setMoreDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                    }
+                    setIsMoreDropdownOpen(!isMoreDropdownOpen);
+                  }}
+                  className={`px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-800 tracking-wide uppercase transition-all duration-150 cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                     isMoreTabActive
                       ? "bg-brand-primary text-white shadow-sm"
                       : "text-neutral-500 hover:text-brand-primary"
@@ -713,7 +727,7 @@ export default function OrdersDashboard() {
                   />
                 </button>
 
-                {isMoreDropdownOpen && (
+                {isMoreDropdownOpen && moreDropdownPos && (
                   <>
                     {/* Backdrop overlay to close dropdown */}
                     <div
@@ -721,8 +735,11 @@ export default function OrdersDashboard() {
                       onClick={() => setIsMoreDropdownOpen(false)}
                     />
 
-                    {/* Dropdown Menu */}
-                    <div className="absolute left-0 mt-2 w-52 bg-white border border-neutral-200 rounded-xl shadow-lg py-1.5 z-40 animate-scale-up font-sans">
+                    {/* Dropdown Menu — fixed positioned so it escapes overflow containers */}
+                    <div
+                      className="fixed w-52 bg-white border border-neutral-200 rounded-xl shadow-lg py-1.5 z-[9999] animate-scale-up font-sans"
+                      style={{ top: moreDropdownPos.top, left: moreDropdownPos.left }}
+                    >
                       {MORE_TABS.map((tab) => {
                         const isActive = activeSubTab === tab.key;
                         return (
@@ -766,10 +783,11 @@ export default function OrdersDashboard() {
               </div>
             )}
           </div>
+          </div>
         </div>
 
-        {/* Right Side: Filters (Keyword, Status, Payment, Date, More Search) */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Filters Row — wraps on mobile/tablet, single row on laptop */}
+        <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-2.5 lg:justify-end">
           {![
             "reports",
             "update_profile",
@@ -787,11 +805,11 @@ export default function OrdersDashboard() {
                       type="date"
                       value={singleDate}
                       onChange={(e) => handleSingleDateChange(e.target.value)}
-                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-3 sm:pl-5 pr-8 sm:pr-10 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[120px] sm:w-[135px]"
                     />
                     <Calendar
-                      size={14}
-                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
+                      size={13}
+                      className="absolute right-3 sm:right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
                     />
                   </div>
                 </>
@@ -803,11 +821,11 @@ export default function OrdersDashboard() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-3 sm:pl-5 pr-8 sm:pr-10 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[115px] sm:w-[135px]"
                     />
                     <Calendar
-                      size={14}
-                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={13}
+                      className="absolute right-3 sm:right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                     />
                   </div>
 
@@ -817,21 +835,22 @@ export default function OrdersDashboard() {
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-3 sm:pl-5 pr-8 sm:pr-10 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[115px] sm:w-[135px]"
                     />
                     <Calendar
-                      size={14}
-                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={13}
+                      className="absolute right-3 sm:right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                     />
                   </div>
 
                   {/* More Search Button */}
                   <button
                     onClick={() => setIsAdvanceSearchOpen(true)}
-                    className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
+                    className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-5 py-1 sm:py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[10px] sm:text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none whitespace-nowrap"
                   >
-                    <Search size={13} />
-                    <span>More Search</span>
+                    <Search size={12} />
+                    <span className="hidden sm:inline">More Search</span>
+                    <span className="sm:hidden">Search</span>
                   </button>
                 </>
               ) : activeSubTab === "failed_transaction" ||
@@ -843,27 +862,27 @@ export default function OrdersDashboard() {
                       type="date"
                       value={singleDate}
                       onChange={(e) => handleSingleDateChange(e.target.value)}
-                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[135px]"
+                      className="custom-date-pill bg-white border border-neutral-300 rounded-full pl-3 sm:pl-5 pr-8 sm:pr-10 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm w-[115px] sm:w-[135px]"
                     />
                     <Calendar
-                      size={14}
-                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={13}
+                      className="absolute right-3 sm:right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                     />
                   </div>
 
                   {/* Keyword Search Input */}
-                  <div className="relative w-[180px] sm:w-[220px]">
+                  <div className="relative w-[150px] sm:w-[180px] md:w-[220px]">
                     <input
                       type="text"
                       value={searchKeyword}
                       onChange={(e) => setSearchKeyword(e.target.value)}
-                      placeholder="Search By Order #, Custom"
-                      className="w-full bg-white border border-neutral-300 rounded-full px-5 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-455 focus:outline-none focus:border-brand-primary hover:border-neutral-400 transition-all shadow-sm"
+                      placeholder="Order #, Customer"
+                      className="w-full bg-white border border-neutral-300 rounded-full px-3 sm:px-5 py-1 sm:py-1.5 text-[11px] sm:text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary hover:border-neutral-400 transition-all shadow-sm"
                     />
                     {searchKeyword && (
                       <button
                         onClick={() => setSearchKeyword("")}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
                       >
                         <X size={11} />
                       </button>
@@ -875,25 +894,26 @@ export default function OrdersDashboard() {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="appearance-none bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm"
+                      className="appearance-none bg-white border border-neutral-300 rounded-full pl-3 sm:pl-5 pr-7 sm:pr-10 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-750 text-neutral-750 hover:border-neutral-400 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm"
                     >
-                      <option value="">Select Order Status</option>
+                      <option value="">Status</option>
                       <option value="cancelled">Cancelled</option>
                       <option value="pending">Pending</option>
                     </select>
                     <ChevronDown
-                      size={13}
-                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={12}
+                      className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                     />
                   </div>
 
                   {/* More Search Button */}
                   <button
                     onClick={() => setIsAdvanceSearchOpen(true)}
-                    className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
+                    className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-5 py-1 sm:py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[10px] sm:text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none whitespace-nowrap"
                   >
-                    <Search size={13} />
-                    <span>More Search</span>
+                    <Search size={12} />
+                    <span className="hidden sm:inline">More Search</span>
+                    <span className="sm:hidden">Search</span>
                   </button>
                 </>
               ) : isMoreTabActive ? (
@@ -903,25 +923,26 @@ export default function OrdersDashboard() {
                     <button
                       type="button"
                       onClick={() => setIsAdvanceSearchOpen(true)}
-                      className="bg-white border border-neutral-300 rounded-full pl-5 pr-10 py-1.5 text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm min-w-[135px] text-left flex items-center min-h-[32px]"
+                      className="bg-white border border-neutral-300 rounded-full pl-3 sm:pl-5 pr-8 sm:pr-10 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-750 text-[#1E3A8A] hover:border-neutral-400 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all shadow-sm min-w-[110px] sm:min-w-[135px] text-left flex items-center min-h-[28px] sm:min-h-[32px] whitespace-nowrap"
                     >
                       {startDate === endDate
                         ? formatDateDisplay(startDate)
                         : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
                     </button>
                     <Calendar
-                      size={14}
-                      className="absolute right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
+                      size={13}
+                      className="absolute right-3 sm:right-4.5 top-1/2 -translate-y-1/2 text-[#1E3A8A] pointer-events-none"
                     />
                   </div>
 
                   {/* More Search Button */}
                   <button
                     onClick={() => setIsAdvanceSearchOpen(true)}
-                    className="flex items-center gap-1.5 px-5 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none"
+                    className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-5 py-1 sm:py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[10px] sm:text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none whitespace-nowrap"
                   >
-                    <Search size={13} />
-                    <span>More Search</span>
+                    <Search size={12} />
+                    <span className="hidden sm:inline">More Search</span>
+                    <span className="sm:hidden">Search</span>
                   </button>
                 </>
               ) : (
@@ -931,35 +952,35 @@ export default function OrdersDashboard() {
                     <button
                       type="button"
                       onClick={() => setIsAdvanceSearchOpen(true)}
-                      className="bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all min-w-[120px] text-left flex items-center min-h-[32px]"
+                      className="bg-neutral-50 border border-neutral-200 rounded-lg pl-7 sm:pl-9 pr-2 sm:pr-3 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-600 text-neutral-700 hover:border-neutral-350 hover:border-brand-primary/40 focus:outline-none focus:border-brand-primary cursor-pointer transition-all min-w-[100px] sm:min-w-[120px] text-left flex items-center min-h-[28px] sm:min-h-[32px] whitespace-nowrap"
                     >
                       {startDate === endDate
                         ? formatDateDisplay(startDate)
                         : `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)}`}
                     </button>
                     <Calendar
-                      size={14}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                      size={13}
+                      className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                     />
                   </div>
 
                   {/* Keyword Search Input */}
-                  <div className="relative w-[180px] sm:w-[220px]">
+                  <div className="relative w-[140px] sm:w-[180px] md:w-[220px]">
                     <Search
-                      size={14}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                      size={13}
+                      className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-neutral-400"
                     />
                     <input
                       type="text"
                       value={searchKeyword}
                       onChange={(e) => setSearchKeyword(e.target.value)}
-                      placeholder="Search by Order #, Cust"
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg pl-9 pr-3 py-1.5 text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary hover:border-neutral-350 focus:bg-white transition-all"
+                      placeholder="Order #, Customer"
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-lg pl-7 sm:pl-9 pr-3 py-1 sm:py-1.5 text-[11px] sm:text-[12px] text-neutral-700 placeholder-neutral-400 focus:outline-none focus:border-brand-primary hover:border-neutral-350 focus:bg-white transition-all"
                     />
                     {searchKeyword && (
                       <button
                         onClick={() => setSearchKeyword("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                        className="absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
                       >
                         <X size={11} />
                       </button>
@@ -972,18 +993,18 @@ export default function OrdersDashboard() {
                       <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-3 pr-8 py-1.5 text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
+                        className="appearance-none bg-neutral-50 border border-neutral-200 rounded-lg pl-2.5 sm:pl-3 pr-6 sm:pr-8 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-600 text-neutral-700 hover:border-neutral-350 focus:outline-none focus:border-brand-primary cursor-pointer transition-all"
                       >
-                        <option value="">Order Status</option>
+                        <option value="">Status</option>
                         <option value="pending">Pending</option>
-                        <option value="preparing">In Preparing</option>
-                        <option value="ready">Ready For Pickup</option>
-                        <option value="completed">Order Completed</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
+                        <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
                       <ChevronDown
-                        size={13}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
+                        size={12}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none"
                       />
                     </div>
                   )}
@@ -1011,17 +1032,18 @@ export default function OrdersDashboard() {
                   {activeSubTab === "orders" && (
                     <button
                       onClick={() => setIsAdvanceSearchOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 border border-neutral-200 rounded-lg bg-neutral-50 hover:bg-neutral-100 text-[12px] font-600 text-neutral-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs"
+                      className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 border border-neutral-200 rounded-lg bg-neutral-50 hover:bg-neutral-100 text-[11px] sm:text-[12px] font-600 text-neutral-700 hover:text-brand-primary transition-all cursor-pointer shadow-2xs whitespace-nowrap"
                     >
-                      <SlidersHorizontal size={13} />
-                      <span>Advance Search</span>
+                      <SlidersHorizontal size={12} />
+                      <span className="hidden sm:inline">Advance Search</span>
+                      <span className="sm:hidden">Filter</span>
                     </button>
                   )}
 
                   {/* Clear Filters Button */}
                   <button
                     onClick={handleClearFilters}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-600 text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer"
+                    className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-[12px] font-600 text-neutral-500 hover:text-neutral-800 transition-all cursor-pointer whitespace-nowrap"
                   >
                     <span>Clear</span>
                   </button>
@@ -1030,12 +1052,12 @@ export default function OrdersDashboard() {
                   {activeSubTab === "orders" && (
                     <button
                       onClick={fetchOrders}
-                      className={`p-1.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-brand-primary transition-all cursor-pointer ${
+                      className={`p-1 sm:p-1.5 rounded-lg border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-brand-primary transition-all cursor-pointer ${
                         loading ? "animate-spin" : ""
                       }`}
                       title="Refresh list"
                     >
-                      <RefreshCw size={13} />
+                      <RefreshCw size={12} />
                     </button>
                   )}
                 </>
@@ -1055,11 +1077,11 @@ export default function OrdersDashboard() {
                     onClick={() =>
                       setIsExportDropdownOpen(!isExportDropdownOpen)
                     }
-                    className="flex items-center gap-1.5 px-4 py-1.5 border border-neutral-300 rounded-full bg-white hover:bg-neutral-50 text-[12px] font-800 text-neutral-750 hover:text-brand-primary active:scale-95 transition-all cursor-pointer shadow-sm select-none"
+                    className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 border border-neutral-300 rounded-full bg-white hover:bg-neutral-50 text-[11px] sm:text-[12px] font-800 text-neutral-750 hover:text-brand-primary active:scale-95 transition-all cursor-pointer shadow-sm select-none whitespace-nowrap"
                   >
-                    <Download size={13} />
+                    <Download size={12} />
                     <span>Export</span>
-                    <ChevronDown size={12} />
+                    <ChevronDown size={11} />
                   </button>
                   {isExportDropdownOpen && (
                     <>
@@ -1099,7 +1121,7 @@ export default function OrdersDashboard() {
       </div>
 
       {/* ── Main View Container ── */}
-      <div className="flex-1 overflow-y-auto p-6 bg-brand-bg flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-brand-bg flex flex-col min-h-0">
         {loading &&
         (activeSubTab === "dashboard"
           ? !dashboardMetrics
