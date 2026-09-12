@@ -16,6 +16,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
+  const [printing, setPrinting] = useState(false);
 
   // Deposit modal state
   const [isDepositOpen, setIsDepositOpen] = useState(false);
@@ -108,21 +109,38 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
     }
   };
 
-  const handleDownloadSalesSummaryPdf = () => {
-    let branchId: string | undefined = undefined;
-    if (typeof window !== 'undefined') {
-      const rawBranch = localStorage.getItem('rms_branch');
-      if (rawBranch) {
-        try {
-          const b = JSON.parse(rawBranch);
-          branchId = b._id;
-        } catch (e) {}
+  const handlePrintSalesSummaryReceipt = async () => {
+    if (printing) return;
+    setPrinting(true);
+    try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        const rawBranch = localStorage.getItem('rms_branch');
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
       }
-    }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const downloadUrl = `${apiUrl}/orders/sales-summary/pdf?date=${selectedDate}${branchId ? `&branchId=${branchId}` : ''}`;
-    window.open(downloadUrl, '_blank');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${apiUrl}/orders/sales-summary/print`, {
+        date: selectedDate,
+        ...(branchId ? { branchId } : {})
+      });
+
+      if (res.data?.success) {
+        toast.success('Sales summary receipt sent to thermal printer!');
+      } else {
+        toast.error(res.data?.message || 'Failed to print sales summary receipt');
+      }
+    } catch (err: any) {
+      console.error('Print sales summary error:', err);
+      toast.error(err.response?.data?.message || 'Failed to print sales summary receipt');
+    } finally {
+      setPrinting(false);
+    }
   };
 
   useEffect(() => {
@@ -192,11 +210,12 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
 
         <div className="flex items-center gap-2.5">
           <button 
-            onClick={handleDownloadSalesSummaryPdf}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm"
+            onClick={handlePrintSalesSummaryReceipt}
+            disabled={printing}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#851532] hover:bg-[#6b0f27] active:scale-95 text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm disabled:opacity-60"
           >
-            <Printer size={13} />
-            <span>Print Receipt</span>
+            <Printer size={13} className={printing ? "animate-spin" : ""} />
+            <span>{printing ? "Printing..." : "Print Receipt"}</span>
           </button>
 
           <button 
