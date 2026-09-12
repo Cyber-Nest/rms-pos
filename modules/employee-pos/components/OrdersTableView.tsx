@@ -143,8 +143,16 @@ export default function OrdersTableView({
   };
 
   // ── Render Payment Status Badge ──
-  const renderPaymentStatusBadge = (status: string) => {
-    if (status === 'paid') {
+  const renderPaymentStatusBadge = (order: Order) => {
+    const isRefunded = order.paymentStatus === 'refunded' || !!order.refundedAt;
+    if (isRefunded) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase tracking-wider inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 border border-purple-200/80">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+          PAID / REF
+        </span>
+      );
+    } else if (order.paymentStatus === 'paid') {
       return (
         <span className="px-2.5 py-1 rounded-full text-[10px] font-750 uppercase tracking-wider inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -325,7 +333,7 @@ export default function OrdersTableView({
 
                     {/* Payment Status */}
                     <td className="px-5 py-4">
-                      {renderPaymentStatusBadge(order.paymentStatus)}
+                      {renderPaymentStatusBadge(order)}
                     </td>
 
                     {/* Payment Type */}

@@ -642,11 +642,11 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                 <div className="border-t border-dashed border-neutral-300 my-2.5" />
                 <div className="flex justify-between text-[14px] font-900 text-neutral-900 pt-1">
                   <span>Grand Total :</span>
-                  <span className="font-mono text-brand-primary">${(order.total ?? 0).toFixed(2)}</span>
+                  <span className="font-mono text-red-600 font-900">${(order.total ?? 0).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-[14px] font-900 text-green-600">
+                <div className="flex justify-between text-[14px] font-900 text-emerald-600">
                   <span>Total Paid :</span>
-                  <span className="font-mono">${order.paymentStatus === 'paid' ? (order.total ?? 0).toFixed(2) : '0.00'}</span>
+                  <span className="font-mono font-900">${order.paymentStatus === 'paid' ? (order.total ?? 0).toFixed(2) : '0.00'}</span>
                 </div>
               </div>
 
@@ -662,7 +662,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     {nextStatus && (
                       <button
                         onClick={() => handleUpdateStatus(nextStatus.target)}
-                        className="w-full py-2 bg-brand-primary text-white text-[11.5px] font-800 rounded-full hover:bg-brand-primary-hover active:scale-[0.98] transition-all cursor-pointer shadow-sm shadow-brand-primary/10 uppercase tracking-wider"
+                        className="w-full py-2.5 bg-brand-primary text-white text-[12px] font-800 rounded-full hover:bg-brand-primary-hover active:scale-[0.98] transition-all cursor-pointer shadow-sm shadow-brand-primary/20 uppercase tracking-wider"
                       >
                         {nextStatus.label}
                       </button>
@@ -672,9 +672,9 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     {order.paymentStatus === 'unpaid' && !showPayForm && (
                       <button
                         onClick={() => setShowPayForm(true)}
-                        className="w-full py-2 bg-green-600 hover:bg-green-700 text-white text-[11.5px] font-800 rounded-full active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 uppercase tracking-wider"
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-800 rounded-full active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 uppercase tracking-wider shadow-sm shadow-emerald-600/20"
                       >
-                        <CreditCard size={13} />
+                        <CreditCard size={15} />
                         <span>Collect Payment</span>
                       </button>
                     )}
@@ -716,7 +716,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                         <div className="flex items-center gap-2 pt-1">
                           <button
                             onClick={handleCollectPayment}
-                            className="flex-1 py-1.5 bg-green-600 hover:bg-green-700 text-white font-800 rounded-lg active:scale-95 transition-all cursor-pointer uppercase tracking-wider text-[10.5px]"
+                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-800 rounded-lg active:scale-95 transition-all cursor-pointer uppercase tracking-wider text-[10.5px]"
                           >
                             Confirm
                           </button>
@@ -731,10 +731,10 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     )}
 
                     {/* Cancel button */}
-                    {order.status !== 'completed' && order.status !== 'cancelled' && (
+                    {order.status !== 'cancelled' && (
                       <button
                         onClick={handleCancelOrder}
-                        className="w-full py-2 border border-red-200 text-red-500 text-[11.5px] font-700 rounded-full hover:bg-red-50 active:scale-[0.98] transition-all cursor-pointer uppercase tracking-wider"
+                        className="w-full py-2.5 border border-rose-250 text-rose-600 text-[12px] font-800 rounded-full hover:bg-rose-50 active:scale-[0.98] transition-all cursor-pointer uppercase tracking-wider"
                       >
                         Cancel Order
                       </button>
@@ -744,16 +744,16 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     {canRefund && (
                       <button
                         onClick={() => setShowRefundModal(true)}
-                        className="w-full py-2 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white text-[11.5px] font-800 rounded-full active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 uppercase tracking-wider shadow-sm shadow-red-500/20"
+                        className="w-full py-2.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white text-[12px] font-800 rounded-full active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 uppercase tracking-wider shadow-sm shadow-red-500/20"
                       >
-                        <RotateCcw size={13} />
+                        <RotateCcw size={14} />
                         <span>Refund Order</span>
                       </button>
                     )}
 
                     {/* Refunded Badge if already refunded */}
                     {order.paymentStatus === 'refunded' && (
-                      <div className="w-full py-2 bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-800 rounded-full text-center uppercase tracking-wider">
+                      <div className="w-full py-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-800 rounded-full text-center uppercase tracking-wider">
                         ✓ Order Refunded
                       </div>
                     )}
