@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Eye, Smartphone, Store } from 'lucide-react';
+import { Eye, Printer, Smartphone, Store } from 'lucide-react';
 import { Order } from '../types';
 import { formatLocalDateTime24 } from '../utils/timezone';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 interface OrdersTableViewProps {
   orders: Order[];
@@ -29,6 +31,31 @@ export default function OrdersTableView({
   // ── Local Pagination States (Fallback for client-side) ──
   const [localCurrentPage, setLocalCurrentPage] = useState(1);
   const [localEntriesPerPage, setLocalEntriesPerPage] = useState(10);
+  const [printingOrderId, setPrintingOrderId] = useState<string | null>(null);
+
+  // ── Thermal Receipt Printing Handler ──
+  const handlePrintReceipt = async (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const orderId = order._id || order.id;
+    if (!orderId || printingOrderId === orderId) return;
+    setPrintingOrderId(orderId);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${apiUrl}/orders/${orderId}/print`, {
+        paperSize: '80mm',
+        itemsFilter: 'all',
+      });
+      if (res.data?.success) {
+        toast.success(`Receipt for ${order.orderNumber} sent to printer!`);
+      } else {
+        toast.error('Failed to print receipt');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to print receipt');
+    } finally {
+      setPrintingOrderId(null);
+    }
+  };
 
   // ── 24-Hour Date Formatting (Alberta Timezone) ──
   const formatDate = (dateStr: string) => {
@@ -74,6 +101,45 @@ export default function OrdersTableView({
         {label}
       </span>
     );
+  };
+
+  // ── Render Payment Type Badge ──
+  const renderPaymentTypeBadge = (order: Order) => {
+    let method = '--';
+    if (order.payments && order.payments.length > 0 && order.payments[0].method) {
+      method = order.payments[0].method;
+    } else if ((order as any).paymentMethod) {
+      method = (order as any).paymentMethod;
+    } else if ((order as any).paymentType) {
+      method = (order as any).paymentType;
+    }
+
+    const clean = method.toLowerCase().trim();
+    if (clean === 'cash') {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider uppercase border bg-emerald-50 text-emerald-700 border-emerald-200">
+          CASH
+        </span>
+      );
+    } else if (['credit', 'card', 'debit'].includes(clean)) {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider uppercase border bg-purple-50 text-purple-700 border-purple-200">
+          {clean.toUpperCase()}
+        </span>
+      );
+    } else if (clean === 'split') {
+      return (
+        <span className="px-2 py-0.5 rounded-md text-[9px] font-800 tracking-wider uppercase border bg-amber-50 text-amber-700 border-amber-200">
+          SPLIT
+        </span>
+      );
+    } else {
+      return (
+        <span className="text-neutral-400 font-700 text-[10.5px]">
+          --
+        </span>
+      );
+    }
   };
 
   // ── Render Payment Status Badge ──
@@ -126,6 +192,7 @@ export default function OrdersTableView({
               <th className="px-5 py-3.5">Order Type</th>
               <th className="px-5 py-3.5">Order Placed</th>
               <th className="px-5 py-3.5">Payment</th>
+              <th className="px-5 py-3.5">Payment Type</th>
               <th className="px-5 py-3.5">Order Status</th>
               <th className="px-5 py-3.5">Order Date</th>
               <th className="px-5 py-3.5 text-center">Action</th>
@@ -261,6 +328,11 @@ export default function OrdersTableView({
                       {renderPaymentStatusBadge(order.paymentStatus)}
                     </td>
 
+                    {/* Payment Type */}
+                    <td className="px-5 py-4">
+                      {renderPaymentTypeBadge(order)}
+                    </td>
+
                     {/* Order Status */}
                     <td className="px-5 py-4">
                       {renderOrderStatusBadge(order.status)}
@@ -271,22 +343,32 @@ export default function OrdersTableView({
                       {formatDate(order.createdAt)}
                     </td>
 
-                    {/* Action Eye Button */}
+                    {/* Action Buttons: View Details & Print Receipt */}
                     <td className="px-5 py-4 text-center">
-                      <button
-                        onClick={() => onSelectOrder(order)}
-                        className="w-8 h-8 rounded-full bg-neutral-50 hover:bg-brand-primary-light border border-neutral-200 hover:border-brand-primary/30 text-neutral-500 hover:text-brand-primary flex items-center justify-center transition-all duration-150 active:scale-90 mx-auto cursor-pointer shadow-xs"
-                        title="View details"
-                      >
-                        <Eye size={13} strokeWidth={2.5} />
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => onSelectOrder(order)}
+                          className="w-8 h-8 rounded-full bg-neutral-50 hover:bg-brand-primary-light border border-neutral-200 hover:border-brand-primary/30 text-neutral-500 hover:text-brand-primary flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer shadow-xs"
+                          title="View details"
+                        >
+                          <Eye size={13} strokeWidth={2.5} />
+                        </button>
+                        <button
+                          onClick={(e) => handlePrintReceipt(order, e)}
+                          disabled={printingOrderId === order._id}
+                          className="w-8 h-8 rounded-full bg-neutral-50 hover:bg-sky-50 border border-neutral-200 hover:border-sky-300 text-neutral-500 hover:text-sky-600 flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer shadow-xs disabled:opacity-50"
+                          title="Print thermal receipt"
+                        >
+                          <Printer size={13} strokeWidth={2.5} className={printingOrderId === order._id ? "animate-spin text-sky-600" : ""} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan={10} className="px-5 py-16 text-center text-neutral-450 font-700">
+                <td colSpan={11} className="px-5 py-16 text-center text-neutral-450 font-700">
                   No orders found.
                 </td>
               </tr>

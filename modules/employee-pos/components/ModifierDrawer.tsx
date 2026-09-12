@@ -7,17 +7,19 @@ import {
   ModifierGroup,
   ModifierOption,
   SelectedModifier,
+  CartItem,
 } from "../types";
 import { usePosStore } from "../store/pos.store";
 
 interface Props {
   item: MenuItem | null;
+  editingCartItem?: CartItem | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function ModifierDrawer({ item, isOpen, onClose }: Props) {
-  const { addToCart } = usePosStore();
+export default function ModifierDrawer({ item, editingCartItem, isOpen, onClose }: Props) {
+  const { addToCart, updateCartItem } = usePosStore();
   const [quantity, setQuantity] = useState(1);
   const [selections, setSelections] = useState<
     Record<string, ModifierOption[]>
@@ -25,35 +27,65 @@ export default function ModifierDrawer({ item, isOpen, onClose }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [note, setNote] = useState("");
 
-  // Recursively initialize default selections for groups
+  // Recursively initialize default or editing selections for groups
   useEffect(() => {
     if (!item) return;
-    setQuantity(1);
     setActiveIdx(0);
-    setNote("");
     
-    const init: Record<string, ModifierOption[]> = {};
-    const initGroup = (g: ModifierGroup) => {
-      if (!g || !g.options) return;
-      const defs = g.options.filter((o) => o.isDefault);
-      const selected = defs.length > 0
-        ? defs
-        : g.required && g.maxSelection === 1 && g.options.length > 0
-          ? [g.options[0]]
-          : [];
-      init[g.id] = selected;
-      
-      // Recurse for nested groups of selected options
-      selected.forEach((opt) => {
-        if (opt.modifierGroups) {
-          opt.modifierGroups.forEach(initGroup);
+    if (editingCartItem) {
+      setQuantity(editingCartItem.quantity || 1);
+      setNote(editingCartItem.note || "");
+
+      const init: Record<string, ModifierOption[]> = {};
+      const allGroups: ModifierGroup[] = [];
+      const collect = (groups?: ModifierGroup[]) => {
+        groups?.forEach((g) => {
+          allGroups.push(g);
+          g.options?.forEach((o) => {
+            if (o.modifierGroups) collect(o.modifierGroups);
+          });
+        });
+      };
+      collect(item.modifierGroups);
+
+      editingCartItem.selectedModifiers?.forEach((sm) => {
+        const group = allGroups.find((g) => g.id === sm.groupId || g.name === sm.groupName);
+        if (group) {
+          const opt = group.options?.find((o) => o.id === sm.optionId || o.name === sm.optionName);
+          if (opt) {
+            if (!init[group.id]) init[group.id] = [];
+            if (!init[group.id].some((o) => o.id === opt.id)) {
+              init[group.id].push(opt);
+            }
+          }
         }
       });
-    };
+      setSelections(init);
+    } else {
+      setQuantity(1);
+      setNote("");
+      const init: Record<string, ModifierOption[]> = {};
+      const initGroup = (g: ModifierGroup) => {
+        if (!g || !g.options) return;
+        const defs = g.options.filter((o) => o.isDefault);
+        const selected = defs.length > 0
+          ? defs
+          : g.required && g.maxSelection === 1 && g.options.length > 0
+            ? [g.options[0]]
+            : [];
+        init[g.id] = selected;
+        
+        selected.forEach((opt) => {
+          if (opt.modifierGroups) {
+            opt.modifierGroups.forEach(initGroup);
+          }
+        });
+      };
 
-    item.modifierGroups?.forEach(initGroup);
-    setSelections(init);
-  }, [item, isOpen]);
+      item.modifierGroups?.forEach(initGroup);
+      setSelections(init);
+    }
+  }, [item, editingCartItem, isOpen]);
 
   const activeGroup = useMemo(
     () => item?.modifierGroups?.[activeIdx] ?? null,
@@ -157,7 +189,12 @@ export default function ModifierDrawer({ item, isOpen, onClose }: Props) {
         });
       });
     });
-    addToCart(item, mods, quantity, note);
+
+    if (editingCartItem) {
+      updateCartItem(editingCartItem.id, item, mods, quantity, note);
+    } else {
+      addToCart(item, mods, quantity, note);
+    }
     onClose();
   };
 
@@ -322,7 +359,7 @@ export default function ModifierDrawer({ item, isOpen, onClose }: Props) {
                   Customise
                 </p>
                 <h3 className="text-[13px] font-700 text-neutral-900 leading-tight">
-                  {item.name}
+                  {editingCartItem ? `Edit: ${item.name}` : item.name}
                 </h3>
               </div>
             </div>
@@ -526,7 +563,7 @@ export default function ModifierDrawer({ item, isOpen, onClose }: Props) {
                   : "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
               }`}
             >
-              Add to Cart&nbsp;·&nbsp;${livePrice().toFixed(2)}
+              {editingCartItem ? "Update Cart" : "Add to Cart"}&nbsp;·&nbsp;${livePrice().toFixed(2)}
             </button>
           </div>
         </div>

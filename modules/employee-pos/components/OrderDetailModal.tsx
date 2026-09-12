@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Printer, RefreshCw, CreditCard, RotateCcw, AlertTriangle, FileText } from 'lucide-react';
+import { X, Printer, RefreshCw, CreditCard, RotateCcw, AlertTriangle, FileText, Mail, Download, Pencil } from 'lucide-react';
 import { Order, CartItem, SplitPayment } from '../types';
+import { usePosStore } from '../store/pos.store';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import ThermalReceipt from './ThermalReceipt';
@@ -18,8 +19,18 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
   const [showPayForm, setShowPayForm] = useState(false);
   const [showPrintReceipt, setShowPrintReceipt] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [silentPrinting, setSilentPrinting] = useState(false);
   const [payMethod, setPayMethod] = useState<'cash' | 'card' | 'debit' | 'credit'>('cash');
   const [cashGivenInput, setCashGivenInput] = useState('');
+
+  // Email Receipt State
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Edit Order State
+  const [editingOrderLoading, setEditingOrderLoading] = useState(false);
 
   // Refund State
   const [showRefundModal, setShowRefundModal] = useState(false);
@@ -116,6 +127,123 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
       toast.error('Failed to download invoice PDF');
     } finally {
       setIsPrinting(false);
+    }
+  };
+
+  const handleSilentPrint = async () => {
+    if (silentPrinting || !order) return;
+    setSilentPrinting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.post(`${apiUrl}/orders/${order._id}/print`, {
+        paperSize: '80mm',
+        itemsFilter: 'all',
+      });
+      if (res.data?.success) {
+        toast.success('Receipt sent to thermal printer!');
+      } else {
+        toast.error('Failed to print receipt');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to print receipt');
+    } finally {
+      setSilentPrinting(false);
+    }
+  };
+
+  const handleSendEmailReceipt = async (targetEmail?: string, targetName?: string) => {
+    if (!order || sendingEmail) return;
+
+    const finalEmail = targetEmail || order.customer?.email || "";
+    const finalName = targetName || (order.customer?.name && order.customer.name !== "No Name" ? order.customer.name : "");
+
+    if (!finalEmail.trim()) {
+      setNameInput(
+        order.customer?.name && order.customer.name !== "No Name"
+          ? order.customer.name
+          : ""
+      );
+      setEmailInput("");
+      setShowEmailModal(true);
+      return;
+    }
+
+    setSendingEmail(true);
+    toast.loading(`Sending receipt to ${finalEmail.trim()}...`, {
+      id: `email-${order._id}`,
+    });
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.post(`${apiUrl}/orders/${order._id}/send-receipt`, {
+        email: finalEmail.trim(),
+        name: finalName.trim(),
+      });
+
+      if (res.data.success) {
+        toast.success(`Receipt sent successfully to ${finalEmail.trim()}!`, {
+          id: `email-${order._id}`,
+        });
+
+        if (!order.customer) {
+          order.customer = { name: "No Name", phone: "" };
+        }
+        order.customer.email = finalEmail.trim();
+        if (finalName.trim()) {
+          order.customer.name = finalName.trim();
+        }
+
+        setShowEmailModal(false);
+        onRefresh();
+      }
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || "Failed to send email receipt.",
+        {
+          id: `email-${order._id}`,
+        }
+      );
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleEditOrder = () => {
+    if (!order) return;
+    setEditingOrderLoading(true);
+    try {
+      const editPayload = {
+        editingOrderId: order._id,
+        orderNumber: order.orderNumber,
+        items: order.items.map((item) => ({
+          id: item.menuItemId || (item as any).id,
+          menuItemId: item.menuItemId || (item as any).id,
+          categoryId: item.categoryId || '',
+          name: item.name,
+          image: item.image || '',
+          basePrice: item.basePrice,
+          selectedModifiers: item.selectedModifiers || [],
+          quantity: item.quantity || 1,
+          totalPrice: (item.totalPrice as number) || item.basePrice * (item.quantity || 1),
+          note: item.note || '',
+          kitchenLabel: item.kitchenLabel || 'chicken',
+        })),
+        customer: order.customer && order.customer.name !== 'No Name' ? order.customer : null,
+        orderType: order.orderType || 'takeout',
+        notes: order.notes || '',
+      };
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('rms_edit_order', JSON.stringify(editPayload));
+      }
+
+      toast.success(`Order ${order.orderNumber} loaded for editing!`);
+      onClose();
+      window.location.href = '/employee/pos';
+    } catch (err) {
+      toast.error('Failed to load order for editing');
+    } finally {
+      setEditingOrderLoading(false);
     }
   };
 
@@ -276,13 +404,13 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in font-sans">
       <div className="bg-neutral-50 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col my-8 max-h-[90vh]">
         
-        {/* ── Top Header Navigation Bar (Charcoal theme matching POS) ── */}
-        <div className="bg-brand-dark text-white px-6 py-3.5 flex items-center justify-between border-b border-neutral-800">
-          <div className="flex items-center gap-3.5">
-            <span className="bg-white/10 text-white text-[11px] font-600 px-3.5 py-1.5 rounded-lg border border-white/15 select-none">
+        {/* ── Top Header Navigation Bar (Charcoal theme matching POS & Pizza Hut) ── */}
+        <div className="bg-brand-dark text-white px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="bg-white/10 text-white text-[11px] font-600 px-3 py-1.5 rounded-lg border border-white/15 select-none">
               Customer: {displayCustomerName}
             </span>
-            <span className="text-[12px] opacity-75 font-600">
+            <span className="text-[11.5px] opacity-75 font-600 mr-1">
               Order By: {
                 order.orderSource === 'pos' ? 'Employee Terminal' :
                 order.orderSource === 'doordash' ? 'Online - DoorDash' :
@@ -291,27 +419,63 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                 order.orderSource === 'online' ? 'Online - Website' : 'Online Source'
               }
             </span>
+
             {!order.orderNumber.startsWith('#DRAFT') && (
-              <button
-                onClick={handleDownloadPdf}
-                disabled={isPrinting}
-                className="flex items-center gap-1.5 py-1.5 px-3.5 bg-white/10 hover:bg-white/20 rounded-lg border border-white/10 text-[11px] font-700 transition-all cursor-pointer ml-2 disabled:opacity-50"
-              >
-                {isPrinting ? (
-                  <>
-                    <RefreshCw size={13} className="animate-spin text-white" />
-                    <span>Downloading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Printer size={13} />
-                    <span>Print Invoice</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Print Invoice Button */}
+                <button
+                  onClick={handleSilentPrint}
+                  disabled={silentPrinting}
+                  className="flex items-center gap-1.5 py-1.5 px-3 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Print receipt to thermal printer"
+                >
+                  <Printer size={13} className={silentPrinting ? 'animate-spin' : ''} />
+                  <span>Print Invoice</span>
+                </button>
+
+                {/* Send Receipt Email Button */}
+                <button
+                  onClick={() => handleSendEmailReceipt()}
+                  disabled={sendingEmail}
+                  className="flex items-center gap-1.5 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Send receipt through email"
+                >
+                  {sendingEmail ? (
+                    <RefreshCw size={13} className="animate-spin" />
+                  ) : (
+                    <Mail size={13} />
+                  )}
+                  <span>{sendingEmail ? 'Sending...' : 'Send Receipt'}</span>
+                </button>
+
+                {/* Download PDF Button */}
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={isPrinting}
+                  className="flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/15 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Download PDF invoice"
+                >
+                  {isPrinting ? (
+                    <RefreshCw size={13} className="animate-spin" />
+                  ) : (
+                    <Download size={13} />
+                  )}
+                </button>
+
+                {/* Edit Order Button */}
+                <button
+                  onClick={handleEditOrder}
+                  disabled={editingOrderLoading}
+                  className="flex items-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Load order into cart to edit"
+                >
+                  <Pencil size={13} className={editingOrderLoading ? "animate-spin" : ""} />
+                  <span>Edit Order</span>
+                </button>
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="bg-brand-primary text-white text-[11px] font-800 px-3.5 py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
               {order.orderType.replace('-', ' ')}
             </span>
@@ -897,6 +1061,108 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Send Receipt Email Dialog Modal (Pizza Hut Style) ── */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-4 animate-fade-in font-sans">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-neutral-200 animate-scale-up">
+            {/* Modal Header */}
+            <div className="bg-brand-dark text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-brand-primary/20 border border-brand-primary/40 text-brand-primary flex items-center justify-center">
+                  <Mail size={14} />
+                </div>
+                <h3 className="text-[12px] font-900 uppercase tracking-wider text-white">
+                  Send Receipt Via Email
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendEmailReceipt(emailInput, nameInput);
+              }}
+              className="p-6 space-y-4"
+            >
+              <p className="text-[11.5px] text-neutral-600 font-550 leading-relaxed">
+                {order.customer?.email ? (
+                  <>Send order receipt for <strong>Order #{order.orderNumber.replace('#', '')}</strong> directly to customer email below.</>
+                ) : (
+                  <>Customer email is missing for <strong>Order #{order.orderNumber.replace('#', '')}</strong>. Please enter the customer's email address below to send the receipt.</>
+                )}
+              </p>
+
+              {/* Field 1: Customer Name */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-800 text-neutral-700 uppercase tracking-wider block">
+                  Customer Name
+                </label>
+                <input
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder="Enter customer name"
+                  className="w-full bg-neutral-50/70 border border-neutral-300 rounded-xl px-4 py-2.5 text-[12px] text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-brand-primary focus:bg-white transition-all shadow-3xs"
+                />
+              </div>
+
+              {/* Field 2: Customer Email Address */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-800 text-neutral-700 uppercase tracking-wider block">
+                  Customer Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder="e.g. customer@example.com"
+                  autoFocus
+                  className="w-full bg-neutral-50/70 border border-neutral-300 focus:border-brand-primary rounded-xl px-4 py-2.5 text-[12px] text-neutral-800 placeholder-neutral-400 focus:outline-none focus:bg-white transition-all shadow-3xs"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-3">
+                <button
+                  type="submit"
+                  disabled={sendingEmail}
+                  className="flex-1 py-3 bg-brand-primary hover:bg-brand-primary-hover active:scale-[0.98] text-white text-[11.5px] font-800 uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-md shadow-brand-primary/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {sendingEmail ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Sending Email...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail size={14} />
+                      <span>Send Receipt</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  disabled={sendingEmail}
+                  className="px-6 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[11.5px] font-800 uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
