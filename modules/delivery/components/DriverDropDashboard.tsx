@@ -23,6 +23,9 @@ import {
   Phone,
   Car,
   Download,
+  ChevronDown,
+  LogOut,
+  UserCheck,
 } from "lucide-react";
 import PosNavbar from "@/modules/employee-pos/components/PosNavbar";
 import POSSidebarDrawer from "@/modules/employee-pos/components/POSSidebarDrawer";
@@ -93,7 +96,30 @@ export default function DriverDropDashboard() {
   const [ordersMap, setOrdersMap] = useState<Record<string, OrderRow[]>>({});
   const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAutoCheckoutModal, setShowAutoCheckoutModal] = useState<boolean>(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isPrintingThermal, setIsPrintingThermal] = useState(false);
+
+  // ── Shift Management States ──
+  const [currentShiftNumber, setCurrentShiftNumber] = useState<number>(1);
+  const [availableShifts, setAvailableShifts] = useState<number[]>([1]);
+  const [currentShiftSettlement, setCurrentShiftSettlement] = useState<{
+    isSettled: boolean;
+    settlement: any;
+  }>({ isSettled: false, settlement: null });
+
+  // Reset shift state when driver selection changes
+  useEffect(() => {
+    setCurrentShiftNumber(1);
+    setAvailableShifts([1]);
+    setCurrentShiftSettlement({ isSettled: false, settlement: null });
+    setTerminalSalesInput("0.00");
+    setTerminalTipsInput("0.00");
+    setCashSalesInput("0.00");
+    setHasAdditionalCommissionToggle(false);
+    setAdditionalCommission("0.00");
+    setAdditionalReason("");
+  }, [selectedDriverId]);
 
   // Fetch Drivers for selected date & branch
   const fetchDrivers = useCallback(async () => {
@@ -149,7 +175,7 @@ export default function DriverDropDashboard() {
     return null;
   }, [selectedDriverId, driverSearchInput, drivers]);
 
-  // Fetch Summary / Orders for selected driver
+  // Fetch Summary / Orders for selected driver & shift
   useEffect(() => {
     if (!selectedDriver) return;
     const drvId = selectedDriver.id;
@@ -172,14 +198,19 @@ export default function DriverDropDashboard() {
           params: {
             driverId: drvId,
             date: selectedDate,
+            shiftNumber: currentShiftNumber,
             ...(branchId ? { branchId } : {}),
           },
         });
 
         if (res.data.success && res.data.data) {
-          const { isSettled, settlement, orders: orderList } = res.data.data;
+          const { isSettled, settlement, orders: orderList, availableShifts: fetchedShifts } = res.data.data;
+          if (Array.isArray(fetchedShifts) && fetchedShifts.length > 0) {
+            setAvailableShifts(fetchedShifts);
+          }
           const currentOrders = orderList || [];
           setOrdersMap((prev) => ({ ...prev, [drvId]: currentOrders }));
+          setCurrentShiftSettlement({ isSettled: Boolean(isSettled), settlement: settlement || null });
 
           if (isSettled && settlement) {
             setTerminalSalesInput(
@@ -227,11 +258,12 @@ export default function DriverDropDashboard() {
       } catch (err) {
         console.error("Failed to fetch driver summary", err);
         setOrdersMap((prev) => ({ ...prev, [drvId]: [] }));
+        setCurrentShiftSettlement({ isSettled: false, settlement: null });
       }
     };
 
     fetchSummary();
-  }, [selectedDriver, selectedDate]);
+  }, [selectedDriver, selectedDate, currentShiftNumber]);
 
   // Active Orders
   const orders = useMemo(() => {
@@ -270,10 +302,9 @@ export default function DriverDropDashboard() {
     const calcTerminalSales = orders.filter((o) => o.pd === "TM").reduce((sum, o) => sum + o.total, 0);
     const calcTerminalTips = orders.reduce((sum, o) => sum + (o.terminalTip || 0), 0);
     const calcCashSales = orders.filter((o) => o.pd === "CS").reduce((sum, o) => sum + o.total, 0);
-    const calcBaseCommission = totalOrders * 6.0;
 
-    if (selectedDriver?.isSettled && selectedDriver?.settlementSummary) {
-      const s = selectedDriver.settlementSummary;
+    if (currentShiftSettlement.isSettled && currentShiftSettlement.settlement) {
+      const s = currentShiftSettlement.settlement;
       const prepaidSales = s.prepaidSales ?? calcPrepaidSales;
       const prepaidTips = s.prepaidTips ?? calcPrepaidTips;
       const totalSales = s.totalSales ?? calcSales;
@@ -361,6 +392,7 @@ export default function DriverDropDashboard() {
   }, [
     selectedDriver,
     orders,
+    currentShiftSettlement,
     terminalSalesInput,
     terminalTipsInput,
     cashSalesInput,
@@ -368,8 +400,8 @@ export default function DriverDropDashboard() {
     additionalCommission,
   ]);
 
-  // Submit button disabled if no driver selected OR Sale Due > 0 OR driver already settled
-  const isSubmitDisabled = !selectedDriver || calculations.saleDue > 0 || Boolean(selectedDriver?.isSettled);
+  // Submit button disabled if no driver selected OR Sale Due > 0 OR current shift already settled
+  const isSubmitDisabled = !selectedDriver || calculations.saleDue > 0 || currentShiftSettlement.isSettled;
 
   // Data for Thermal Sales Report
   const salesReportData: DriverDropSummaryData = useMemo(() => {
@@ -473,8 +505,45 @@ export default function DriverDropDashboard() {
     additionalReason,
   ]);
 
-  const handleTriggerPrint = () => {
-    window.print();
+  const handleSilentThermalPrint = async (type: "sales" | "commission" | "both") => {
+    if (!selectedDriver) {
+      toast.error("Please select a driver first!");
+      return;
+    }
+    setIsPrintingThermal(true);
+    const toastId = toast.loading(`Sending ${type} slip to thermal printer...`);
+
+    try {
+      let branchId: string | undefined = undefined;
+      if (typeof window !== "undefined") {
+        const rawBranch = localStorage.getItem("rms_branch");
+        if (rawBranch) {
+          try {
+            const b = JSON.parse(rawBranch);
+            branchId = b._id;
+          } catch (e) {}
+        }
+      }
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.post(`${apiUrl}/delivery/driver-drop/print`, {
+        driverId: selectedDriver.id,
+        date: selectedDate,
+        type,
+        shiftNumber: currentShiftNumber,
+        ...(branchId ? { branchId } : {}),
+      });
+
+      if (res.data.success) {
+        toast.success(`Receipt printed silently on thermal printer! (${res.data.printer || "Default Printer"})`, { id: toastId });
+      } else {
+        toast.error(res.data.message || "Thermal printing failed.", { id: toastId });
+      }
+    } catch (err: any) {
+      console.error("Thermal print error:", err);
+      toast.error(err.response?.data?.message || "Failed to print to thermal printer.", { id: toastId });
+    } finally {
+      setIsPrintingThermal(false);
+    }
   };
 
   const handleDownloadPdf = async () => {
@@ -499,6 +568,7 @@ export default function DriverDropDashboard() {
           driverId: selectedDriver.id,
           date: selectedDate,
           type: slipType,
+          shiftNumber: currentShiftNumber,
           ...(branchId ? { branchId } : {}),
         },
         responseType: "blob",
@@ -510,7 +580,7 @@ export default function DriverDropDashboard() {
       link.href = url;
       link.setAttribute(
         "download",
-        `Driver_Receipt_${slipType}_${selectedDriver.driverId || selectedDriver.id.slice(-4)}_${selectedDate}.pdf`
+        `Driver_Receipt_${slipType}_${selectedDriver.driverId || selectedDriver.id.slice(-4)}_S${currentShiftNumber}_${selectedDate}.pdf`
       );
       document.body.appendChild(link);
       link.click();
@@ -525,7 +595,7 @@ export default function DriverDropDashboard() {
     }
   };
 
-  const handleFinalizeSettlement = async () => {
+  const handleFinalizeSettlement = () => {
     if (!selectedDriver) {
       toast.error("Please select a driver first!");
       return;
@@ -536,10 +606,16 @@ export default function DriverDropDashboard() {
       );
       return;
     }
+    setShowAutoCheckoutModal(true);
+  };
+
+  const executeFinalizeSettlement = async (autoCheckout: boolean = false) => {
+    setShowAutoCheckoutModal(false);
+    if (!selectedDriver) return;
 
     setIsSubmitting(true);
     const toastId = toast.loading(
-      `Submitting settlement for ${selectedDriver.name}...`,
+      `Submitting settlement for ${selectedDriver.name} (Shift ${currentShiftNumber})...`,
     );
 
     try {
@@ -558,6 +634,7 @@ export default function DriverDropDashboard() {
       const payload = {
         driverId: selectedDriver.id,
         date: selectedDate,
+        shiftNumber: currentShiftNumber,
         terminalSales: parseFloat(terminalSalesInput) || 0,
         terminalTips: parseFloat(terminalTipsInput) || 0,
         cashSales: parseFloat(cashSalesInput) || 0,
@@ -566,6 +643,7 @@ export default function DriverDropDashboard() {
           : 0,
         additionalReason: hasAdditionalCommissionToggle ? additionalReason : "",
         settledBy: "Manager",
+        autoCheckout,
         ...(branchId ? { branchId } : {}),
       };
 
@@ -579,11 +657,15 @@ export default function DriverDropDashboard() {
         }
       );
       if (res.data.success) {
+        const checkoutInfo = res.data.isCheckedOut
+          ? ` (Driver ${selectedDriver.name} Auto Checked-Out)`
+          : "";
         toast.success(
-          `Drop settlement finalized for ${selectedDriver.name}! Net Cash Payout: $${calculations.netCashPayoutToDriver.toFixed(2)}`,
+          `Drop settlement finalized for ${selectedDriver.name} (Shift ${currentShiftNumber})${checkoutInfo}! Net Cash Payout: $${calculations.netCashPayoutToDriver.toFixed(2)}`,
           { id: toastId },
         );
         fetchDrivers();
+        handleSilentThermalPrint("both");
         setActivePrintModal("both");
       } else {
         toast.error(res.data.message || "Failed to finalize settlement.", {
@@ -637,9 +719,10 @@ export default function DriverDropDashboard() {
                 toast.error("Please select a driver first!");
                 return;
               }
+              handleSilentThermalPrint("sales");
               setActivePrintModal("sales");
             }}
-            disabled={!selectedDriver}
+            disabled={!selectedDriver || isPrintingThermal}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none ${
               selectedDriver
                 ? "bg-[#851532] hover:bg-[#6b0f27] active:scale-95"
@@ -656,9 +739,10 @@ export default function DriverDropDashboard() {
                 toast.error("Please select a driver first!");
                 return;
               }
+              handleSilentThermalPrint("commission");
               setActivePrintModal("commission");
             }}
-            disabled={!selectedDriver}
+            disabled={!selectedDriver || isPrintingThermal}
             className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white text-[12px] font-800 transition-all cursor-pointer shadow-sm select-none ${
               selectedDriver
                 ? "bg-[#851532] hover:bg-[#6b0f27] active:scale-95"
@@ -760,9 +844,13 @@ export default function DriverDropDashboard() {
                 ) : drivers.length > 0 ? (
                   drivers.map((d) => {
                     const isSelected = selectedDriver?.id === d.id;
+                    const isDriverSettled = Boolean(
+                      d.isSettled || (isSelected && currentShiftSettlement.isSettled),
+                    );
                     return (
                       <button
                         key={d.id}
+                        type="button"
                         onClick={() => {
                           if (isSelected) {
                             setSelectedDriverId("");
@@ -772,19 +860,32 @@ export default function DriverDropDashboard() {
                             setDriverSearchInput("");
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-[11px] font-800 uppercase transition-all cursor-pointer border flex items-center gap-2 ${
-                          isSelected
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-800 uppercase transition-all cursor-pointer border flex items-center gap-1.5 ${
+                          isDriverSettled
+                            ? isSelected
+                              ? "bg-emerald-700 text-white border-emerald-800 shadow-xs ring-2 ring-emerald-600/30"
+                              : "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                            : isSelected
                             ? "bg-brand-primary text-white border-brand-primary shadow-xs"
-                            : d.isSettled
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                              : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-brand-primary/30 hover:bg-brand-primary-light"
+                            : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-brand-primary/30 hover:bg-brand-primary-light"
                         }`}
                       >
                         <span>{d.name}</span>
+                        {isDriverSettled && (
+                          <Check size={12} className={`stroke-[3] ${isSelected ? "text-white" : "text-emerald-600"}`} />
+                        )}
                         <span
-                          className={`text-[9.5px] px-1.5 py-0.2 rounded ${isSelected ? "bg-white/20 text-white" : d.isSettled ? "bg-emerald-200 text-emerald-900" : "bg-neutral-200 text-neutral-700"}`}
+                          className={`text-[9.5px] px-1.5 py-0.2 rounded font-mono ${
+                            isDriverSettled
+                              ? isSelected
+                                ? "bg-white/20 text-white"
+                                : "bg-emerald-200/80 text-emerald-900"
+                              : isSelected
+                              ? "bg-white/20 text-white"
+                              : "bg-neutral-200 text-neutral-700"
+                          }`}
                         >
-                          {d.isSettled ? "Settled" : d.driverId}
+                          {d.driverId}
                         </span>
                       </button>
                     );
@@ -823,9 +924,52 @@ export default function DriverDropDashboard() {
                     </div>
                   </div>
 
-                  {/* <span className="px-2.5 py-1 rounded-full text-[10px] font-800 uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    {selectedDriver.status}
-                  </span> */}
+                  {/* Inline Shift Chips & New Shift Button matching Pizza Hut POS layout */}
+                  <div className="flex items-center gap-2 relative select-none flex-wrap">
+                    {availableShifts.map((s) => {
+                      const isActive = currentShiftNumber === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setCurrentShiftNumber(s)}
+                          className={`font-800 text-[11.5px] px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all shadow-xs cursor-pointer uppercase tracking-wider active:scale-95 ${
+                            isActive
+                              ? "bg-[#851532] hover:bg-[#6b0f27] text-white shadow-sm ring-2 ring-[#851532]/20"
+                              : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200"
+                          }`}
+                        >
+                          <span>SHIFT {s}</span>
+                          {isActive && currentShiftSettlement.isSettled && (
+                            <Check size={13} className="stroke-[3]" />
+                          )}
+                        </button>
+                      );
+                    })}
+
+                    {/* Orange + NEW SHIFT Pill Button matching Pizza Hut POS */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const maxShift = Math.max(...availableShifts, 0);
+                        const nextShift = maxShift + 1;
+                        setAvailableShifts((prev) => Array.from(new Set([...prev, nextShift])).sort((a, b) => a - b));
+                        setCurrentShiftNumber(nextShift);
+                        setCurrentShiftSettlement({ isSettled: false, settlement: null });
+                        setTerminalSalesInput("0.00");
+                        setTerminalTipsInput("0.00");
+                        setCashSalesInput("0.00");
+                        setHasAdditionalCommissionToggle(false);
+                        setAdditionalCommission("0.00");
+                        setAdditionalReason("");
+                        toast.success(`Started Shift ${nextShift} for ${selectedDriver.name}`);
+                      }}
+                      className="bg-[#FFA000] hover:bg-[#E68A00] text-white font-800 text-[11.5px] px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all shadow-xs cursor-pointer uppercase tracking-wider active:scale-95"
+                    >
+                      <RefreshCw size={12} className="stroke-[2.5]" />
+                      <span>+ NEW SHIFT</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Quick Stat Badges */}
@@ -1018,10 +1162,10 @@ export default function DriverDropDashboard() {
                             type="number"
                             step="0.01"
                             value={cashSalesInput}
-                            disabled={Boolean(selectedDriver?.isSettled)}
+                            disabled={Boolean(currentShiftSettlement.isSettled)}
                             onChange={(e) => setCashSalesInput(e.target.value)}
                             className={`w-28 rounded-lg pl-6 pr-2.5 py-1 text-right font-800 text-rose-600 focus:outline-none focus:border-brand-primary font-mono text-xs shadow-2xs transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                              selectedDriver?.isSettled
+                              currentShiftSettlement.isSettled
                                 ? "bg-neutral-100/90 text-neutral-500 cursor-not-allowed border border-neutral-200"
                                 : "bg-white border border-neutral-300"
                             }`}
@@ -1052,7 +1196,7 @@ export default function DriverDropDashboard() {
                 <div className="divide-y divide-neutral-200/60">
                   <div className="bg-brand-primary text-white px-4 py-2.5 font-900 text-[12px] uppercase tracking-wider flex items-center justify-between">
                     <span>Driver Settlement Payout</span>
-                    {selectedDriver?.isSettled && (
+                    {currentShiftSettlement.isSettled && (
                       <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded font-800 flex items-center gap-1 tracking-normal">
                         <CheckCircle size={11} /> Settled & Paid
                       </span>
@@ -1097,10 +1241,10 @@ export default function DriverDropDashboard() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          disabled={Boolean(selectedDriver?.isSettled)}
+                          disabled={Boolean(currentShiftSettlement.isSettled)}
                           onClick={() => setHasAdditionalCommissionToggle(true)}
                           className={`px-4 py-1 rounded-lg font-900 text-xs transition-all ${
-                            selectedDriver?.isSettled
+                            currentShiftSettlement.isSettled
                               ? "opacity-60 cursor-not-allowed"
                               : "cursor-pointer"
                           } ${
@@ -1113,12 +1257,12 @@ export default function DriverDropDashboard() {
                         </button>
                         <button
                           type="button"
-                          disabled={Boolean(selectedDriver?.isSettled)}
+                          disabled={Boolean(currentShiftSettlement.isSettled)}
                           onClick={() =>
                             setHasAdditionalCommissionToggle(false)
                           }
                           className={`px-4 py-1 rounded-lg font-900 text-xs transition-all ${
-                            selectedDriver?.isSettled
+                            currentShiftSettlement.isSettled
                               ? "opacity-60 cursor-not-allowed"
                               : "cursor-pointer"
                           } ${
@@ -1146,12 +1290,12 @@ export default function DriverDropDashboard() {
                               type="number"
                               step="0.01"
                               value={additionalCommission}
-                              disabled={Boolean(selectedDriver?.isSettled)}
+                              disabled={Boolean(currentShiftSettlement.isSettled)}
                               onChange={(e) =>
                                 setAdditionalCommission(e.target.value)
                               }
                               className={`w-full rounded-lg pl-6 pr-2.5 py-1.5 text-xs font-900 focus:outline-none focus:border-brand-primary font-mono shadow-2xs ${
-                                selectedDriver?.isSettled
+                                currentShiftSettlement.isSettled
                                   ? "bg-neutral-100/90 text-neutral-500 cursor-not-allowed border border-neutral-200"
                                   : "bg-white border border-neutral-300 text-neutral-900"
                               }`}
@@ -1167,12 +1311,12 @@ export default function DriverDropDashboard() {
                             type="text"
                             placeholder="e.g. Rain Allowance"
                             value={additionalReason}
-                            disabled={Boolean(selectedDriver?.isSettled)}
+                            disabled={Boolean(currentShiftSettlement.isSettled)}
                             onChange={(e) =>
                               setAdditionalReason(e.target.value)
                             }
                             className={`w-full rounded-lg px-2.5 py-1.5 text-xs font-600 focus:outline-none focus:border-brand-primary ${
-                              selectedDriver?.isSettled
+                              currentShiftSettlement.isSettled
                                 ? "bg-neutral-100/90 text-neutral-500 cursor-not-allowed border border-neutral-200"
                                 : "bg-white border border-neutral-300 text-neutral-900"
                             }`}
@@ -1210,7 +1354,10 @@ export default function DriverDropDashboard() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setActivePrintModal("both")}
+                      onClick={() => {
+                        handleSilentThermalPrint("both");
+                        setActivePrintModal("both");
+                      }}
                       className="px-4 py-2.5 bg-white border border-neutral-300 hover:bg-neutral-100 text-neutral-800 font-800 text-[11px] uppercase rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
                     >
                       <Printer size={13} />
@@ -1222,14 +1369,14 @@ export default function DriverDropDashboard() {
                       onClick={handleFinalizeSettlement}
                       disabled={isSubmitDisabled || isSubmitting}
                       className={`px-5 py-2.5 font-900 text-[12px] uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 ${
-                        selectedDriver?.isSettled
+                        currentShiftSettlement.isSettled
                           ? "bg-emerald-700 text-white cursor-not-allowed opacity-90 shadow-xs"
                           : isSubmitDisabled || isSubmitting
                           ? "bg-neutral-300 text-neutral-500 cursor-not-allowed opacity-60"
                           : "bg-[#851532] hover:bg-[#6b0f27] text-white cursor-pointer active:scale-95 shadow-md"
                       }`}
                     >
-                      {selectedDriver?.isSettled ? (
+                      {currentShiftSettlement.isSettled ? (
                         <>
                           <CheckCircle size={14} />
                           <span>SETTLED & PAID</span>
@@ -1509,14 +1656,106 @@ export default function DriverDropDashboard() {
                   )}
                   <span>Download PDF</span>
                 </button>
-                {/* <button
+                <button
                   type="button"
-                  onClick={handleTriggerPrint}
-                  className="px-4 py-1.5 bg-brand-primary text-white text-[11px] font-800 uppercase rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:bg-brand-primary/90"
+                  onClick={() => handleSilentThermalPrint(activePrintModal || "both")}
+                  disabled={isPrintingThermal}
+                  className="px-4 py-1.5 bg-brand-primary text-white text-[11px] font-800 uppercase rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:bg-brand-primary/90 disabled:opacity-50"
                 >
-                  <Printer size={14} />
+                  {isPrintingThermal ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <Printer size={14} />
+                  )}
                   <span>Print Now</span>
-                </button> */}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Driver Auto-Checkout Confirmation Modal (Pizza Hut Style) ── */}
+      {showAutoCheckoutModal && selectedDriver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-xs animate-in fade-in duration-200 select-none">
+          <div
+            className="fixed inset-0"
+            onClick={() => setShowAutoCheckoutModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden z-10 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-[#851532] text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold">
+                  <LogOut size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-900 tracking-wide text-white">
+                    Driver Shift Settlement
+                  </h3>
+                  <p className="text-[11px] text-white/80 font-500">
+                    Confirm Settlement & Auto Check-Out
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAutoCheckoutModal(false)}
+                className="p-1.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              {/* Driver Card Summary */}
+              <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200/80 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-900 text-neutral-900">{selectedDriver.name}</div>
+                  <div className="text-[10.5px] font-mono font-700 text-neutral-500 mt-0.5">
+                    ID: {selectedDriver.driverId} • SHIFT {currentShiftNumber}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[9.5px] font-800 uppercase text-neutral-400">Net Cash Payout</div>
+                  <div className="text-sm font-900 text-brand-primary font-mono">
+                    ${calculations.netCashPayoutToDriver.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Question Banner */}
+              <div className="text-center py-1 space-y-1.5">
+                <p className="text-xs font-800 text-neutral-800">
+                  Do you want to automatically Check-Out <span className="text-[#851532] font-900">{selectedDriver.name}</span> from POS attendance?
+                </p>
+                <p className="text-[11px] text-neutral-500 font-500">
+                  Auto check-out will close the driver's active shift, set status offline, and unassign active vehicles.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => executeFinalizeSettlement(true)}
+                  disabled={isSubmitting}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-900 transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                >
+                  <UserCheck size={16} />
+                  <span>YES, SETTLE & AUTO CHECK-OUT</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => executeFinalizeSettlement(false)}
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-800 transition-all cursor-pointer flex items-center justify-center gap-2 border border-neutral-200 active:scale-95 disabled:opacity-50"
+                >
+                  <CheckCircle size={15} className="text-neutral-500" />
+                  <span>NO, JUST SETTLE (KEEP DRIVER ONLINE)</span>
+                </button>
               </div>
             </div>
           </div>
