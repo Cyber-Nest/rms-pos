@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Clock, KeyRound, UserCheck, Coffee, LogOut, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { X, Clock, KeyRound, UserCheck, Coffee, LogOut, CheckCircle, AlertCircle, Eye, EyeOff, Shield } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -26,6 +26,12 @@ export default function CheckInOutModal({
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Manager PIN Override State (for unscheduled employees)
+  const [showManagerPinPrompt, setShowManagerPinPrompt] = useState(false);
+  const [managerPinInput, setManagerPinInput] = useState("");
+  const [showManagerPin, setShowManagerPin] = useState(false);
+  const [pendingCheckInEmployeeId, setPendingCheckInEmployeeId] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const getBranchId = () => {
@@ -48,6 +54,9 @@ export default function CheckInOutModal({
     setTodayAttendance(null);
     setVerifying(false);
     setActionLoading(false);
+    setShowManagerPinPrompt(false);
+    setManagerPinInput("");
+    setPendingCheckInEmployeeId(null);
   };
 
   const handleClose = () => {
@@ -95,17 +104,24 @@ export default function CheckInOutModal({
     }
   };
 
-  const handleAttendanceAction = async (actionType: "check-in" | "break-in" | "break-out" | "check-out") => {
+  const handleAttendanceAction = async (actionType: "check-in" | "break-in" | "break-out" | "check-out", overrideManagerPin?: string) => {
     const branchId = getBranchId();
     if (!branchId || !verifiedEmployee) return;
 
     setActionLoading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-      const res = await axios.post(`${apiUrl}/attendance/${actionType}`, {
+      const payload: any = {
         branchId,
         employeeId: verifiedEmployee._id,
-      }, { withCredentials: true });
+      };
+
+      // Include managerPin only for check-in override
+      if (actionType === "check-in" && overrideManagerPin) {
+        payload.managerPin = overrideManagerPin;
+      }
+
+      const res = await axios.post(`${apiUrl}/attendance/${actionType}`, payload, { withCredentials: true });
 
       if (res.data.success) {
         const actionLabels = {
@@ -119,10 +135,37 @@ export default function CheckInOutModal({
         handleClose();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || "Action failed");
+      const errMsg: string = err.response?.data?.message || err.message || "Action failed";
+
+      // Handle schedule-aware errors from backend
+      if (errMsg.startsWith("NOT_SCHEDULED:")) {
+        // Employee is not scheduled today — prompt for Manager PIN override
+        toast.error("Not scheduled today. Manager PIN required.", { duration: 3500 });
+        setPendingCheckInEmployeeId(verifiedEmployee._id);
+        setShowManagerPinPrompt(true);
+      } else if (errMsg.startsWith("EARLY_CHECKIN:")) {
+        // Early check-in blocked
+        const detail = errMsg.replace("EARLY_CHECKIN: ", "");
+        toast.error(detail, { duration: 5000 });
+      } else if (errMsg.startsWith("INVALID_MANAGER_PIN:")) {
+        toast.error("Invalid Manager PIN. Try again.");
+      } else {
+        toast.error(errMsg);
+      }
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleManagerPinOverride = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!managerPinInput || !/^\d{4}$/.test(managerPinInput.trim())) {
+      toast.error("Manager PIN must be exactly 4 digits");
+      return;
+    }
+    setShowManagerPinPrompt(false);
+    await handleAttendanceAction("check-in", managerPinInput.trim());
+    setManagerPinInput("");
   };
 
   return (
@@ -335,6 +378,96 @@ export default function CheckInOutModal({
           </div>
         )}
       </div>
+
+      {/* Manager PIN Override Dialog — shown when employee is not scheduled */}
+      {showManagerPinPrompt && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-neutral-900/70 backdrop-blur-sm">
+          <div className="relative w-full max-w-xs bg-white rounded-2xl shadow-2xl border border-amber-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-amber-600 text-white px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-amber-500/40 flex items-center justify-center">
+                  <KeyRound size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-900 tracking-wide">Manager Override Required</h3>
+                  <p className="text-[11px] text-amber-100">Employee not scheduled today</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleManagerPinOverride} className="p-5 space-y-4">
+              <p className="text-[11px] text-neutral-600 font-600 leading-relaxed">
+                Enter a <strong>Manager's 4-digit PIN</strong> to authorize this check-in override.
+              </p>
+
+              <div className="relative">
+                <input
+                  type={showManagerPin ? "text" : "password"}
+                  maxLength={4}
+                  value={managerPinInput}
+                  onChange={(e) => setManagerPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  placeholder="Manager PIN (4 digits)"
+                  autoFocus
+                  className="w-full pl-9 pr-10 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-mono font-900 text-neutral-900 tracking-[0.3em] focus:outline-none focus:border-amber-500 transition-all"
+                />
+                <KeyRound size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <button
+                  type="button"
+                  onClick={() => setShowManagerPin(!showManagerPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 p-1 cursor-pointer"
+                >
+                  {showManagerPin ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+
+              {/* PIN Keypad */}
+              <div className="grid grid-cols-3 gap-1.5 select-none">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"].map((btn) => (
+                  <button
+                    key={btn}
+                    type="button"
+                    onClick={() => {
+                      if (btn === "C") setManagerPinInput("");
+                      else if (btn === "⌫") setManagerPinInput(prev => prev.slice(0, -1));
+                      else if (managerPinInput.length < 4) setManagerPinInput(prev => prev + btn);
+                    }}
+                    className={`py-2 rounded-xl text-xs font-800 transition-all cursor-pointer ${
+                      btn === "C"
+                        ? "bg-red-50 text-red-600 hover:bg-red-100"
+                        : btn === "⌫"
+                        ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                        : "bg-neutral-100 text-neutral-800 hover:bg-neutral-200 active:scale-95"
+                    }`}
+                  >
+                    {btn}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowManagerPinPrompt(false); setManagerPinInput(""); }}
+                  className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-neutral-600 text-xs font-800 hover:bg-neutral-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading || managerPinInput.length !== 4}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-900 hover:bg-amber-700 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {actionLoading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <><Shield size={13} /> AUTHORIZE</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
