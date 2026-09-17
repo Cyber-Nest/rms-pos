@@ -183,10 +183,21 @@ export default function CarriersPanel() {
                   </div>
                 )}
 
-                {driver.activeOrders.length > 0 && driver.status === 'on-delivery' && (
-                  <div className="flex items-center gap-1 text-[10.5px] text-blue-600 font-medium">
-                    <MapPin size={11} />
-                    <span>{driver.activeOrders.length} active order{driver.activeOrders.length > 1 ? 's' : ''}</span>
+                {driver.activeOrders.length > 0 && (
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-1 text-[10.5px] text-blue-600 font-medium">
+                      <MapPin size={11} />
+                      <span>{driver.activeOrders.length} active order{driver.activeOrders.length > 1 ? 's' : ''}</span>
+                    </div>
+                    <button
+                      className="px-2 py-0.5 text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 rounded transition-colors cursor-pointer"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await markDriverAvailable(driver.id);
+                      }}
+                    >
+                      Mark Available
+                    </button>
                   </div>
                 )}
               </div>

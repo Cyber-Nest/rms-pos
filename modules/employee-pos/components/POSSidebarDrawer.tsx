@@ -216,6 +216,26 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                 const isActive = activeTab === item.key || 
                                  (item.key === 'transactions' && activeTab === 'orders');
 
+                if (item.key === 'delivery') {
+                  return (
+                    <a
+                      key={item.key}
+                      href="/employee/delivery"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={onClose}
+                      className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-800 tracking-wide transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-brand-primary text-white shadow-md'
+                          : 'text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900'
+                      }`}
+                    >
+                      <Icon size={16} className={isActive ? 'text-white' : 'text-neutral-500'} />
+                      <span>{item.label}</span>
+                    </a>
+                  );
+                }
+
                 return (
                   <button
                     key={item.key}
@@ -249,8 +269,6 @@ export default function POSSidebarDrawer({ isOpen, onClose, activeTab, onSelectT
                         window.location.href = '/employee/kitchen';
                       } else if (item.key === 'reception_view') {
                         window.location.href = '/employee/reception';
-                      } else if (item.key === 'delivery') {
-                        window.location.href = '/employee/delivery';
                       } else if (item.key === 'driver_drop') {
                         window.location.href = '/employee/driver-drop';
                       } else if (item.key === 'vehicles') {

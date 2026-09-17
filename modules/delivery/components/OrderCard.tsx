@@ -9,7 +9,11 @@ import {
   ChevronUp,
   Check,
   User,
+  Printer,
+  RefreshCw,
 } from "lucide-react";
+import axios from "axios";
+import toast from "react-hot-toast";
 import { DeliveryOrder } from "../types/delivery";
 import { useDeliveryStore } from "../store/deliveryStore";
 
@@ -20,9 +24,39 @@ interface OrderCardProps {
 export default function OrderCard({ order }: OrderCardProps) {
   const [showDriverDropdown, setShowDriverDropdown] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [loadingAction, setLoadingAction] = useState<
     "assign" | "unassign" | "delivered" | "available" | null
   >(null);
+
+  const handleSilentPrint = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPrinting || !order.id) return;
+    setIsPrinting(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      toast.loading(`Printing receipt for #${order.orderNumber}...`, {
+        id: `print-${order.id}`,
+      });
+      const res = await axios.post(`${apiUrl}/orders/${order.id}/print`, {
+        paperSize: "80mm",
+      });
+      if (res.data.success) {
+        toast.success(`Receipt printed successfully!`, {
+          id: `print-${order.id}`,
+        });
+      } else {
+        throw new Error(res.data.message || "Print failed");
+      }
+    } catch (err: any) {
+      toast.error("Print failed — check printer connection.", {
+        id: `print-${order.id}`,
+      });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   const [durationStr, setDurationStr] = useState("");
 
   React.useEffect(() => {
@@ -65,8 +99,11 @@ export default function OrderCard({ order }: OrderCardProps) {
 
   const isSelected = selectedOrderId === order.id;
   const assignedDriver = order.assignedDriverId
-    ? drivers.find((d) => d.id === order.assignedDriverId)
+    ? drivers.find((d) => d.id === order.assignedDriverId || d._id === order.assignedDriverId)
     : null;
+  const driverName = assignedDriver?.name || null;
+  const driverCode = assignedDriver?.driverId || null;
+
   const availableDrivers = getDriversWithVehicles().filter(
     (d) =>
       Boolean(d.posCheckedIn) &&
@@ -132,242 +169,188 @@ export default function OrderCard({ order }: OrderCardProps) {
         ${order.status === "en-route" ? "border-l-[3px] border-l-blue-600" : ""}
         ${order.status === "delivered" ? "border-l-[3px] border-l-green-600 opacity-70" : ""}
       `}
-      onClick={() => selectOrder(order.id)}
-    >
-      {/* Header Row */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-[30px] h-[30px] rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-500">
-            <User size={14} />
+        onClick={() => selectOrder(order.id)}
+      >
+        {/* Header Row */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-[30px] h-[30px] rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-500">
+              <User size={14} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[13px] font-semibold text-neutral-900 leading-tight">
+                {order.customerName}
+              </span>
+              <span className="flex items-center gap-1 text-[11px] text-neutral-500 tabular-nums">
+                <Phone size={10} />
+                {order.customerPhone}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[13px] font-semibold text-neutral-900 leading-tight">
-              {order.customerName}
-            </span>
-            <span className="flex items-center gap-1 text-[11px] text-neutral-500 tabular-nums">
-              <Phone size={10} />
-              {order.customerPhone}
-            </span>
-          </div>
-        </div>
-        <span className="text-[11px] font-bold text-brand-primary bg-brand-primary-light px-2 py-0.5 rounded-md tracking-wide">
-          {order.orderNumber}
-        </span>
-      </div>
-
-      {/* Address */}
-      <div className="flex items-start gap-1.5 text-[11.5px] text-neutral-600 mb-2 leading-snug">
-        <MapPin size={12} className="shrink-0 mt-0.5 text-neutral-400" />
-        <span>{order.deliveryAddress}</span>
-      </div>
-
-      {/* Meta Row */}
-      <div className="flex gap-3.5 mb-2.5">
-        <div className={`flex items-center gap-1 text-[10.5px] ${isDelayed ? "text-red-500" : "text-neutral-500"}`}>
-          <Clock size={11} />
-          <span>
-            Duration:{" "}
-            <strong className={`font-semibold ${isDelayed ? "text-red-600" : "text-neutral-700"}`}>
-              {durationStr}
-            </strong>
-          </span>
-        </div>
-        <div className="flex items-center gap-1 text-[10.5px] text-neutral-500">
-          <Clock size={11} />
-          <span>
-            Time Ordered:{" "}
-            <strong className="text-neutral-700 font-semibold">
-              {order.timeOrdered}
-            </strong>
-          </span>
-        </div>
-      </div>
-
-      {/* Status / Action Row */}
-      <div className="flex items-center">
-        {order.status === "assign" && (
-          <div className="flex items-center gap-2 w-full justify-between">
-            <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-full uppercase tracking-wide">
-              Ready
-            </span>
-            <div className="relative">
-              <button
-                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold text-white bg-brand-primary rounded-md hover:bg-brand-primary-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isUpdating}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowDriverDropdown(!showDriverDropdown);
-                }}
-              >
-                {isUpdating ? (
-                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : null}
-                <span>Assign Driver</span>
-                {showDriverDropdown ? (
-                  <ChevronUp size={12} />
-                ) : (
-                  <ChevronDown size={12} />
-                )}
-              </button>
-              {showDriverDropdown && (
-                <div className="absolute top-full right-0 mt-1 min-w-[200px] bg-white border border-neutral-200 rounded-xl shadow-lg z-50 overflow-hidden animate-scale-up">
-                  {availableDrivers.length === 0 ? (
-                    <div className="p-3.5 text-xs text-neutral-400 text-center">
-                      No drivers with vehicles available
-                    </div>
-                  ) : (
-                    availableDrivers.map((driver) => {
-                      const isOnline = driver.status === "available";
-                      return (
-                        <button
-                          key={driver.id}
-                          disabled={isUpdating}
-                          className="flex items-center gap-2 w-full px-3.5 py-2 text-xs font-medium text-neutral-900 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 cursor-pointer text-left disabled:opacity-55"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAssign(driver.id);
-                          }}
-                        >
-                          <div
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              isOnline ? "bg-green-600 animate-pulse" : "bg-neutral-400"
-                            }`}
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-neutral-900 truncate">
-                              {driver.name} {driver.driverId ? `(#${driver.driverId})` : ""}
-                            </span>
-                            <span
-                              className={`text-[9px] font-bold ${
-                                isOnline ? "text-green-600" : "text-neutral-400"
-                              }`}
-                            >
-                              {isOnline ? "Online" : "Offline"}
-                            </span>
-                          </div>
-                          {driver.assignedVehicle && (
-                            <span className="text-[9px] font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded ml-auto whitespace-nowrap shrink-0">
-                              V#{driver.assignedVehicle.number}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+          {/* Print icon + Order number */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={isPrinting}
+              onClick={handleSilentPrint}
+              title="Print Receipt"
+              className="p-1 text-neutral-400 hover:text-brand-primary hover:bg-neutral-100 rounded-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+            >
+              {isPrinting ? (
+                <RefreshCw size={14} className="animate-spin text-brand-primary" />
+              ) : (
+                <Printer size={14} />
               )}
-            </div>
+            </button>
+            <span className="text-[11px] font-bold text-brand-primary bg-brand-primary-light px-2 py-0.5 rounded-md tracking-wide">
+              {order.orderNumber}
+            </span>
           </div>
-        )}
+        </div>
 
-        {order.status === "en-route" && assignedDriver && (
-          <div className="flex items-center justify-between w-full mt-1.5 animate-fade-in">
-            {/* Left side: Driver details & Online/Offline status */}
-            {(() => {
-              const isDriverOnline =
-                assignedDriver.status === "available" ||
-                assignedDriver.status === "on-delivery" ||
-                Boolean(assignedDriver.isDutyOnline);
-              return (
-                <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700 min-w-0 mr-2">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      isDriverOnline ? "bg-green-600 animate-pulse" : "bg-red-600"
-                    }`}
-                  />
-                  <span className="truncate max-w-[110px] font-bold">
-                    {assignedDriver.name}{" "}
-                    {assignedDriver.driverId ? `(#${assignedDriver.driverId})` : ""}
-                  </span>
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                      isDriverOnline
-                        ? "text-green-700 bg-green-50 border border-green-200"
-                        : "text-neutral-500 bg-neutral-100 border border-neutral-200"
-                    }`}
-                  >
-                    {isDriverOnline ? "Online" : "Offline"}
-                  </span>
-                  {assignedDriver.assignedVehicle && (
-                    <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider">
-                      V#{assignedDriver.assignedVehicle.number}
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
+        {/* Address */}
+        <div className="flex items-start gap-1.5 text-[11.5px] text-neutral-600 mb-2 leading-snug">
+          <MapPin size={12} className="shrink-0 mt-0.5 text-neutral-400" />
+          <span>{order.deliveryAddress}</span>
+        </div>
 
-            {/* Right side: Unassign & Mark Delivered buttons side-by-side */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                className="px-2.5 py-1.5 text-[10.5px] font-bold text-red-650 bg-red-50 hover:bg-red-100/80 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
-                disabled={isUpdating}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setIsUpdating(true);
-                  setLoadingAction("unassign");
-                  try {
-                    await unassignDriver(order.id);
-                  } catch (err) {
-                    console.error(err);
-                  } finally {
-                    setIsUpdating(false);
-                    setLoadingAction(null);
-                  }
-                }}
-              >
-                {loadingAction === "unassign" && (
-                  <div className="w-2.5 h-2.5 border-[1.5px] border-red-600 border-t-transparent rounded-full animate-spin" />
-                )}
-                <span>Unassign</span>
-              </button>
-
-              <button
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-green-600 hover:bg-green-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm shadow-green-600/10"
-                disabled={isUpdating}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setIsUpdating(true);
-                  setLoadingAction("delivered");
-                  try {
-                    await markDelivered(order.id);
-                  } catch (err) {
-                    console.error(err);
-                  } finally {
-                    setIsUpdating(false);
-                    setLoadingAction(null);
-                  }
-                }}
-              >
-                {loadingAction === "delivered" ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Check size={12} strokeWidth={3} />
-                )}
-                <span>Delivered</span>
-              </button>
-            </div>
+        {/* Meta Row */}
+        <div className="flex gap-3.5 mb-2.5">
+          <div className={`flex items-center gap-1 text-[10.5px] ${isDelayed ? "text-red-500" : "text-neutral-500"}`}>
+            <Clock size={11} />
+            <span>
+              Duration:{" "}
+              <strong className={`font-semibold ${isDelayed ? "text-red-600" : "text-neutral-700"}`}>
+                {durationStr}
+              </strong>
+            </span>
           </div>
-        )}
+          <div className="flex items-center gap-1 text-[10.5px] text-neutral-500">
+            <Clock size={11} />
+            <span>
+              Time Ordered:{" "}
+              <strong className="text-neutral-700 font-semibold">
+                {order.timeOrdered}
+              </strong>
+            </span>
+          </div>
+        </div>
 
-        {order.status === "delivered" && (
-          <div className="flex items-center justify-between w-full mt-1 animate-fade-in">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
-              <Check size={14} strokeWidth={2.5} />
-              <span>Delivered</span>
-            </div>
-            {order.assignmentStatus === "delivered" &&
-              assignedDriver &&
-              assignedDriver.status === "returning" && (
+        {/* Status / Action Row */}
+        <div className="flex items-center">
+          {order.status === "assign" && (
+            <div className="flex items-center gap-2 w-full justify-between">
+              <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+                Ready
+              </span>
+              <div className="relative">
                 <button
-                  className="px-2.5 py-1 text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-200/60 hover:bg-purple-100 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-semibold text-white bg-brand-primary rounded-md hover:bg-brand-primary-hover transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isUpdating}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDriverDropdown(!showDriverDropdown);
+                  }}
+                >
+                  {isUpdating ? (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : null}
+                  <span>Assign Driver</span>
+                  {showDriverDropdown ? (
+                    <ChevronUp size={12} />
+                  ) : (
+                    <ChevronDown size={12} />
+                  )}
+                </button>
+                {showDriverDropdown && (
+                  <div className="absolute top-full right-0 mt-1 min-w-[200px] bg-white border border-neutral-200 rounded-xl shadow-lg z-50 overflow-hidden animate-scale-up">
+                    {availableDrivers.length === 0 ? (
+                      <div className="p-3.5 text-xs text-neutral-400 text-center">
+                        No drivers with vehicles available
+                      </div>
+                    ) : (
+                      availableDrivers.map((driver) => {
+                        const isOnline = driver.status === "available";
+                        return (
+                          <button
+                            key={driver.id}
+                            disabled={isUpdating}
+                            className="flex items-center gap-2 w-full px-3.5 py-2 text-xs font-medium text-neutral-900 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 cursor-pointer text-left disabled:opacity-55"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAssign(driver.id);
+                            }}
+                          >
+                            <div
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isOnline ? "bg-green-600 animate-pulse" : "bg-neutral-400"
+                              }`}
+                            />
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-semibold text-neutral-900 truncate">
+                                {driver.name} {driver.driverId ? `(#${driver.driverId})` : ""}
+                              </span>
+                              <span
+                                className={`text-[9px] font-bold ${
+                                  isOnline ? "text-green-600" : "text-neutral-400"
+                                }`}
+                              >
+                                {isOnline ? "Online" : "Offline"}
+                              </span>
+                            </div>
+                            {driver.assignedVehicle && (
+                              <span className="text-[9px] font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded ml-auto whitespace-nowrap shrink-0">
+                                V#{driver.assignedVehicle.number}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {order.status === "en-route" && assignedDriver && (
+            <div className="flex items-center justify-between w-full mt-1.5 animate-fade-in">
+              {/* Left side: Driver details */}
+              {(() => {
+                const isDriverOnline =
+                  assignedDriver.status === "available" ||
+                  assignedDriver.status === "on-delivery" ||
+                  Boolean(assignedDriver.isDutyOnline);
+                return (
+                  <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-neutral-700 min-w-0 mr-2">
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                        isDriverOnline ? "bg-blue-600 animate-pulse" : "bg-red-600"
+                      }`}
+                    />
+                    <span className="truncate max-w-[110px] font-bold">
+                      {driverName ? `${driverName} ${driverCode ? `(#${driverCode})` : ""}` : "Driver Assigned"}
+                    </span>
+                    {assignedDriver.assignedVehicle && (
+                      <span className="text-[9px] font-black text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider">
+                        V#{assignedDriver.assignedVehicle.number}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Right side: Unassign & Mark Delivered buttons */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  className="px-2.5 py-1.5 text-[10.5px] font-bold text-red-600 bg-red-50 hover:bg-red-100/80 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
                   disabled={isUpdating}
                   onClick={async (e) => {
                     e.stopPropagation();
                     setIsUpdating(true);
-                    setLoadingAction("available");
+                    setLoadingAction("unassign");
                     try {
-                      await markDriverAvailable(assignedDriver.id);
+                      await unassignDriver(order.id);
                     } catch (err) {
                       console.error(err);
                     } finally {
@@ -376,18 +359,122 @@ export default function OrderCard({ order }: OrderCardProps) {
                     }
                   }}
                 >
-                  {loadingAction === "available" ? (
-                    <div className="w-2.5 h-2.5 border-[1.5px] border-purple-600 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <MapPin size={10} />
+                  {loadingAction === "unassign" && (
+                    <div className="w-2.5 h-2.5 border-[1.5px] border-red-600 border-t-transparent rounded-full animate-spin" />
                   )}
-                  <span>Mark Driver Available</span>
+                  <span>Unassign</span>
                 </button>
-              )}
-          </div>
-        )}
+
+                <button
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-green-600 hover:bg-green-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm shadow-green-600/10"
+                  disabled={isUpdating}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setIsUpdating(true);
+                    setLoadingAction("delivered");
+                    try {
+                      await markDelivered(order.id);
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setIsUpdating(false);
+                      setLoadingAction(null);
+                    }
+                  }}
+                >
+                  {loadingAction === "delivered" ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Check size={12} strokeWidth={3} />
+                  )}
+                  <span>Delivered</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {order.status === "delivered" && (
+            <div className="flex items-center justify-between w-full mt-1.5 pt-1.5 border-t border-neutral-100 animate-fade-in gap-2">
+              {/* Left: Delivered chip + driver name chip */}
+              <div className="flex items-center gap-1.5 text-[11.5px] font-semibold min-w-0 flex-wrap">
+                <span className="flex items-center gap-1 text-green-700 font-bold bg-green-50 border border-green-200 px-2 py-0.5 rounded-md shrink-0">
+                  <Check size={13} strokeWidth={2.5} />
+                  Delivered
+                </span>
+                {driverName && (
+                  <span
+                    className="flex items-center gap-1 text-neutral-700 font-bold bg-neutral-100 border border-neutral-200/80 px-2 py-0.5 rounded-md truncate max-w-[150px]"
+                    title={driverName}
+                  >
+                    <User size={11} className="text-neutral-500 shrink-0" />
+                    <span className="truncate">{driverName}</span>
+                    {driverCode && (
+                      <span className="text-[10px] text-neutral-500 font-medium shrink-0">
+                        #{driverCode}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {/* Right: Mark Driver Available + Unassign */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {order.assignmentStatus === "delivered" &&
+                  assignedDriver &&
+                  assignedDriver.status === "returning" && (
+                    <button
+                      className="px-2.5 py-1 text-[10px] font-black text-purple-600 bg-purple-50 border border-purple-200/60 hover:bg-purple-100 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                      disabled={isUpdating}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setIsUpdating(true);
+                        setLoadingAction("available");
+                        try {
+                          await markDriverAvailable(assignedDriver.id);
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setIsUpdating(false);
+                          setLoadingAction(null);
+                        }
+                      }}
+                    >
+                      {loadingAction === "available" ? (
+                        <div className="w-2.5 h-2.5 border-[1.5px] border-purple-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <MapPin size={10} />
+                      )}
+                      <span>Mark Driver Available</span>
+                    </button>
+                  )}
+
+                <button
+                  className="px-2.5 py-1.5 text-[10.5px] font-bold text-red-600 bg-red-50 hover:bg-red-100/80 rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
+                  disabled={isUpdating}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setIsUpdating(true);
+                    setLoadingAction("unassign");
+                    try {
+                      await unassignDriver(order.id);
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setIsUpdating(false);
+                      setLoadingAction(null);
+                    }
+                  }}
+                >
+                  {loadingAction === "unassign" && (
+                    <div className="w-2.5 h-2.5 border-[1.5px] border-red-600 border-t-transparent rounded-full animate-spin" />
+                  )}
+                  <span>Unassign</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }
