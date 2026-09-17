@@ -123,13 +123,20 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getFilteredDrivers: () => {
     const { drivers, carrierFilter } = get();
     if (carrierFilter === "available") {
-      // Show POS checked-in drivers (both available and offline-but-checked-in)
+      // Available: posCheckedIn + (available or offline) AND no active orders
       return drivers.filter(
-        (d) => d.posCheckedIn && (d.status === "available" || d.status === "offline")
+        (d) =>
+          d.posCheckedIn &&
+          (d.status === "available" || d.status === "offline") &&
+          (!d.activeOrders || d.activeOrders.length === 0)
       );
     }
+    // En Route: on-delivery, returning, OR has active orders (handles status sync lag)
     return drivers.filter(
-      (d) => d.status === "on-delivery" || d.status === "returning",
+      (d) =>
+        d.status === "on-delivery" ||
+        d.status === "returning" ||
+        (d.activeOrders && d.activeOrders.length > 0)
     );
   },
 
@@ -145,11 +152,19 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   getCarrierCounts: () => {
     const { drivers } = get();
     return {
+      // Available: posCheckedIn + (available or offline) AND no active orders
       available: drivers.filter(
-        (d) => d.posCheckedIn && (d.status === "available" || d.status === "offline")
+        (d) =>
+          d.posCheckedIn &&
+          (d.status === "available" || d.status === "offline") &&
+          (!d.activeOrders || d.activeOrders.length === 0)
       ).length,
+      // En Route: on-delivery, returning, OR has active orders
       enRoute: drivers.filter(
-        (d) => d.status === "on-delivery" || d.status === "returning",
+        (d) =>
+          d.status === "on-delivery" ||
+          d.status === "returning" ||
+          (d.activeOrders && d.activeOrders.length > 0)
       ).length,
     };
   },
