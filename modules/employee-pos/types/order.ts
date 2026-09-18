@@ -75,6 +75,8 @@ export interface Order {
   scheduledAt: string | null;
   dueAt?: string | null;
   notes: string;
+  orderNotes?: string;
+  driverNotes?: string;
   status: "pending" | "preparing" | "ready" | "completed" | "cancelled";
   receptionCompleted?: boolean;
   statusHistory?: Array<{ status: string; changedAt: string; note?: string; userName?: string }>;

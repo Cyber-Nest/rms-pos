@@ -114,49 +114,54 @@ export default function ThermalReceipt({ order }: ThermalReceiptProps) {
         {/* Customer Details */}
         {(() => {
           const c = order.customer;
+          const driverNotesText = (c?.driverNotes || (order as any).driverNotes || "").trim();
           const hasValidDetails =
-            c &&
-            ((c.name && c.name.trim() !== "" && c.name.trim() !== "No Name") ||
-              (c.phone && c.phone.trim() !== "") ||
-              (c.address && c.address.trim() !== "") ||
-              (c.driverNotes && c.driverNotes.trim() !== ""));
+            (c &&
+              ((c.name && c.name.trim() !== "" && c.name.trim() !== "No Name") ||
+                (c.phone && c.phone.trim() !== "") ||
+                (c.address && c.address.trim() !== ""))) ||
+            driverNotesText !== "";
           if (!hasValidDetails) return null;
           return (
             <div className="border border-dashed border-neutral-400 p-2 my-2 text-left text-[10px] space-y-0.5">
               <p className="font-800 uppercase text-[10.5px] mb-1 border-b border-dashed border-neutral-300 pb-0.5 text-left">
                 CUSTOMER DETAILS
               </p>
-              {c.name && c.name.trim() !== "" && c.name.trim() !== "No Name" && (
+              {c?.name && c.name.trim() !== "" && c.name.trim() !== "No Name" && (
                 <p className="font-700">
                   Name : <span className="font-600">{c.name}</span>
                 </p>
               )}
-              {c.phone && c.phone.trim() !== "" && (
+              {c?.phone && c.phone.trim() !== "" && (
                 <p className="font-700">
                   Phone : <span className="font-600">{c.phone}</span>
                 </p>
               )}
-              {c.address && c.address.trim() !== "" && (
+              {c?.address && c.address.trim() !== "" && (
                 <p className="font-700">
                   Address : <span className="font-600">{c.address}{c.postalCode ? `, ${c.postalCode}` : ""}</span>
                 </p>
               )}
-              {c.driverNotes && c.driverNotes.trim() !== "" && (
+              {driverNotesText !== "" && (
                 <p className="font-700">
-                  Driver Notes : <span className="font-600">{c.driverNotes}</span>
+                  Driver Notes : <span className="font-600">{driverNotesText}</span>
                 </p>
               )}
             </div>
           );
         })()}
 
-        {/* Customer Delivery Notes */}
-        {order.notes && (
-          <div className="border border-black p-2 my-2 text-center text-[10.5px] font-800 leading-snug uppercase">
-            <p className="underline mb-0.5">NOTE / DELIVERY INSTRUCTIONS:</p>
-            <p className="font-900">"{order.notes}"</p>
-          </div>
-        )}
+        {/* Customer Delivery / Order Notes */}
+        {(() => {
+          const orderNotesText = (order.notes || (order as any).orderNotes || (order as any).specialInstructions || "").trim();
+          if (!orderNotesText) return null;
+          return (
+            <div className="border border-black p-2 my-2 text-center text-[10.5px] font-800 leading-snug uppercase">
+              <p className="underline mb-0.5">NOTE / ORDER INSTRUCTIONS:</p>
+              <p className="font-900">"{orderNotesText}"</p>
+            </div>
+          );
+        })()}
 
         {/* Items Table Header */}
         <div className="border-t border-b border-dashed border-neutral-800 py-1.5 my-2 font-800 text-[10.5px] grid grid-cols-12 uppercase">

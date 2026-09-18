@@ -539,7 +539,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
           </div>
 
           {/* Delivery Instructions / Order Note Banner */}
-          {order.notes && (
+          {(order.notes || (order as any).orderNotes) && (
             <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-900 animate-scale-up">
               <FileText size={16} className="text-amber-600 shrink-0 mt-0.5" />
               <div>
@@ -547,7 +547,22 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                   {order.orderType === 'delivery' ? 'Delivery Instructions Note:' : 'Customer Order Note:'}
                 </p>
                 <p className="text-xs font-700 mt-0.5 leading-relaxed text-amber-950">
-                  "{order.notes}"
+                  "{order.notes || (order as any).orderNotes}"
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Driver Notes Banner */}
+          {(order.customer?.driverNotes || (order as any).driverNotes) && (
+            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3 text-blue-900 animate-scale-up">
+              <FileText size={16} className="text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-900 text-blue-800 uppercase tracking-wider">
+                  Driver Notes / Special Instructions:
+                </p>
+                <p className="text-xs font-700 mt-0.5 leading-relaxed text-blue-950">
+                  "{order.customer?.driverNotes || (order as any).driverNotes}"
                 </p>
               </div>
             </div>
