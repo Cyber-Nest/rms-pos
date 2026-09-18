@@ -849,6 +849,8 @@ export const usePosStore = create<PosState>((set, get) => ({
             ? selectedCustomer
             : { name: "No Name", phone: "", email: "" },
       notes: orderNotes,
+      orderNotes: orderNotes,
+      driverNotes: selectedCustomer?.driverNotes || "",
     };
 
     try {
@@ -1055,6 +1057,8 @@ export const usePosStore = create<PosState>((set, get) => ({
       paymentMethod,
       payments,
       notes: orderNotes,
+      orderNotes: orderNotes,
+      driverNotes: selectedCustomer?.driverNotes || "",
       customer:
         selectedCustomer &&
         selectedCustomer.name &&
