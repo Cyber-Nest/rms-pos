@@ -29,6 +29,8 @@ import {
   RefreshCw,
   X,
   Download,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -414,32 +416,63 @@ export default function OrdersDashboard() {
     }
   };
 
-  const handleExport = (format: "pdf" | "excel") => {
+  const handleExport = async (format: "pdf" | "excel") => {
     let branchId: string | undefined = undefined;
     if (typeof window !== "undefined") {
       const rawBranch = localStorage.getItem("rms_branch");
       if (rawBranch) {
         try {
           const b = JSON.parse(rawBranch);
-          branchId = b._id;
+          branchId = b._id || b.id || b.branchId;
         } catch (e) {}
       }
     }
 
     const apiUrl =
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-    let params = `type=${activeSubTab}&format=${format}&startDate=${startDate}&endDate=${endDate}`;
-    if (branchId) params += `&branchId=${branchId}`;
-    if (
-      activeSubTab === "failed_transaction" ||
-      activeSubTab === "refund_orders"
-    ) {
-      if (searchKeyword)
-        params += `&search=${encodeURIComponent(searchKeyword)}`;
-      if (statusFilter) params += `&status=${encodeURIComponent(statusFilter)}`;
+    const toastId = toast.loading(`Generating ${format.toUpperCase()} report...`);
+
+    try {
+      const queryParams: Record<string, string> = {
+        type: activeSubTab,
+        format,
+        startDate,
+        endDate,
+      };
+      if (branchId) queryParams.branchId = branchId;
+      if (
+        activeSubTab === "failed_transaction" ||
+        activeSubTab === "refund_orders"
+      ) {
+        if (searchKeyword) queryParams.search = searchKeyword;
+        if (statusFilter) queryParams.status = statusFilter;
+      }
+
+      const response = await axios.get(`${apiUrl}/orders/export-report`, {
+        params: queryParams,
+        responseType: "blob",
+      });
+
+      const mimeType =
+        format === "pdf"
+          ? "application/pdf"
+          : "text/csv;charset=utf-8;";
+      const ext = format === "pdf" ? "pdf" : "csv";
+
+      const blob = new Blob([response.data], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${activeSubTab}_report_${startDate}_to_${endDate}.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`${format.toUpperCase()} report downloaded!`, { id: toastId });
+    } catch (err: any) {
+      console.error("Export report error:", err);
+      toast.error(`Failed to download ${format.toUpperCase()} report.`, { id: toastId });
     }
-    const downloadUrl = `${apiUrl}/orders/export-report?${params}`;
-    window.open(downloadUrl, "_blank");
   };
 
   // ── Month Selection Helper (Advance Search) ──
@@ -1077,28 +1110,46 @@ export default function OrdersDashboard() {
                     onClick={() =>
                       setIsExportDropdownOpen(!isExportDropdownOpen)
                     }
-                    className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-1 sm:py-1.5 border border-neutral-300 rounded-full bg-white hover:bg-neutral-50 text-[11px] sm:text-[12px] font-800 text-neutral-750 hover:text-brand-primary active:scale-95 transition-all cursor-pointer shadow-sm select-none whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 border border-neutral-300 rounded-full bg-white hover:bg-neutral-50 text-[11px] sm:text-[12px] font-800 text-neutral-800 hover:text-brand-primary active:scale-95 transition-all cursor-pointer shadow-2xs select-none whitespace-nowrap"
                   >
-                    <Download size={12} />
+                    <Download size={13} className="text-neutral-600" />
                     <span>Export</span>
-                    <ChevronDown size={11} />
+                    <ChevronDown
+                      size={12}
+                      className={`text-neutral-400 transition-transform duration-200 ${
+                        isExportDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
                   </button>
                   {isExportDropdownOpen && (
                     <>
                       <div
-                        className="fixed inset-0 z-30"
+                        className="fixed inset-0 z-40"
                         onClick={() => setIsExportDropdownOpen(false)}
                       />
-                      <div className="absolute right-0 mt-2 w-36 bg-white border border-neutral-250 rounded-xl shadow-lg py-1 z-40 animate-scale-up font-sans">
+                      <div className="absolute right-0 mt-2.5 w-52 bg-white border border-neutral-200/90 rounded-2xl shadow-xl p-1.5 z-50 animate-scale-up font-sans">
+                        <div className="text-[9.5px] font-800 text-neutral-400 px-3 py-1.5 uppercase tracking-wider select-none">
+                          Export Format
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
                             handleExport("pdf");
                             setIsExportDropdownOpen(false);
                           }}
-                          className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                          className="w-full text-left px-3 py-2.5 rounded-xl text-[12px] font-700 text-neutral-700 hover:bg-red-50 hover:text-red-700 transition-all cursor-pointer flex items-center gap-2.5 group"
                         >
-                          Export as PDF
+                          <div className="w-8 h-8 rounded-xl bg-red-100/70 text-red-600 flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-all shadow-2xs shrink-0">
+                            <FileText size={15} />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-750 text-neutral-800 group-hover:text-red-700 text-[12px] leading-tight">
+                              Export as PDF
+                            </span>
+                            <span className="text-[10px] text-neutral-400 group-hover:text-red-500/90 font-550 leading-tight mt-0.5">
+                              Landscape Document
+                            </span>
+                          </div>
                         </button>
                         <button
                           type="button"
@@ -1106,9 +1157,19 @@ export default function OrdersDashboard() {
                             handleExport("excel");
                             setIsExportDropdownOpen(false);
                           }}
-                          className="w-full text-left px-4 py-2 text-[11px] font-750 text-neutral-700 hover:bg-neutral-100/80 hover:text-neutral-900 cursor-pointer"
+                          className="w-full text-left px-3 py-2.5 rounded-xl text-[12px] font-700 text-neutral-700 hover:bg-emerald-50 hover:text-emerald-700 transition-all cursor-pointer flex items-center gap-2.5 group mt-0.5"
                         >
-                          Export as Excel
+                          <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-2xs shrink-0">
+                            <FileSpreadsheet size={15} />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-750 text-neutral-800 group-hover:text-emerald-700 text-[12px] leading-tight">
+                              Export as Excel
+                            </span>
+                            <span className="text-[10px] text-neutral-400 group-hover:text-emerald-500/90 font-550 leading-tight mt-0.5">
+                              CSV Matrix Sheet
+                            </span>
+                          </div>
                         </button>
                       </div>
                     </>
