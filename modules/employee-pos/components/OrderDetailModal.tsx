@@ -346,8 +346,16 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
     setUpdating(true);
     try {
       const amount = order.total;
-      const cashGivenVal = payMethod === 'cash' ? parseFloat(cashGivenInput) || amount : 0;
+      const parsedCash = parseFloat(cashGivenInput);
+      const hasInput = cashGivenInput.trim() !== '' && !isNaN(parsedCash);
+      const cashGivenVal = payMethod === 'cash' ? (hasInput ? parsedCash : amount) : 0;
       const changeGivenVal = payMethod === 'cash' ? Math.max(0, cashGivenVal - amount) : 0;
+
+      if (payMethod === 'cash' && hasInput && cashGivenVal < amount) {
+        toast.error(`Cash given ($${cashGivenVal.toFixed(2)}) is less than total amount ($${amount.toFixed(2)})`);
+        setUpdating(false);
+        return;
+      }
 
       const paymentsPayload: SplitPayment[] = [
         {
@@ -367,6 +375,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
       if (res.data.success) {
         toast.success('Payment recorded successfully!');
         setShowPayForm(false);
+        setCashGivenInput('');
         onRefresh();
         order.paymentStatus = 'paid';
       }
@@ -720,15 +729,59 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                         </div>
 
                         {payMethod === 'cash' && (
-                          <div className="space-y-1">
-                            <label className="text-[10px] text-neutral-500 font-700">Cash Given</label>
-                            <input
-                              type="number"
-                              value={cashGivenInput}
-                              onChange={(e) => setCashGivenInput(e.target.value)}
-                              placeholder={`$${(order.total ?? 0).toFixed(2)}`}
-                              className="w-full bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 text-[11.5px] text-neutral-800 focus:outline-none focus:border-brand-primary"
-                            />
+                          <div className="space-y-2 bg-neutral-100/70 p-2.5 rounded-xl border border-neutral-200">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] text-neutral-600 font-700 uppercase tracking-wide">Cash Given</label>
+                              {cashGivenInput && !isNaN(parseFloat(cashGivenInput)) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCashGivenInput('')}
+                                  className="text-[9.5px] text-neutral-400 hover:text-neutral-600 font-600 underline cursor-pointer"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[11px]">$</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={cashGivenInput}
+                                onChange={(e) => setCashGivenInput(e.target.value)}
+                                placeholder={(order.total ?? 0).toFixed(2)}
+                                className="w-full bg-white border border-neutral-200 rounded-lg pl-6 pr-2.5 py-1.5 text-[12px] font-bold font-mono text-neutral-800 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all"
+                              />
+                            </div>
+
+                            {/* Return Amount / Change calculation */}
+                            {(() => {
+                              const amount = order.total ?? 0;
+                              const parsedCash = parseFloat(cashGivenInput);
+                              const hasInput = cashGivenInput.trim() !== '' && !isNaN(parsedCash);
+                              const cashGivenVal = hasInput ? parsedCash : amount;
+                              const returnAmt = cashGivenVal - amount;
+
+                              if (hasInput && cashGivenVal < amount) {
+                                return (
+                                  <div className="flex items-center justify-between bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5 text-[10.5px]">
+                                    <span className="text-rose-700 font-700">Insufficient Cash:</span>
+                                    <span className="text-rose-600 font-800 font-mono">-${Math.abs(returnAmt).toFixed(2)}</span>
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-[11px]">
+                                  <span className="text-emerald-800 font-800 uppercase tracking-wider text-[10px]">Return Amount (Change):</span>
+                                  <span className="text-emerald-700 font-900 font-mono text-[13px]">
+                                    ${Math.max(0, returnAmt).toFixed(2)}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
 
