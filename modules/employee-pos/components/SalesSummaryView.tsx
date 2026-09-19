@@ -23,6 +23,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   const [cashDeposit, setCashDeposit] = useState('');
   const [cardDeposit, setCardDeposit] = useState('');
   const [accountPayDeposit, setAccountPayDeposit] = useState('');
+  const [savingDeposit, setSavingDeposit] = useState(false);
 
   const fetchSummary = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -74,6 +75,8 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
   };
 
   const handleSaveDeposit = async (type: 'cash' | 'card' | 'accountPay') => {
+    if (savingDeposit) return;
+    setSavingDeposit(true);
     try {
       let branchId: string | undefined = undefined;
       if (typeof window !== 'undefined') {
@@ -97,7 +100,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
 
       const res = await axios.post(`${apiUrl}/orders/sales-summary/deposit`, payload);
       if (res.data.success) {
-        toast.success(`${type.toUpperCase()} deposit saved successfully!`);
+        toast.success(`Deposit saved successfully!`);
         fetchSummary(false);
         setIsDepositOpen(false);
       } else {
@@ -106,6 +109,8 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
     } catch (err: any) {
       console.error('Failed to save deposit:', err);
       toast.error(err.response?.data?.message || 'Error occurred while saving deposit.');
+    } finally {
+      setSavingDeposit(false);
     }
   };
 
@@ -794,6 +799,7 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
             <thead>
               <tr className="bg-neutral-100 text-neutral-700 font-850 text-[10px] uppercase tracking-wider border-b border-neutral-200">
                 <th className="py-3 px-4">Driver</th>
+                <th className="py-3 px-4 text-center">Shift</th>
                 <th className="py-3 px-4 text-center"># Delivery</th>
                 <th className="py-3 px-4 text-right">Prepaid (Online)</th>
                 <th className="py-3 px-4 text-right">Cash</th>
@@ -816,6 +822,11 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                   return (
                     <tr key={idx} className="hover:bg-neutral-50/80 transition-colors text-neutral-800">
                       <td className="py-3 px-4 font-800 text-neutral-900">{drv.driverName || drv.driver || drv.name}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="px-2.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 text-[10px] font-800 uppercase tracking-wider">
+                          Shift {drv.shiftNumber || 1}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-center font-800 bg-neutral-50/80">{drv.deliveryCount ?? drv.deliveries ?? drv.count ?? 0}</td>
                       <td className="py-3 px-4 text-right font-700 text-blue-700">${Number(drv.prepaidSales || drv.prepaid || 0).toFixed(2)}</td>
                       <td className="py-3 px-4 text-right font-700 text-emerald-700">${Number(drv.cashSales || drv.cash || 0).toFixed(2)}</td>
@@ -833,13 +844,169 @@ export default function SalesSummaryView({ selectedDate }: SalesSummaryViewProps
                 })
               ) : (
                 <tr>
-                  <td colSpan={11} className="py-5 px-4 text-center text-neutral-400 font-600 text-xs">No driver records found for selected date.</td>
+                  <td colSpan={12} className="py-5 px-4 text-center text-neutral-400 font-600 text-xs">No driver records found for selected date.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ── Add / Edit Deposit Dialog Modal ── */}
+      {isDepositOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in font-sans">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-neutral-200 animate-scale-up">
+            <div className="bg-brand-primary text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <PlusCircle size={18} />
+                <h3 className="text-xs font-900 uppercase tracking-wider text-white">
+                  Money Deposit ({selectedDate})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDepositOpen(false)}
+                className="text-white/80 hover:text-white hover:bg-white/10 p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs font-sans">
+              <p className="text-neutral-600 font-550 leading-relaxed">
+                Enter actual bank deposit and card machine batch totals to record daily register shortage/overage.
+              </p>
+
+              {/* Field 1: Cash Deposit */}
+              <div className="space-y-1.5 bg-neutral-50 p-3 rounded-xl border border-neutral-200">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10.5px] font-800 text-neutral-700 uppercase tracking-wider">
+                    Actual Cash Deposit (Net Register)
+                  </label>
+                  <span className="text-[10px] text-neutral-500 font-600">Expected: ${Number(data?.moneyToBeCollected?.cash || 0).toFixed(2)}</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={cashDeposit}
+                    onChange={(e) => setCashDeposit(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-xs font-bold font-mono text-neutral-800 focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Field 2: Card Deposit */}
+              <div className="space-y-1.5 bg-neutral-50 p-3 rounded-xl border border-neutral-200">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10.5px] font-800 text-neutral-700 uppercase tracking-wider">
+                    Actual Card Batch Deposit (Debit / Interac / Credit)
+                  </label>
+                  <span className="text-[10px] text-neutral-500 font-600">Expected: ${Number(data?.moneyToBeCollected?.card || 0).toFixed(2)}</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={cardDeposit}
+                    onChange={(e) => setCardDeposit(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-xs font-bold font-mono text-neutral-800 focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Field 3: Account Pay Deposit */}
+              <div className="space-y-1.5 bg-neutral-50 p-3 rounded-xl border border-neutral-200">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10.5px] font-800 text-neutral-700 uppercase tracking-wider">
+                    Account Pay Deposit (Prepaid Online / Stripe)
+                  </label>
+                  <span className="text-[10px] text-neutral-500 font-600">Expected: ${Number(data?.moneyToBeCollected?.accountPay || 0).toFixed(2)}</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={accountPayDeposit}
+                    onChange={(e) => setAccountPayDeposit(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-white border border-neutral-300 rounded-lg pl-7 pr-3 py-2 text-xs font-bold font-mono text-neutral-800 focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Live Shortage / Overage Preview Box */}
+              {(() => {
+                const expCash = data?.moneyToBeCollected?.cash || 0;
+                const expCard = data?.moneyToBeCollected?.card || 0;
+                const expAcc = data?.moneyToBeCollected?.accountPay || 0;
+
+                const diffCash = (parseFloat(cashDeposit) || 0) - expCash;
+                const diffCard = (parseFloat(cardDeposit) || 0) - expCard;
+                const diffAcc = (parseFloat(accountPayDeposit) || 0) - expAcc;
+
+                return (
+                  <div className="bg-neutral-100 p-3 rounded-xl border border-neutral-200 space-y-1 text-[11px] font-700">
+                    <p className="text-[10px] text-neutral-500 uppercase tracking-wider font-800 mb-1">Live Shortage / Overage Preview</p>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Cash Shortage/Overage:</span>
+                      <span className={diffCash >= 0 ? 'text-emerald-700 font-mono font-800' : 'text-rose-600 font-mono font-800'}>
+                        {diffCash >= 0 ? `+$${diffCash.toFixed(2)}` : `-$${Math.abs(diffCash).toFixed(2)}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Card Shortage/Overage:</span>
+                      <span className={diffCard >= 0 ? 'text-emerald-700 font-mono font-800' : 'text-rose-600 font-mono font-800'}>
+                        {diffCard >= 0 ? `+$${diffCard.toFixed(2)}` : `-$${Math.abs(diffCard).toFixed(2)}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-neutral-600">Account Pay Shortage/Overage:</span>
+                      <span className={diffAcc >= 0 ? 'text-emerald-700 font-mono font-800' : 'text-rose-600 font-mono font-800'}>
+                        {diffAcc >= 0 ? `+$${diffAcc.toFixed(2)}` : `-$${Math.abs(diffAcc).toFixed(2)}`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={savingDeposit}
+                  onClick={() => setIsDepositOpen(false)}
+                  className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={savingDeposit}
+                  onClick={() => handleSaveDeposit('cash')}
+                  className="px-6 py-2 bg-[#851532] hover:bg-[#6b0f27] text-white text-[11px] font-800 rounded-full uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  {savingDeposit ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Deposit</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
