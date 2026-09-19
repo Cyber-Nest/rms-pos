@@ -104,11 +104,21 @@ export default function OrderCard({ order }: OrderCardProps) {
   const driverName = assignedDriver?.name || null;
   const driverCode = assignedDriver?.driverId || null;
 
-  const availableDrivers = getDriversWithVehicles().filter(
-    (d) =>
-      Boolean(d.posCheckedIn) &&
-      (d.status === "available" || d.status === "offline" || d.id === order.assignedDriverId),
-  );
+  const availableDrivers = getDriversWithVehicles().filter((d) => {
+    if (!Boolean(d.posCheckedIn)) return false;
+
+    // Exclude drivers who are already en-route / on-delivery on active orders
+    const isEnRoute =
+      d.status === "on-delivery" ||
+      d.status === "returning" ||
+      (d.activeOrders && d.activeOrders.length > 0);
+
+    if (isEnRoute && d.id !== order.assignedDriverId && d._id !== order.assignedDriverId) {
+      return false;
+    }
+
+    return true;
+  });
 
   let elapsedMinsFromAppearance = 0;
   if (order.status === "assign") {
