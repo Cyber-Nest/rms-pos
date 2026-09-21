@@ -255,6 +255,10 @@ export default function ReportsView() {
                   <td className="py-2 px-4">Debit Card - Sales</td>
                   <td className="py-2 px-4 text-right font-700 text-neutral-900">${salesReceived.debitCardSales.toFixed(2)}</td>
                 </tr>
+                <tr>
+                  <td className="py-2 px-4 font-700 text-amber-600">Unpaid Amount</td>
+                  <td className="py-2 px-4 text-right font-800 text-amber-600">${(salesReceived.unpaid || 0).toFixed(2)}</td>
+                </tr>
                 <tr className="bg-neutral-50 font-900 text-neutral-900 border-t border-neutral-200/80">
                   <td className="py-2 px-4 uppercase text-[10.5px]">Grand Total</td>
                   <td className="py-2 px-4 text-right text-brand-primary font-900">${salesReceived.grandTotal.toFixed(2)}</td>
