@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Printer, RefreshCw, CreditCard, RotateCcw, AlertTriangle, FileText, Mail, Download, Pencil } from 'lucide-react';
+import { X, Printer, RefreshCw, CreditCard, RotateCcw, AlertTriangle, FileText, Mail, Download, Pencil, User, Globe } from 'lucide-react';
 import { Order, CartItem, SplitPayment } from '../types';
 import { usePosStore } from '../store/pos.store';
 import axios from 'axios';
@@ -394,9 +394,6 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
       case 'preparing':
         return { target: 'ready', label: 'Mark Ready' };
       case 'ready':
-        if (order.orderType === 'delivery') {
-          return null;
-        }
         return { target: 'completed', label: 'Mark Completed' };
       default:
         return null;
@@ -414,89 +411,101 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
       <div className="bg-neutral-50 rounded-none sm:rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col sm:my-4 lg:my-8 max-h-screen sm:max-h-[95vh] lg:max-h-[90vh]">
         
         {/* ── Top Header Navigation Bar ── */}
-        <div className="bg-brand-dark text-white px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 border-b border-neutral-800">
-          {/* Left: Customer info + action buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
+        <div className="bg-brand-dark text-white px-3.5 sm:px-5 py-2.5 sm:py-3 flex flex-nowrap items-center justify-between gap-2 border-b border-neutral-800 shadow-md overflow-hidden select-none">
+          {/* Left: Customer & Source Info Badges */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Customer badge */}
-            <span className="bg-white/10 text-white text-[10px] sm:text-[11px] font-600 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-white/15 select-none whitespace-nowrap truncate max-w-[90px] sm:max-w-none">
-              <span className="hidden sm:inline">Customer: </span>{displayCustomerName}
-            </span>
-            {/* Order source - hidden on mobile */}
-            <span className="text-[11.5px] opacity-75 font-600 mr-1 hidden lg:inline">
-              Order By: {
-                order.orderSource === 'pos' ? 'Employee Terminal' :
-                order.orderSource === 'doordash' ? 'Online - DoorDash' :
-                order.orderSource === 'skip' ? 'Online - Skip' :
-                order.orderSource === 'ubereats' ? 'Online - Uber Eats' :
-                order.orderSource === 'online' ? 'Online - Website' : 'Online Source'
-              }
-            </span>
+            <div className="inline-flex items-center gap-1 bg-white/10 hover:bg-white/15 text-white text-[10px] sm:text-[10.5px] font-600 px-2.5 py-1 sm:py-1.5 rounded-lg border border-white/15 shadow-2xs select-none transition-all whitespace-nowrap">
+              <User size={12} className="text-neutral-300 shrink-0" />
+              <span className="text-white/70 font-medium">Customer:</span>
+              <span className="font-bold text-white tracking-wide max-w-[100px] sm:max-w-[140px] truncate">{displayCustomerName}</span>
+            </div>
 
+            {/* Order Source Badge */}
+            <div className="inline-flex items-center gap-1 bg-white/10 hover:bg-white/15 text-white text-[10px] sm:text-[10.5px] font-600 px-2.5 py-1 sm:py-1.5 rounded-lg border border-white/15 shadow-2xs select-none transition-all whitespace-nowrap">
+              <Globe size={12} className="text-neutral-300 shrink-0" />
+              <span className="text-white/70 font-medium hidden md:inline">Order By:</span>
+              <span className="font-bold text-amber-300 tracking-wide">
+                {
+                  order.orderSource === 'pos' ? 'POS' :
+                  order.orderSource === 'doordash' ? 'DoorDash' :
+                  order.orderSource === 'skip' ? 'Skip' :
+                  order.orderSource === 'ubereats' ? 'Uber Eats' :
+                  order.orderSource === 'online' ? 'Online' : 'Online'
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Action buttons + Order Type + Close */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {!order.orderNumber.startsWith('#DRAFT') && (
-              <div className="flex items-center gap-1 sm:gap-2">
-                {/* Print Invoice Button - icon only on mobile/tablet */}
+              <div className="flex items-center gap-1.5">
+                {/* Print Invoice Button */}
                 <button
                   onClick={handleSilentPrint}
                   disabled={silentPrinting}
-                  className="flex items-center gap-1.5 py-1.5 px-2 sm:px-3 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="flex items-center gap-1 py-1 sm:py-1.5 px-2 sm:px-2.5 bg-brand-primary hover:bg-brand-primary-hover text-white rounded-lg text-[10px] sm:text-[10.5px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 whitespace-nowrap"
                   title="Print receipt to thermal printer"
                 >
-                  <Printer size={13} className={silentPrinting ? 'animate-spin' : ''} />
-                  <span className="hidden md:inline">Print Invoice</span>
+                  <Printer size={12} className={silentPrinting ? 'animate-spin' : ''} />
+                  <span>Print Invoice</span>
                 </button>
 
-                {/* Send Receipt Email Button - icon only on mobile/tablet */}
+                {/* Send Receipt Email Button */}
                 <button
                   onClick={() => handleSendEmailReceipt()}
                   disabled={sendingEmail}
-                  className="flex items-center gap-1.5 py-1.5 px-2 sm:px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="flex items-center gap-1 py-1 sm:py-1.5 px-2 sm:px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] sm:text-[10.5px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 whitespace-nowrap"
                   title="Send receipt through email"
                 >
                   {sendingEmail ? (
-                    <RefreshCw size={13} className="animate-spin" />
+                    <RefreshCw size={12} className="animate-spin" />
                   ) : (
-                    <Mail size={13} />
+                    <Mail size={12} />
                   )}
-                  <span className="hidden md:inline">{sendingEmail ? 'Sending...' : 'Send Receipt'}</span>
+                  <span>{sendingEmail ? 'Sending...' : 'Send Receipt'}</span>
                 </button>
 
-                {/* Download PDF Button - icon only (always) */}
+                {/* Download PDF Button */}
                 <button
                   onClick={handleDownloadPdf}
                   disabled={isPrinting}
-                  className="flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/15 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="flex items-center justify-center p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/15 transition-all active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
                   title="Download PDF invoice"
                 >
                   {isPrinting ? (
-                    <RefreshCw size={13} className="animate-spin" />
+                    <RefreshCw size={12} className="animate-spin" />
                   ) : (
-                    <Download size={13} />
+                    <Download size={12} />
                   )}
                 </button>
 
-                {/* Edit Order Button - icon only on mobile/tablet */}
+                {/* Edit Order Button */}
                 <button
                   onClick={handleEditOrder}
                   disabled={editingOrderLoading}
-                  className="flex items-center gap-1.5 py-1.5 px-2 sm:px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50"
+                  className="flex items-center gap-1 py-1 sm:py-1.5 px-2 sm:px-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] sm:text-[10.5px] font-800 transition-all active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 whitespace-nowrap"
                   title="Load order into cart to edit"
                 >
-                  <Pencil size={13} className={editingOrderLoading ? "animate-spin" : ""} />
-                  <span className="hidden md:inline">Edit Order</span>
+                  <Pencil size={12} className={editingOrderLoading ? "animate-spin" : ""} />
+                  <span>Edit Order</span>
                 </button>
               </div>
             )}
-          </div>
-          {/* Right: order type badge + close */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            <span className="bg-brand-primary text-white text-[10px] sm:text-[11px] font-800 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs">
+
+            {/* Order Type Badge */}
+            <span className="bg-brand-primary text-white text-[9.5px] sm:text-[10px] font-800 px-2.5 py-1 sm:py-1.5 rounded-lg uppercase tracking-wider select-none shadow-xs whitespace-nowrap shrink-0">
               {order.orderType.replace('-', ' ')}
             </span>
+
+            {/* Close Button */}
             <button
               onClick={onClose}
-              className="text-neutral-400 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-all cursor-pointer"
+              className="text-neutral-400 hover:text-white hover:bg-white/15 p-1 rounded-lg transition-all cursor-pointer ml-0.5 shrink-0"
+              title="Close modal"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
         </div>

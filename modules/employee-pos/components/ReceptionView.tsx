@@ -139,9 +139,9 @@ export default function ReceptionView() {
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
       const res = await axios.patch(`${apiUrl}/orders/${orderId}/status`, {
-        status: "ready", // KEEP status as ready
-        note: "Order handed over to delivery driver",
-        receptionCompleted: true, // This clears it from Reception View
+        status: "completed",
+        note: "Order handed over to delivery driver and completed",
+        receptionCompleted: true,
         userName: activeEmpName,
       });
       if (res.data.success) {
