@@ -52,7 +52,7 @@ export default function StoreTimingsUpdateTab({
       startTime: timingUpdateForm.startTime,
       endTime: timingUpdateForm.endTime,
       status: timingUpdateForm.status,
-      createdDate: new Date().toLocaleString()
+      createdDate: new Date().toLocaleString("en-US", { timeZone: "America/Edmonton" })
     };
     setTimingsUpdates([newUpdate, ...timingsUpdates]);
     toast.success('Holiday Timing Update added successfully!');

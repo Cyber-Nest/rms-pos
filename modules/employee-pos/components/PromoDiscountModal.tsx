@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Tag, Percent, DollarSign, CheckCircle, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { usePosStore } from '../store/pos.store';
+import { getLocalTodayStr } from '../utils/timezone';
 
 interface PromoDiscountModalProps {
   isOpen: boolean;
@@ -67,13 +68,16 @@ export default function PromoDiscountModal({ isOpen, onClose }: PromoDiscountMod
           },
         });
         if (res.data?.success && Array.isArray(res.data?.data?.promos)) {
-          const now = new Date();
+          const nowStr = getLocalTodayStr();
+          const now = new Date(nowStr + "T00:00:00.000Z"); // midnight Alberta today as reference
+          // For precise expiry checks, compare UTC timestamps against current Alberta-aware Date
+          const nowPrecise = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Edmonton" }));
           const validCodes = res.data.data.promos
             .filter((p: any) => {
               if (!p.isActive) return false;
               if (p.applicableChannel !== 'both' && p.applicableChannel !== 'pos') return false;
-              if (p.startDate && now < new Date(p.startDate)) return false;
-              if (p.expiresAt && now > new Date(p.expiresAt)) return false;
+              if (p.startDate && nowPrecise < new Date(p.startDate)) return false;
+              if (p.expiresAt && nowPrecise > new Date(p.expiresAt)) return false;
               if (p.usageLimit !== null && p.usedCount >= p.usageLimit) return false;
 
               // Branch scope filtering: only show promo if applicable to all branches OR current branch matches

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import axios from "axios";
+import { getLocalTodayStr } from "@/modules/employee-pos/utils/timezone";
 import {
   Truck,
   Calendar,
@@ -67,9 +68,7 @@ interface OrderRow {
 export default function DriverDropDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split("T")[0],
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalTodayStr());
   const [driverSearchInput, setDriverSearchInput] = useState<string>("");
 
   // Modals state
@@ -414,6 +413,7 @@ export default function DriverDropDashboard() {
         year: "numeric",
       }),
       reportTime: new Date().toLocaleTimeString("en-US", {
+        timeZone: "America/Edmonton",
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
@@ -474,6 +474,7 @@ export default function DriverDropDashboard() {
         year: "numeric",
       }),
       reportTime: new Date().toLocaleTimeString("en-US", {
+        timeZone: "America/Edmonton",
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
