@@ -721,7 +721,7 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                       <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 space-y-2.5 text-[11px] animate-scale-up">
                         <p className="font-800 text-neutral-750">Record Payment Amount: ${(order.total ?? 0).toFixed(2)}</p>
                         <div className="flex items-center gap-2">
-                          {['cash', 'card', 'debit'].map((method) => (
+                          {['cash', 'credit', 'debit'].map((method) => (
                             <button
                               key={method}
                               type="button"
