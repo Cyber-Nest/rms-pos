@@ -58,8 +58,8 @@ export default function TerminalSetupTab({
       terminalId: terminalForm.terminalId,
       apiToken: terminalForm.apiToken,
       storeId: terminalForm.storeId,
-      createdDate: new Date().toLocaleString(),
-      updatedDate: new Date().toLocaleString(),
+      createdDate: new Date().toLocaleString("en-US", { timeZone: "America/Edmonton" }),
+      updatedDate: new Date().toLocaleString("en-US", { timeZone: "America/Edmonton" }),
       createdBy: 'Manager'
     };
     setTerminals([newTerminal, ...terminals]);
@@ -78,7 +78,7 @@ export default function TerminalSetupTab({
             terminalId: terminalForm.terminalId,
             apiToken: terminalForm.apiToken,
             storeId: terminalForm.storeId,
-            updatedDate: new Date().toLocaleString()
+            updatedDate: new Date().toLocaleString("en-US", { timeZone: "America/Edmonton" })
           }
         : t
     ));

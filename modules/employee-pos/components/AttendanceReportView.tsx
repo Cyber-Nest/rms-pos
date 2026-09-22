@@ -14,7 +14,7 @@ import {
   User,
   Pencil,
 } from "lucide-react";
-import { getLocalTodayStr } from "../utils/timezone";
+import { getLocalTodayStr, getLocalPastDateStr } from "../utils/timezone";
 import EditShiftModal from "./EditShiftModal";
 import { getPusherClient } from "../../../lib/pusher";
 
@@ -66,14 +66,7 @@ export default function AttendanceReportView() {
 
   // Default Period: 1 Week Payout (Last 7 Days)
   const todayStr = getLocalTodayStr();
-  const getWeekAgoStr = () => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  };
+  const getWeekAgoStr = () => getLocalPastDateStr(7);
 
   const [datePreset, setDatePreset] = useState<"today" | "yesterday" | "week" | "month" | "custom">("week");
   const [startDate, setStartDate] = useState(getWeekAgoStr());
@@ -125,29 +118,22 @@ export default function AttendanceReportView() {
   // Handle Preset Date changes
   const handlePresetChange = (preset: "today" | "yesterday" | "week" | "month" | "custom") => {
     setDatePreset(preset);
-    const today = new Date();
-    const fmt = (d: Date) => {
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    };
 
     if (preset === "today") {
       setStartDate(todayStr);
       setEndDate(todayStr);
     } else if (preset === "yesterday") {
-      const yest = new Date(today);
-      yest.setDate(yest.getDate() - 1);
-      const yestStr = fmt(yest);
+      const yestStr = getLocalPastDateStr(1);
       setStartDate(yestStr);
       setEndDate(yestStr);
     } else if (preset === "week") {
-      setStartDate(getWeekAgoStr());
+      setStartDate(getLocalPastDateStr(7));
       setEndDate(todayStr);
     } else if (preset === "month") {
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      setStartDate(fmt(monthStart));
+      // Get first day of current month in Alberta timezone
+      const [year, month] = todayStr.split("-");
+      const monthStart = `${year}-${month}-01`;
+      setStartDate(monthStart);
       setEndDate(todayStr);
     }
   };

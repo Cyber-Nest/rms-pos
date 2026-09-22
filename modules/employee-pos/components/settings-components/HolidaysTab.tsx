@@ -48,7 +48,7 @@ export default function HolidaysTab({
       startDate: holidayForm.startDate,
       endDate: holidayForm.endDate,
       status: holidayForm.status,
-      createdDate: new Date().toLocaleString()
+      createdDate: new Date().toLocaleString("en-US", { timeZone: "America/Edmonton" })
     };
     setHolidays([newHoliday, ...holidays]);
     toast.success('Holiday added successfully!');

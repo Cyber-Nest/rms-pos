@@ -51,7 +51,7 @@ export default function TillSetupTab({
     const newTill: Till = {
       tillNo: tillForm.tillNo,
       tillName: tillForm.tillName,
-      createdDate: new Date().toLocaleString()
+      createdDate: new Date().toLocaleString("en-US", { timeZone: "America/Edmonton" })
     };
     setTills([newTill, ...tills]);
     toast.success('Till Setup added successfully!');

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getLocalTodayStr } from '../utils/timezone';
 
 interface OrderLaterModalProps {
   isOpen: boolean;
@@ -10,13 +11,7 @@ interface OrderLaterModalProps {
   onConfirm: (scheduledAt: string) => void;
 }
 
-const getTodayString = () => {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
+const getTodayString = () => getLocalTodayStr();
 
 const formatPreviewDate = (dateStr: string) => {
   if (!dateStr) return '';
