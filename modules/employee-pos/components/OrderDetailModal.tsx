@@ -68,9 +68,14 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
     (order as any).orderPlaced === 'POS SYSTEM' ||
     !['online', 'doordash', 'skip', 'ubereats'].includes(order.orderSource);
 
+  const isPaidOrder =
+    order.paymentStatus === 'paid' ||
+    (order.payments && order.payments.length > 0 && order.payments.some((p: any) => p.amount > 0));
+
   const canRefund =
     isManagerOrAdmin &&
     isPosOrder &&
+    isPaidOrder &&
     order.status !== 'cancelled' &&
     order.paymentStatus !== 'refunded';
 
