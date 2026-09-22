@@ -106,11 +106,15 @@ export default function OrdersTableView({
   // ── Render Payment Type Badge ──
   const renderPaymentTypeBadge = (order: Order) => {
     let method = '--';
-    if (order.payments && order.payments.length > 0 && order.payments[0].method) {
-      method = order.payments[0].method;
+    if (order.payments && order.payments.length > 0) {
+      if (order.payments.length > 1) {
+        method = 'split';
+      } else if (order.payments[0].method) {
+        method = order.payments[0].method;
+      }
     } else if ((order as any).paymentMethod) {
       method = (order as any).paymentMethod;
-    } else if ((order as any).paymentType) {
+    } else if ((order as any).paymentType && (order as any).paymentType !== 'one-time') {
       method = (order as any).paymentType;
     }
 

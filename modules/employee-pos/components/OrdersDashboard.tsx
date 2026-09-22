@@ -248,7 +248,7 @@ export default function OrdersDashboard() {
             status: statusFilter || undefined,
             paymentStatus: paymentFilter || undefined,
             fields:
-              "orderNumber,customer,subtotal,total,orderType,orderSource,paymentStatus,status,createdAt,orderTiming,scheduledAt,dueAt",
+              "orderNumber,customer,subtotal,total,orderType,orderSource,paymentStatus,paymentType,paymentMethod,payments,refundedAt,status,createdAt,orderTiming,scheduledAt,dueAt",
             page: isAllLimit ? 1 : currentPage,
             limit: isAllLimit ? 1000 : entriesPerPage,
             search: searchKeyword || undefined,
