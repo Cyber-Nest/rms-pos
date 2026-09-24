@@ -47,6 +47,7 @@ export default function SettingsDashboard() {
 
   // ── 3. Terminal Setup State ──
   const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [terminalsLoading, setTerminalsLoading] = useState(false);
 
   // ── 4. Till Setup State ──
   const [tills, setTills] = useState<Till[]>([]);
@@ -129,8 +130,8 @@ export default function SettingsDashboard() {
         if (s.storeTimings && s.storeTimings.length > 0) setStoreTimings(s.storeTimings);
         if (s.storeTimingsUpdates) setTimingsUpdates(s.storeTimingsUpdates);
         if (s.holidays) setHolidays(s.holidays);
-        if (s.terminals) setTerminals(s.terminals);
         if (s.tills) setTills(s.tills);
+        // NOTE: Terminals are now loaded separately via /api/terminals
       }
     } catch (err) {
       console.warn('Could not load branch settings from backend');
@@ -139,10 +140,41 @@ export default function SettingsDashboard() {
     }
   }, []);
 
+  // ── Load Terminals from dedicated API ──
+  const fetchTerminals = useCallback(async () => {
+    const branchId = getBranchId();
+    if (!branchId) return;
+    setTerminalsLoading(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await axios.get(`${apiUrl}/terminals`, { params: { branchId } });
+      if (res.data?.success) {
+        // Map DB fields to Terminal interface (apiToken hidden from list)
+        const mapped: Terminal[] = (res.data.data || []).map((t: any) => ({
+          _id: t._id,
+          realDevices: t.isRealDevice ? 'Yes' : 'No',
+          terminalName: t.terminalName,
+          terminalId: t.terminalId,
+          apiToken: '••••••••••••••••',  // masked
+          storeId: t.storeId,
+          createdDate: new Date(t.createdAt).toLocaleString(),
+          updatedDate: new Date(t.updatedAt).toLocaleString(),
+          createdBy: t.createdBy || 'Manager',
+        }));
+        setTerminals(mapped);
+      }
+    } catch (err) {
+      console.warn('Could not load terminals');
+    } finally {
+      setTerminalsLoading(false);
+    }
+  }, []);
+
 
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+    fetchTerminals();
+  }, [fetchSettings, fetchTerminals]);
 
   // ── Save Settings to Backend ──
   const saveSettingsToBackend = async (payload: any, successMessage: string) => {
@@ -222,10 +254,10 @@ export default function SettingsDashboard() {
   };
 
   const handleUpdateTerminals = (newVal: React.SetStateAction<Terminal[]>) => {
+    // Terminal CRUD is handled directly in TerminalSetupTab via API calls
+    // This just updates local state for UI refresh
     setTerminals((prev) => {
-      const updated = typeof newVal === 'function' ? newVal(prev) : newVal;
-      saveSettingsToBackend({ terminals: updated }, 'Terminals saved!');
-      return updated;
+      return typeof newVal === 'function' ? newVal(prev) : newVal;
     });
   };
 
@@ -365,6 +397,7 @@ export default function SettingsDashboard() {
                 <TerminalSetupTab
                   terminals={terminals}
                   setTerminals={handleUpdateTerminals}
+                  onRefresh={fetchTerminals}
                 />
               )}
 

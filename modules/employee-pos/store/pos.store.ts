@@ -78,6 +78,17 @@ interface PosState {
   editingOrderNumber: string | null;
   updatingOrder: boolean;
 
+  // ── Moneris Terminal Payment Data ────────────────────────────
+  monerisPaymentData: {
+    monerisReceiptId: string;
+    monerisTerminalId: string;
+    monerisAuthCode: string;
+    monerisResponseCode: string;
+    monerisCardType: string;
+    monerisCardLast4: string;
+    rawMonerisResponse: any;
+  } | null;
+
   // ── Actions ──────────────────────────────────────────────────
   loadOrderForEditing: (order: any) => void;
   cancelEditingOrder: () => void;
@@ -131,6 +142,7 @@ interface PosState {
   applyManualDiscount: (type: "percentage" | "flat", value: number) => void;
   removeDiscount: () => void;
   placeOrder: () => Promise<Order | null>;
+  setMonerisPaymentData: (data: PosState['monerisPaymentData']) => void;
   fetchMenu: () => Promise<void>;
   fetchNextOrderNumber: () => Promise<void>;
 }
@@ -245,6 +257,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   editingOrderId: null,
   editingOrderNumber: null,
   updatingOrder: false,
+  monerisPaymentData: null,
 
   // ── Menu ────────────────────────────────────────────────────
   setCategory: (category) => {
@@ -711,6 +724,9 @@ export const usePosStore = create<PosState>((set, get) => ({
     toast.success("Discount removed.");
   },
 
+  // ── Moneris Payment Data ──────────────────────────────────
+  setMonerisPaymentData: (data) => set({ monerisPaymentData: data }),
+
   // ── Place Order (API) ─────────────────────────────────────────
   placeOrder: async () => {
     const {
@@ -736,6 +752,7 @@ export const usePosStore = create<PosState>((set, get) => ({
       skipLastDigits,
       orders,
       currentOrderSeq,
+      monerisPaymentData,
     } = get();
 
     if (cartItems.length === 0) {
@@ -851,6 +868,19 @@ export const usePosStore = create<PosState>((set, get) => ({
       notes: orderNotes,
       orderNotes: orderNotes,
       driverNotes: selectedCustomer?.driverNotes || "",
+      // ── Moneris terminal payment data (only present when paid via terminal) ──
+      ...(monerisPaymentData
+        ? {
+            paymentMethod: "moneris",
+            monerisReceiptId:    monerisPaymentData.monerisReceiptId,
+            monerisTerminalId:   monerisPaymentData.monerisTerminalId,
+            monerisAuthCode:     monerisPaymentData.monerisAuthCode,
+            monerisResponseCode: monerisPaymentData.monerisResponseCode,
+            monerisCardType:     monerisPaymentData.monerisCardType,
+            monerisCardLast4:    monerisPaymentData.monerisCardLast4,
+            rawMonerisResponse:  monerisPaymentData.rawMonerisResponse,
+          }
+        : {}),
     };
 
     try {
@@ -873,6 +903,7 @@ export const usePosStore = create<PosState>((set, get) => ({
           discount: 0,
           total: 0,
           placingOrder: false,
+          monerisPaymentData: null, // clear after successful order
         });
         syncDraftCart([], "takeout", null, {
           subtotal: 0,
