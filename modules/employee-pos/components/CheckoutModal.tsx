@@ -22,6 +22,7 @@ import {
   Monitor,
   Wifi,
   WifiOff,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -101,6 +102,7 @@ export default function CheckoutModal() {
   // ── Moneris Terminal State ──────────────────────────────
   const [branchTerminals, setBranchTerminals] = useState<any[]>([]);
   const [selectedTerminalId, setSelectedTerminalId] = useState("");
+  const [isTerminalDropdownOpen, setIsTerminalDropdownOpen] = useState(false);
   const [terminalStatus, setTerminalStatus] = useState<
     "idle" | "waiting" | "approved" | "declined" | "error" | "timeout"
   >("idle");
@@ -114,6 +116,7 @@ export default function CheckoutModal() {
       // Reset terminal state when modal closes
       setTerminalStatus("idle");
       setMonerisResult(null);
+      setIsTerminalDropdownOpen(false);
       return;
     }
     const fetchTerminals = async () => {
@@ -126,9 +129,9 @@ export default function CheckoutModal() {
         const res = await axios.get(`${API_URL}/terminals`, { params: { branchId } });
         if (res.data?.success) {
           setBranchTerminals(res.data.data || []);
-          // Auto-select first terminal if only one
-          if (res.data.data?.length === 1) {
-            setSelectedTerminalId(res.data.data[0]._id);
+          // Auto-select first terminal if available
+          if (res.data.data?.length > 0) {
+            setSelectedTerminalId(prev => prev || res.data.data[0]._id);
           }
         }
       } catch { }
@@ -583,23 +586,133 @@ export default function CheckoutModal() {
                               </div>
                             </div>
                           ) : (
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 relative">
                               <label className="block text-[10px] font-700 text-neutral-500 uppercase tracking-wide flex items-center gap-1">
                                 <Monitor size={10} /> Select Terminal
                               </label>
-                              <select
-                                value={selectedTerminalId}
-                                onChange={e => setSelectedTerminalId(e.target.value)}
-                                disabled={terminalStatus === "waiting" || terminalStatus === "approved"}
-                                className="w-full border border-neutral-200 rounded-xl px-3.5 py-2.5 text-[11px] font-600 text-neutral-800 bg-neutral-50 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 cursor-pointer disabled:opacity-50"
-                              >
-                                <option value="">-- Select a terminal --</option>
-                                {branchTerminals.map((t: any) => (
-                                  <option key={t._id} value={t._id}>
-                                    {t.terminalName} ({t.isRealDevice ? "🟢 Production" : "🔵 Sandbox"})
-                                  </option>
-                                ))}
-                              </select>
+
+                              {(() => {
+                                const activeTerm = branchTerminals.find((t: any) => t._id === selectedTerminalId) || branchTerminals[0];
+                                return (
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      disabled={terminalStatus === "waiting" || terminalStatus === "approved"}
+                                      onClick={() => setIsTerminalDropdownOpen(prev => !prev)}
+                                      className="w-full bg-white border border-neutral-200 hover:border-neutral-300 rounded-xl px-3 py-2 flex items-center justify-between shadow-xs transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                                    >
+                                      {activeTerm ? (
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 text-neutral-700">
+                                            <Monitor size={14} />
+                                          </div>
+                                          <div className="text-left min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-[11.5px] font-700 text-neutral-900 truncate">
+                                                {activeTerm.terminalName}
+                                              </span>
+                                              {activeTerm.isRealDevice ? (
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-700 bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Production
+                                                </span>
+                                              ) : (
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-700 bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Sandbox
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-[9.5px] text-neutral-400 font-mono mt-0.5">
+                                              TID: {activeTerm.terminalId}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span className="text-[11px] text-neutral-400 font-500">-- Select a terminal --</span>
+                                      )}
+                                      <ChevronDown
+                                        size={14}
+                                        className={`text-neutral-400 transition-transform duration-200 flex-shrink-0 ml-2 ${
+                                          isTerminalDropdownOpen ? "rotate-180 text-neutral-700" : ""
+                                        }`}
+                                      />
+                                    </button>
+
+                                    {/* Custom Dropdown Menu */}
+                                    {isTerminalDropdownOpen && (
+                                      <>
+                                        <div
+                                          className="fixed inset-0 z-20"
+                                          onClick={() => setIsTerminalDropdownOpen(false)}
+                                        />
+                                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-xl z-30 p-1 space-y-1">
+                                          {branchTerminals.map((t: any) => {
+                                            const isSelected = (selectedTerminalId === t._id) || (!selectedTerminalId && t._id === activeTerm?._id);
+                                            return (
+                                              <button
+                                                key={t._id}
+                                                type="button"
+                                                onClick={() => {
+                                                  setSelectedTerminalId(t._id);
+                                                  setIsTerminalDropdownOpen(false);
+                                                }}
+                                                className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition-all cursor-pointer ${
+                                                  isSelected
+                                                    ? "bg-neutral-900 text-white shadow-xs"
+                                                    : "hover:bg-neutral-100 text-neutral-800"
+                                                }`}
+                                              >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                  <div
+                                                    className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+                                                      isSelected ? "bg-white/10 text-white" : "bg-neutral-100 text-neutral-600"
+                                                    }`}
+                                                  >
+                                                    <Monitor size={12} />
+                                                  </div>
+                                                  <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                      <span className="text-[11px] font-700 truncate">{t.terminalName}</span>
+                                                      {t.isRealDevice ? (
+                                                        <span
+                                                          className={`px-1.5 py-0.2 rounded-full text-[8.5px] font-700 ${
+                                                            isSelected
+                                                              ? "bg-emerald-400/20 text-emerald-300 border border-emerald-400/30"
+                                                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                                          }`}
+                                                        >
+                                                          Production
+                                                        </span>
+                                                      ) : (
+                                                        <span
+                                                          className={`px-1.5 py-0.2 rounded-full text-[8.5px] font-700 ${
+                                                            isSelected
+                                                              ? "bg-blue-400/20 text-blue-300 border border-blue-400/30"
+                                                              : "bg-blue-50 text-blue-700 border border-blue-200"
+                                                          }`}
+                                                        >
+                                                          Sandbox
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <p
+                                                      className={`text-[9px] font-mono mt-0.5 ${
+                                                        isSelected ? "text-neutral-400" : "text-neutral-400"
+                                                      }`}
+                                                    >
+                                                      TID: {t.terminalId}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                                {isSelected && <Check size={13} className="text-emerald-400 flex-shrink-0 ml-2" />}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
 
