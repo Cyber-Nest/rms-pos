@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   CreditCard,
@@ -19,8 +19,13 @@ import {
   Loader2,
   Truck,
   ChevronDown,
+  Monitor,
+  Wifi,
+  WifiOff,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import axios from "axios";
 import { usePosStore } from "../store/pos.store";
 import OrderLaterModal from "./OrderLaterModal";
 import PromoDiscountModal from "./PromoDiscountModal";
@@ -86,12 +91,128 @@ export default function CheckoutModal() {
     editingOrderNumber,
     updatingOrder,
     updateOrder,
+    setMonerisPaymentData,
   } = usePosStore();
 
   const [showOrderLater, setShowOrderLater] = useState(false);
   const [showPromo, setShowPromo] = useState(false);
   const [showCustomer, setShowCustomer] = useState(false);
   const submittingRef = React.useRef(false);
+
+  // ── Moneris Terminal State ──────────────────────────────
+  const [branchTerminals, setBranchTerminals] = useState<any[]>([]);
+  const [selectedTerminalId, setSelectedTerminalId] = useState("");
+  const [isTerminalDropdownOpen, setIsTerminalDropdownOpen] = useState(false);
+  const [terminalStatus, setTerminalStatus] = useState<
+    "idle" | "waiting" | "approved" | "declined" | "error" | "timeout"
+  >("idle");
+  const [monerisResult, setMonerisResult] = useState<any>(null);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+  // Fetch terminals for this branch when modal opens
+  useEffect(() => {
+    if (!checkoutOpen) {
+      // Reset terminal state when modal closes
+      setTerminalStatus("idle");
+      setMonerisResult(null);
+      setIsTerminalDropdownOpen(false);
+      return;
+    }
+    const fetchTerminals = async () => {
+      try {
+        const raw = localStorage.getItem("rms_branch");
+        if (!raw) return;
+        const branch = JSON.parse(raw);
+        const branchId = branch._id;
+        if (!branchId) return;
+        const res = await axios.get(`${API_URL}/terminals`, { params: { branchId } });
+        if (res.data?.success) {
+          setBranchTerminals(res.data.data || []);
+          // Auto-select first terminal if available
+          if (res.data.data?.length > 0) {
+            setSelectedTerminalId(prev => prev || res.data.data[0]._id);
+          }
+        }
+      } catch { }
+    };
+    fetchTerminals();
+  }, [checkoutOpen, API_URL]);
+
+  // Handle Send to Terminal
+  const handleSendToTerminal = async () => {
+    if (!selectedTerminalId) {
+      toast.error("Please select a terminal first");
+      return;
+    }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setTerminalStatus("waiting");
+    setMonerisResult(null);
+
+    try {
+      const orderRef = `pos_${Date.now()}`;
+      const res = await axios.post(`${API_URL}/terminals/purchase`, {
+        terminalDbId: selectedTerminalId,
+        amount: total,
+        orderReference: orderRef,
+      });
+
+      if (res.data?.success) {
+        setMonerisResult(res.data);
+        setTerminalStatus("approved");
+        // Auto place order with Moneris data
+        setTimeout(async () => {
+          try {
+            const order = await (async () => {
+              // Set Moneris data in store first, then call placeOrder() with 0 args
+              setMonerisPaymentData({
+                monerisReceiptId:    res.data.receiptId    || "",
+                monerisTerminalId:   res.data.terminalId   || "",
+                monerisAuthCode:     res.data.authCode     || "",
+                monerisResponseCode: res.data.responseCode || "",
+                monerisCardType:     res.data.cardType     || "",
+                monerisCardLast4:    res.data.cardLast4    || "",
+                rawMonerisResponse:  res.data.rawResponse  || null,
+              });
+              return placeOrder();
+            })();
+            if (order) {
+              toast.success(
+                <div className="flex flex-col gap-0.5 text-left">
+                  <span className="font-700 text-[11px] text-green-900">Payment Approved ✅</span>
+                  <span className="text-[10px] text-green-800">
+                    {order.orderNumber} • {res.data.cardType || "Card"}
+                    {res.data.cardLast4 ? ` ****${res.data.cardLast4}` : ""}
+                  </span>
+                  <span className="font-600 text-[10px] text-green-950">
+                    Auth: {res.data.authCode} • Receipt: {res.data.receiptId}
+                  </span>
+                </div>,
+                { duration: 6000 }
+              );
+            }
+          } catch (err: any) {
+            toast.error(err?.message || "Order placement failed after payment");
+            setTerminalStatus("error");
+          } finally {
+            submittingRef.current = false;
+          }
+        }, 800);
+      } else {
+        setTerminalStatus("declined");
+        submittingRef.current = false;
+      }
+    } catch (err: any) {
+      const code = err?.response?.data?.code || "";
+      if (code === "MONERIS_TIMEOUT" || err?.response?.status === 408) {
+        setTerminalStatus("timeout");
+      } else {
+        setTerminalStatus("error");
+      }
+      submittingRef.current = false;
+    }
+  };
 
   // Custom split state
   const [nextSplitAmount, setNextSplitAmount] = useState<string>("");
@@ -420,7 +541,11 @@ export default function CheckoutModal() {
                       {/* Cash / Card */}
                       <div className="grid grid-cols-2 gap-2">
                         <button
-                          onClick={() => setPaymentMethod("cash")}
+                          onClick={() => {
+                            setPaymentMethod("cash");
+                            setTerminalStatus("idle");
+                            setMonerisResult(null);
+                          }}
                           className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
                             paymentMethod === "cash"
                               ? "bg-brand-primary text-white shadow-sm"
@@ -430,7 +555,11 @@ export default function CheckoutModal() {
                           <Banknote size={13} /> Cash
                         </button>
                         <button
-                          onClick={() => setPaymentMethod("card")}
+                          onClick={() => {
+                            setPaymentMethod("card");
+                            setTerminalStatus("idle");
+                            setMonerisResult(null);
+                          }}
                           className={`py-2.5 rounded-xl text-[11px] font-700 uppercase tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.98] ${
                             paymentMethod === "card"
                               ? "bg-brand-primary text-white shadow-sm"
@@ -440,6 +569,238 @@ export default function CheckoutModal() {
                           <CreditCard size={13} /> Card
                         </button>
                       </div>
+
+                      {/* ── CARD: Moneris Terminal Section ── */}
+                      {paymentMethod === "card" && (
+                        <div className="space-y-3">
+
+                          {/* Terminal Selector */}
+                          {branchTerminals.length === 0 ? (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                              <AlertCircle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-[11px] font-700 text-amber-800">No Terminals Configured</p>
+                                <p className="text-[10px] text-amber-600 mt-0.5">
+                                  Go to Settings → Terminal Setup to add a Moneris terminal.
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5 relative">
+                              <label className="block text-[10px] font-700 text-neutral-500 uppercase tracking-wide flex items-center gap-1">
+                                <Monitor size={10} /> Select Terminal
+                              </label>
+
+                              {(() => {
+                                const activeTerm = branchTerminals.find((t: any) => t._id === selectedTerminalId) || branchTerminals[0];
+                                return (
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      disabled={terminalStatus === "waiting" || terminalStatus === "approved"}
+                                      onClick={() => setIsTerminalDropdownOpen(prev => !prev)}
+                                      className="w-full bg-white border border-neutral-200 hover:border-neutral-300 rounded-xl px-3 py-2 flex items-center justify-between shadow-xs transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                                    >
+                                      {activeTerm ? (
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0 text-neutral-700">
+                                            <Monitor size={14} />
+                                          </div>
+                                          <div className="text-left min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-[11.5px] font-700 text-neutral-900 truncate">
+                                                {activeTerm.terminalName}
+                                              </span>
+                                              {activeTerm.isRealDevice ? (
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-700 bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Production
+                                                </span>
+                                              ) : (
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-700 bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Sandbox
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-[9.5px] text-neutral-400 font-mono mt-0.5">
+                                              TID: {activeTerm.terminalId}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span className="text-[11px] text-neutral-400 font-500">-- Select a terminal --</span>
+                                      )}
+                                      <ChevronDown
+                                        size={14}
+                                        className={`text-neutral-400 transition-transform duration-200 flex-shrink-0 ml-2 ${
+                                          isTerminalDropdownOpen ? "rotate-180 text-neutral-700" : ""
+                                        }`}
+                                      />
+                                    </button>
+
+                                    {/* Custom Dropdown Menu */}
+                                    {isTerminalDropdownOpen && (
+                                      <>
+                                        <div
+                                          className="fixed inset-0 z-20"
+                                          onClick={() => setIsTerminalDropdownOpen(false)}
+                                        />
+                                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-xl z-30 p-1 space-y-1">
+                                          {branchTerminals.map((t: any) => {
+                                            const isSelected = (selectedTerminalId === t._id) || (!selectedTerminalId && t._id === activeTerm?._id);
+                                            return (
+                                              <button
+                                                key={t._id}
+                                                type="button"
+                                                onClick={() => {
+                                                  setSelectedTerminalId(t._id);
+                                                  setIsTerminalDropdownOpen(false);
+                                                }}
+                                                className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between transition-all cursor-pointer ${
+                                                  isSelected
+                                                    ? "bg-neutral-900 text-white shadow-xs"
+                                                    : "hover:bg-neutral-100 text-neutral-800"
+                                                }`}
+                                              >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                  <div
+                                                    className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
+                                                      isSelected ? "bg-white/10 text-white" : "bg-neutral-100 text-neutral-600"
+                                                    }`}
+                                                  >
+                                                    <Monitor size={12} />
+                                                  </div>
+                                                  <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                      <span className="text-[11px] font-700 truncate">{t.terminalName}</span>
+                                                      {t.isRealDevice ? (
+                                                        <span
+                                                          className={`px-1.5 py-0.2 rounded-full text-[8.5px] font-700 ${
+                                                            isSelected
+                                                              ? "bg-emerald-400/20 text-emerald-300 border border-emerald-400/30"
+                                                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                                          }`}
+                                                        >
+                                                          Production
+                                                        </span>
+                                                      ) : (
+                                                        <span
+                                                          className={`px-1.5 py-0.2 rounded-full text-[8.5px] font-700 ${
+                                                            isSelected
+                                                              ? "bg-blue-400/20 text-blue-300 border border-blue-400/30"
+                                                              : "bg-blue-50 text-blue-700 border border-blue-200"
+                                                          }`}
+                                                        >
+                                                          Sandbox
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <p
+                                                      className={`text-[9px] font-mono mt-0.5 ${
+                                                        isSelected ? "text-neutral-400" : "text-neutral-400"
+                                                      }`}
+                                                    >
+                                                      TID: {t.terminalId}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                                {isSelected && <Check size={13} className="text-emerald-400 flex-shrink-0 ml-2" />}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {/* Terminal Status */}
+                          {terminalStatus === "idle" && branchTerminals.length > 0 && (
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 flex items-center gap-2 text-[11px] text-neutral-500">
+                              <Wifi size={13} className="text-neutral-400" />
+                              <span>Ready to send payment to terminal</span>
+                            </div>
+                          )}
+
+                          {terminalStatus === "waiting" && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 flex items-center gap-3 animate-pulse">
+                              <Loader2 size={18} className="text-blue-500 animate-spin flex-shrink-0" />
+                              <div>
+                                <p className="text-[11px] font-700 text-blue-800">Waiting for customer...</p>
+                                <p className="text-[10px] text-blue-600 mt-0.5">
+                                  ${total.toFixed(2)} sent to terminal. Please tap/swipe card.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {terminalStatus === "approved" && monerisResult && (
+                            <div className="bg-green-50 border border-green-300 rounded-xl p-3.5 flex items-start gap-3">
+                              <CheckCircle size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-[11px] font-800 text-green-800">Payment Approved ✅</p>
+                                <div className="mt-1 space-y-0.5 text-[10px] text-green-700">
+                                  <p>Card: {monerisResult.cardType || "Card"}{monerisResult.cardLast4 ? ` ****${monerisResult.cardLast4}` : ""}</p>
+                                  <p>Auth Code: <span className="font-mono font-700">{monerisResult.authCode}</span></p>
+                                  <p>Receipt: <span className="font-mono">{monerisResult.receiptId}</span></p>
+                                </div>
+                                <p className="text-[9px] text-green-600 mt-1.5">Placing order automatically...</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {terminalStatus === "declined" && (
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-3">
+                              <X size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-[11px] font-800 text-red-800">Payment Declined</p>
+                                <p className="text-[10px] text-red-600 mt-0.5">Card was declined. Please try another card or payment method.</p>
+                                <button
+                                  onClick={() => { setTerminalStatus("idle"); setMonerisResult(null); }}
+                                  className="mt-2 text-[10px] font-700 text-red-600 underline cursor-pointer"
+                                >
+                                  Try Again
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {terminalStatus === "timeout" && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3">
+                              <Clock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-[11px] font-800 text-amber-800">Terminal Timed Out</p>
+                                <p className="text-[10px] text-amber-600 mt-0.5">Customer did not respond. Please try again.</p>
+                                <button
+                                  onClick={() => { setTerminalStatus("idle"); setMonerisResult(null); }}
+                                  className="mt-2 text-[10px] font-700 text-amber-600 underline cursor-pointer"
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {terminalStatus === "error" && (
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-3">
+                              <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-[11px] font-800 text-red-800">Terminal Error</p>
+                                <p className="text-[10px] text-red-600 mt-0.5">Could not connect to terminal. Check connection and retry.</p>
+                                <button
+                                  onClick={() => { setTerminalStatus("idle"); setMonerisResult(null); }}
+                                  className="mt-2 text-[10px] font-700 text-red-600 underline cursor-pointer"
+                                >
+                                  Retry
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+                      )}
 
                       {/* Cash denomination picker */}
                       {paymentMethod === "cash" && (
@@ -737,56 +1098,93 @@ export default function CheckoutModal() {
               </div>
 
               {/* ── Place / Update Order Button — fixed at bottom ── */}
-              <div className="flex-shrink-0 p-4 pt-0 border-t border-neutral-100">
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={
-                    placingOrder ||
-                    updatingOrder ||
-                    cartItems.length === 0 ||
-                    (paymentTiming === "pay-now" &&
-                      paymentType === "split" &&
-                      splitRemaining > 0.01)
-                  }
-                  className={`w-full py-3 rounded-xl text-[13px] font-800 uppercase tracking-wide transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm ${
-                    placingOrder ||
-                    updatingOrder ||
-                    cartItems.length === 0 ||
-                    (paymentTiming === "pay-now" &&
-                      paymentType === "split" &&
-                      splitRemaining > 0.01)
-                      ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
-                      : editingOrderId
+              <div className="flex-shrink-0 p-4 pt-0 border-t border-neutral-100 space-y-2">
+
+                {/* CARD: Send to Terminal button (shown instead of Place Order when card selected) */}
+                {paymentTiming === "pay-now" &&
+                  paymentType === "one-time" &&
+                  !isThirdParty &&
+                  paymentMethod === "card" &&
+                  terminalStatus !== "approved" && (
+                    <button
+                      onClick={handleSendToTerminal}
+                      disabled={
+                        !selectedTerminalId ||
+                        branchTerminals.length === 0 ||
+                        terminalStatus === "waiting" ||
+                        cartItems.length === 0
+                      }
+                      className={`w-full py-3 rounded-xl text-[13px] font-800 uppercase tracking-wide transition-all flex items-center justify-center gap-2 shadow-sm ${
+                        terminalStatus === "waiting"
+                          ? "bg-blue-500 text-white cursor-not-allowed animate-pulse"
+                          : !selectedTerminalId || branchTerminals.length === 0 || cartItems.length === 0
+                          ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
+                          : "bg-neutral-800 hover:bg-neutral-900 text-white cursor-pointer active:scale-[0.98]"
+                      }`}
+                    >
+                      {terminalStatus === "waiting" ? (
+                        <><Loader2 size={14} className="animate-spin" /> Waiting for card tap...</>
+                      ) : (
+                        <><Monitor size={14} /> Send to Terminal — ${total.toFixed(2)}</>
+                      )}
+                    </button>
+                  )}
+
+                {/* CASH / SPLIT / PAY-LATER / THIRD-PARTY / POST-APPROVAL: Original Place Order button */}
+                {(paymentMethod === "cash" ||
+                  paymentType === "split" ||
+                  paymentTiming === "pay-later" ||
+                  isThirdParty ||
+                  terminalStatus === "approved") && (
+                  <button
+                    onClick={handlePlaceOrder}
+                    disabled={
+                      placingOrder ||
+                      updatingOrder ||
+                      cartItems.length === 0 ||
+                      (paymentTiming === "pay-now" &&
+                        paymentType === "split" &&
+                        splitRemaining > 0.01)
+                    }
+                    className={`w-full py-3 rounded-xl text-[13px] font-800 uppercase tracking-wide transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm ${
+                      placingOrder ||
+                      updatingOrder ||
+                      cartItems.length === 0 ||
+                      (paymentTiming === "pay-now" &&
+                        paymentType === "split" &&
+                        splitRemaining > 0.01)
+                        ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
+                        : terminalStatus === "approved"
+                        ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer shadow-green-600/20"
+                        : editingOrderId
                         ? "bg-amber-600 hover:bg-amber-700 text-white cursor-pointer shadow-amber-600/20"
                         : "bg-brand-primary hover:bg-brand-primary-hover text-white cursor-pointer shadow-brand-primary/20"
-                  }`}
-                >
-                  {updatingOrder ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" /> Updating
-                      Order...
-                    </>
-                  ) : placingOrder ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" /> Placing
-                      Order...
-                    </>
-                  ) : paymentTiming === "pay-now" &&
-                    paymentType === "split" &&
-                    splitRemaining > 0.01 ? (
-                    <>Remaining split balance: ${splitRemaining.toFixed(2)}</>
-                  ) : editingOrderId ? (
-                    paymentTiming === "pay-later" ? (
-                      <>Update Order (Pay Later)</>
+                    }`}
+                  >
+                    {updatingOrder ? (
+                      <><Loader2 size={14} className="animate-spin" /> Updating Order...</>
+                    ) : placingOrder ? (
+                      <><Loader2 size={14} className="animate-spin" /> Placing Order...</>
+                    ) : paymentTiming === "pay-now" &&
+                      paymentType === "split" &&
+                      splitRemaining > 0.01 ? (
+                      <>Remaining split balance: ${splitRemaining.toFixed(2)}</>
+                    ) : terminalStatus === "approved" ? (
+                      <><CheckCircle size={14} /> Confirm Order — ${total.toFixed(2)}</>
+                    ) : editingOrderId ? (
+                      paymentTiming === "pay-later" ? (
+                        <>Update Order (Pay Later)</>
+                      ) : (
+                        <>Update Order ${total.toFixed(2)}</>
+                      )
+                    ) : paymentTiming === "pay-later" ? (
+                      <>Place Order (Pay Later)</>
                     ) : (
-                      <>Update Order ${total.toFixed(2)}</>
-                    )
-                  ) : paymentTiming === "pay-later" ? (
-                    <>Place Order (Pay Later)</>
-                  ) : (
-                    <>Place Order ${total.toFixed(2)}</>
-                  )}
-                </button>
+                      <>Place Order ${total.toFixed(2)}</>
+                    )}
+                  </button>
+                )}
+
               </div>
             </div>
 
