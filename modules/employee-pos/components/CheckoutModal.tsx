@@ -224,6 +224,84 @@ export default function CheckoutModal() {
   const splitTotal = splitPayments.reduce((s, p) => s + p.amount, 0);
   const splitRemaining = Math.max(0, total - splitTotal);
 
+  // ── Send split card payment request to Moneris terminal ──
+  const handleSendSplitToTerminal = async () => {
+    const amt = parseFloat(nextSplitAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error("Please enter a valid split amount");
+      return;
+    }
+    if (amt > splitRemaining + 0.01) {
+      toast.error(
+        `Amount cannot exceed remaining balance of $${splitRemaining.toFixed(2)}`
+      );
+      return;
+    }
+    if (!selectedTerminalId) {
+      toast.error("Please select a terminal first");
+      return;
+    }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setTerminalStatus("waiting");
+    setMonerisResult(null);
+
+    try {
+      const orderRef = `split_${Date.now()}`;
+      const res = await axios.post(`${API_URL}/terminals/purchase`, {
+        terminalDbId: selectedTerminalId,
+        amount: amt,
+        orderReference: orderRef,
+      });
+
+      if (res.data?.success) {
+        setMonerisResult(res.data);
+        setTerminalStatus("approved");
+        // Record split payment in Zustand store
+        addSplitPayment({
+          method: "card",
+          amount: amt,
+          cardBrand: res.data.cardType || "Card",
+          cardLast4: res.data.cardLast4 || "",
+          monerisReceiptId: res.data.receiptId || "",
+          monerisTerminalId: res.data.terminalId || "",
+          monerisAuthCode: res.data.authCode || "",
+          monerisResponseCode: res.data.responseCode || "",
+          monerisCardType: res.data.cardType || "",
+        });
+
+        toast.success(
+          <div className="flex flex-col gap-0.5 text-left">
+            <span className="font-700 text-[11px] text-green-900">Split Card Approved ✅</span>
+            <span className="text-[10px] text-green-800">
+              ${amt.toFixed(2)} • {res.data.cardType || "Card"}{res.data.cardLast4 ? ` ****${res.data.cardLast4}` : ""}
+            </span>
+            <span className="font-600 text-[10px] text-green-950">
+              Auth: {res.data.authCode} • Receipt: {res.data.receiptId}
+            </span>
+          </div>,
+          { duration: 5000 }
+        );
+
+        setTimeout(() => {
+          setTerminalStatus("idle");
+          setMonerisResult(null);
+        }, 1000);
+      } else {
+        setTerminalStatus("declined");
+      }
+    } catch (err: any) {
+      const code = err?.response?.data?.code || "";
+      if (code === "MONERIS_TIMEOUT" || err?.response?.status === 408) {
+        setTerminalStatus("timeout");
+      } else {
+        setTerminalStatus("error");
+      }
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
   React.useEffect(() => {
     if (splitPayments.length > 0 && splitRemaining > 0.01) {
       setNextSplitAmount(splitRemaining.toFixed(2));
@@ -976,18 +1054,28 @@ export default function CheckoutModal() {
                               <span className="text-[10px] font-800 text-neutral-500">
                                 #{i + 1}
                               </span>
-                              <span className="text-[11px] font-700 text-neutral-800">
-                                ${sp.amount.toFixed(2)}
-                              </span>
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[9px] font-700 uppercase ${
-                                  sp.method === "cash"
-                                    ? "bg-orange-50 text-brand-primary border border-orange-200"
-                                    : "bg-blue-50 text-blue-700 border border-blue-200"
-                                }`}
-                              >
-                                {sp.method}
-                              </span>
+                              <div className="flex flex-col text-left">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] font-700 text-neutral-800">
+                                    ${sp.amount.toFixed(2)}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[9px] font-700 uppercase ${
+                                      sp.method === "cash"
+                                        ? "bg-orange-50 text-brand-primary border border-orange-200"
+                                        : "bg-blue-50 text-blue-700 border border-blue-200"
+                                    }`}
+                                  >
+                                    {sp.cardBrand ? sp.cardBrand : sp.method}
+                                    {sp.cardLast4 ? ` ****${sp.cardLast4}` : ""}
+                                  </span>
+                                </div>
+                                {sp.monerisReceiptId && (
+                                  <span className="text-[9px] text-neutral-400 font-mono mt-0.5">
+                                    Auth: {sp.monerisAuthCode} • Rcpt: {sp.monerisReceiptId}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <button
                               type="button"
@@ -1050,30 +1138,191 @@ export default function CheckoutModal() {
                           </button>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const amt = parseFloat(nextSplitAmount);
-                            if (isNaN(amt) || amt <= 0) {
-                              toast.error("Please enter a valid amount.");
-                              return;
-                            }
-                            if (amt > splitRemaining + 0.01) {
-                              toast.error(
-                                `Amount cannot exceed remaining balance of $${splitRemaining.toFixed(2)}`,
-                              );
-                              return;
-                            }
-                            addSplitPayment({
-                              method: nextSplitMethod,
-                              amount: amt,
-                            });
-                          }}
-                          className="w-full py-2 bg-neutral-800 hover:bg-neutral-900 text-white rounded-lg text-[10.5px] font-700 uppercase transition-all cursor-pointer shadow-xs"
-                        >
-                          Pay ${parseFloat(nextSplitAmount || "0").toFixed(2)} (
-                          {nextSplitMethod})
-                        </button>
+                        {/* Terminal Selector for Split Card Payment */}
+                        {nextSplitMethod === "card" && (
+                          <div className="space-y-2 pt-1 border-t border-neutral-200/60">
+                            {branchTerminals.length === 0 ? (
+                              <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-start gap-2">
+                                <AlertCircle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-[10.5px] font-700 text-amber-800">No Terminals Configured</p>
+                                  <p className="text-[9.5px] text-amber-600 mt-0.5">Go to Settings → Terminal Setup to add a terminal.</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1 relative">
+                                <label className="block text-[9px] font-700 text-neutral-500 uppercase tracking-wide flex items-center gap-1">
+                                  <Monitor size={9} /> Select Terminal
+                                </label>
+
+                                {(() => {
+                                  const activeTerm = branchTerminals.find((t: any) => t._id === selectedTerminalId) || branchTerminals[0];
+                                  return (
+                                    <div className="relative">
+                                      <button
+                                        type="button"
+                                        disabled={terminalStatus === "waiting" || terminalStatus === "approved"}
+                                        onClick={() => setIsTerminalDropdownOpen(prev => !prev)}
+                                        className="w-full bg-white border border-neutral-200 hover:border-neutral-300 rounded-xl px-2.5 py-1.5 flex items-center justify-between shadow-xs transition-all focus:outline-none cursor-pointer disabled:opacity-50"
+                                      >
+                                        {activeTerm ? (
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <div className="w-6 h-6 rounded-md bg-neutral-100 flex items-center justify-center flex-shrink-0 text-neutral-700">
+                                              <Monitor size={12} />
+                                            </div>
+                                            <div className="text-left min-w-0">
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="text-[11px] font-700 text-neutral-900 truncate">
+                                                  {activeTerm.terminalName}
+                                                </span>
+                                                {activeTerm.isRealDevice ? (
+                                                  <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-700 bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span> Production
+                                                  </span>
+                                                ) : (
+                                                  <span className="px-1.5 py-0.2 rounded-full text-[8.5px] font-700 bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                                    <span className="w-1 h-1 rounded-full bg-blue-500"></span> Sandbox
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <span className="text-[10px] text-neutral-400 font-500">-- Select terminal --</span>
+                                        )}
+                                        <ChevronDown
+                                          size={13}
+                                          className={`text-neutral-400 transition-transform duration-200 flex-shrink-0 ml-1 ${
+                                            isTerminalDropdownOpen ? "rotate-180 text-neutral-700" : ""
+                                          }`}
+                                        />
+                                      </button>
+
+                                      {/* Dropdown Popup */}
+                                      {isTerminalDropdownOpen && (
+                                        <>
+                                          <div
+                                            className="fixed inset-0 z-20"
+                                            onClick={() => setIsTerminalDropdownOpen(false)}
+                                          />
+                                          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-xl z-30 p-1 space-y-1">
+                                            {branchTerminals.map((t: any) => {
+                                              const isSelected = (selectedTerminalId === t._id) || (!selectedTerminalId && t._id === activeTerm?._id);
+                                              return (
+                                                <button
+                                                  key={t._id}
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setSelectedTerminalId(t._id);
+                                                    setIsTerminalDropdownOpen(false);
+                                                  }}
+                                                  className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-all cursor-pointer ${
+                                                    isSelected
+                                                      ? "bg-neutral-900 text-white shadow-xs"
+                                                      : "hover:bg-neutral-100 text-neutral-800"
+                                                  }`}
+                                                >
+                                                  <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="text-[10.5px] font-700 truncate">{t.terminalName}</span>
+                                                    {t.isRealDevice ? (
+                                                      <span className={`px-1.5 py-0.2 rounded-full text-[8px] font-700 ${isSelected ? "text-emerald-300" : "text-emerald-700"}`}>Production</span>
+                                                    ) : (
+                                                      <span className={`px-1.5 py-0.2 rounded-full text-[8px] font-700 ${isSelected ? "text-blue-300" : "text-blue-700"}`}>Sandbox</span>
+                                                    )}
+                                                  </div>
+                                                  {isSelected && <Check size={12} className="text-emerald-400 flex-shrink-0 ml-1" />}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+
+                            {/* Split Terminal Status Banners */}
+                            {terminalStatus === "waiting" && (
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 flex items-center gap-2.5 animate-pulse">
+                                <Loader2 size={16} className="text-blue-500 animate-spin flex-shrink-0" />
+                                <div>
+                                  <p className="text-[10.5px] font-700 text-blue-800">Waiting for customer...</p>
+                                  <p className="text-[9.5px] text-blue-600 mt-0.5">
+                                    ${parseFloat(nextSplitAmount || "0").toFixed(2)} sent to terminal.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {terminalStatus === "declined" && (
+                              <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 flex items-start gap-2">
+                                <X size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <p className="text-[10.5px] font-800 text-red-800">Card Declined</p>
+                                  <p className="text-[9.5px] text-red-600 mt-0.5">Split payment declined by terminal.</p>
+                                  <button onClick={() => setTerminalStatus("idle")} className="mt-1 text-[9.5px] font-700 text-red-600 underline">Try Again</button>
+                                </div>
+                              </div>
+                            )}
+
+                            {terminalStatus === "timeout" && (
+                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-2">
+                                <Clock size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                  <p className="text-[10.5px] font-800 text-amber-800">Terminal Timed Out</p>
+                                  <p className="text-[9.5px] text-amber-600 mt-0.5">Customer did not respond in time.</p>
+                                  <button onClick={() => setTerminalStatus("idle")} className="mt-1 text-[9.5px] font-700 text-amber-600 underline">Retry</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Action Button */}
+                        {nextSplitMethod === "card" ? (
+                          <button
+                            type="button"
+                            disabled={terminalStatus === "waiting" || branchTerminals.length === 0}
+                            onClick={handleSendSplitToTerminal}
+                            className="w-full py-2.5 bg-neutral-900 hover:bg-black text-white rounded-lg text-[10.5px] font-700 uppercase transition-all cursor-pointer shadow-xs disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {terminalStatus === "waiting" ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin" /> Processing ${parseFloat(nextSplitAmount || "0").toFixed(2)}...
+                              </>
+                            ) : (
+                              <>
+                                <Monitor size={13} /> SEND TO TERMINAL — ${parseFloat(nextSplitAmount || "0").toFixed(2)}
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const amt = parseFloat(nextSplitAmount);
+                              if (isNaN(amt) || amt <= 0) {
+                                toast.error("Please enter a valid amount.");
+                                return;
+                              }
+                              if (amt > splitRemaining + 0.01) {
+                                toast.error(
+                                  `Amount cannot exceed remaining balance of $${splitRemaining.toFixed(2)}`,
+                                );
+                                return;
+                              }
+                              addSplitPayment({
+                                method: "cash",
+                                amount: amt,
+                              });
+                            }}
+                            className="w-full py-2 bg-neutral-800 hover:bg-neutral-900 text-white rounded-lg text-[10.5px] font-700 uppercase transition-all cursor-pointer shadow-xs"
+                          >
+                            PAY ${parseFloat(nextSplitAmount || "0").toFixed(2)} (CASH)
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">

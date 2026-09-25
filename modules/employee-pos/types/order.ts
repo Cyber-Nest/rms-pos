@@ -33,6 +33,11 @@ export interface SplitPayment {
   cardBrand?: string;
   cardFunding?: string;
   cardLast4?: string;
+  monerisReceiptId?: string;
+  monerisTerminalId?: string;
+  monerisAuthCode?: string;
+  monerisResponseCode?: string;
+  monerisCardType?: string;
 }
 
 export interface PromoApplied {
