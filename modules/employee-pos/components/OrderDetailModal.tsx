@@ -875,6 +875,19 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     {(order as any).placedBy || (order as any).employeeName || (typeof window !== 'undefined' && localStorage.getItem('rms_active_employee') ? JSON.parse(localStorage.getItem('rms_active_employee') || '{}').name : 'Manager')}
                   </span>
                 </div>
+                {/* Assigned Driver — only shown for delivery orders that have a driver */}
+                {order.orderType === "delivery" &&
+                  (order as any).assignedDriverName && (
+                    <div className="flex justify-between py-1 items-center">
+                      <span>Assigned Driver :</span>
+                      <span className="text-neutral-800 font-700 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center text-[9px] font-900 shrink-0">
+                          {((order as any).assignedDriverName || "D")[0].toUpperCase()}
+                        </span>
+                        {(order as any).assignedDriverName}
+                      </span>
+                    </div>
+                  )}
               </div>
             </div>
 
@@ -968,8 +981,41 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                     order.statusHistory.map((hist, hIdx) => (
                       <tr key={hIdx} className="hover:bg-neutral-50/30">
                         <td className="px-4 py-2 font-800 text-neutral-800">{hIdx + 1}</td>
-                        <td className="px-4 py-2 text-brand-primary font-700 capitalize">
-                          Status Changed ({hist.status === 'completed' ? 'Completed' : hist.status === 'ready' ? 'Ready Pick' : hist.status})
+                        <td className="px-4 py-2 font-700">
+                          {(() => {
+                            if (hist.status === "driver_assigned") {
+                              return (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-800 bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  Driver Assigned
+                                </span>
+                              );
+                            }
+                            if (hist.status === "driver_delivered") {
+                              return (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-800 bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Delivered by Driver
+                                </span>
+                              );
+                            }
+                            if (hist.status === "pos_delivered") {
+                              return (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10.5px] font-800 bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Delivered via POS
+                                </span>
+                              );
+                            }
+                            const label =
+                              hist.status === "completed"
+                                ? "Completed"
+                                : hist.status === "ready"
+                                  ? "Ready Pick"
+                                  : hist.status;
+                            return (
+                              <span className="text-brand-primary capitalize font-700">
+                                Status Changed ({label})
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-2 text-neutral-400 italic">
                           {hist.note || `Transition to ${hist.status}`}
