@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Plus, Minus, Trash2, Pencil } from 'lucide-react';
-import { CartItem as CartItemType } from '../types';
+import { CartItem as CartItemType, SelectedModifier } from '../types';
 import { usePosStore } from '../store/pos.store';
 
 interface CartItemProps {
@@ -10,9 +10,95 @@ interface CartItemProps {
   onEdit?: (item: CartItemType) => void;
 }
 
+function getFormattedModifierList(selectedModifiers: SelectedModifier[]): string[] {
+  if (!selectedModifiers || selectedModifiers.length === 0) return [];
+
+  const rootMods: SelectedModifier[] = [];
+  const childMods: SelectedModifier[] = [];
+
+  selectedModifiers.forEach((m) => {
+    if (m.isRoot !== false && !m.parentOptionName && (!m.groupName || !m.groupName.includes('›'))) {
+      rootMods.push(m);
+    } else {
+      childMods.push(m);
+    }
+  });
+
+  const childrenByParent = new Map<string, SelectedModifier[]>();
+
+  childMods.forEach((c) => {
+    let parentKey = c.parentOptionId || c.parentOptionName;
+    if (!parentKey && c.groupName && c.groupName.includes('›')) {
+      const parts = c.groupName.split('›').map((s) => s.trim());
+      parentKey = parts[0];
+    }
+
+    if (!parentKey && rootMods.length > 0) {
+      parentKey = rootMods[rootMods.length - 1].optionId || rootMods[rootMods.length - 1].optionName;
+    }
+
+    const key = parentKey || 'other';
+    if (!childrenByParent.has(key)) {
+      childrenByParent.set(key, []);
+    }
+    childrenByParent.get(key)!.push(c);
+  });
+
+  const resultLines: string[] = [];
+  const processedChildKeys = new Set<string>();
+
+  selectedModifiers.forEach((m) => {
+    const childList =
+      childrenByParent.get(m.optionId) ||
+      childrenByParent.get(m.optionName) ||
+      childrenByParent.get(m.groupName);
+
+    if (childList && childList.length > 0) {
+      const keyUsed = m.optionId || m.optionName;
+      if (processedChildKeys.has(keyUsed)) return;
+      processedChildKeys.add(keyUsed);
+
+      const childDetails = childList
+        .map((c) => {
+          let text = c.optionName;
+          if (c.quantity && c.quantity > 1) text += ` (x${c.quantity})`;
+          if (c.price > 0) text += ` (+$${c.price.toFixed(2)})`;
+          return text;
+        })
+        .join(', ');
+
+      let lineText = `${m.optionName} - ${childDetails}`;
+      if (m.price > 0) {
+        lineText += ` (+$${m.price.toFixed(2)})`;
+      }
+      resultLines.push(lineText);
+    } else {
+      const isAlreadyProcessedChild = Array.from(childrenByParent.values()).some((list) =>
+        list.includes(m)
+      );
+
+      if (isAlreadyProcessedChild) return;
+
+      let lineText = m.optionName;
+      if (m.parentOptionName) {
+        lineText = `${m.parentOptionName} - ${m.optionName}`;
+      }
+      if (m.quantity && m.quantity > 1) lineText += ` (x${m.quantity})`;
+      if (m.price > 0) lineText += ` (+$${m.price.toFixed(2)})`;
+      resultLines.push(lineText);
+    }
+  });
+
+  return resultLines;
+}
+
 export default function CartItem({ item, onEdit }: CartItemProps) {
   const { increaseQuantity, decreaseQuantity, removeFromCart } = usePosStore();
-  const summary = item.selectedModifiers.map((m) => m.optionName).join(', ');
+
+  const formattedModifiers = useMemo(
+    () => getFormattedModifierList(item.selectedModifiers),
+    [item.selectedModifiers]
+  );
 
   return (
     <div className="flex items-start gap-2.5 py-2.5 border-b border-neutral-100 group last:border-0">
@@ -24,12 +110,29 @@ export default function CartItem({ item, onEdit }: CartItemProps) {
       {/* Info */}
       <div className="flex-1 min-w-0">
         <h5 className="text-[12px] md:text-[13px] font-bold text-neutral-800 leading-tight truncate">{item.name}</h5>
-        <p className="text-[10px] md:text-[10.5px] text-neutral-500 font-medium mt-0.5 truncate leading-tight">
-          {summary || 'No customization'}
-        </p>
+
+        {/* Selected Modifiers as Vertical List */}
+        {formattedModifiers.length > 0 ? (
+          <div className="flex flex-col gap-0.5 mt-1">
+            {formattedModifiers.map((modText, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-1 text-[10px] md:text-[10.5px] font-semibold text-neutral-600 leading-tight"
+              >
+                <span className="text-neutral-400 font-bold leading-none select-none">•</span>
+                <span>{modText}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[10px] md:text-[10.5px] text-neutral-400 italic font-normal mt-0.5 leading-tight">
+            No customization
+          </p>
+        )}
+
         {item.note && (
-          <p className="text-[9px] md:text-[10px] font-semibold text-amber-600 bg-amber-50 rounded px-1 py-0.5 mt-0.5 border border-amber-100 inline-block max-w-full truncate">
-            {item.note}
+          <p className="text-[9px] md:text-[10px] font-semibold text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 mt-1 border border-amber-200 inline-block max-w-full truncate">
+            Note: {item.note}
           </p>
         )}
       </div>
