@@ -25,5 +25,7 @@ export interface SelectedModifier {
   price: number;
   quantity?: number;
   isRoot?: boolean;
+  parentOptionId?: string;
+  parentOptionName?: string;
 }
 

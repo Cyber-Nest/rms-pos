@@ -228,6 +228,23 @@ export default function ModifierDrawer({
 
   const handleAdd = () => {
     if (!valid()) return;
+    const parentMap = new Map<string, { parentOptId: string; parentOptName: string }>();
+    const collectParents = (groups: ModifierGroup[], parentOpt?: ModifierOption) => {
+      groups.forEach((g) => {
+        if (!g) return;
+        if (parentOpt) {
+          parentMap.set(g.id, { parentOptId: parentOpt.id, parentOptName: parentOpt.name });
+        }
+        const selectedOpts = selections[g.id] ?? [];
+        selectedOpts.forEach((opt) => {
+          if (opt.modifierGroups && opt.modifierGroups.length > 0) {
+            collectParents(opt.modifierGroups, opt);
+          }
+        });
+      });
+    };
+    if (item.modifierGroups) collectParents(item.modifierGroups);
+
     const mods: SelectedModifier[] = [];
     allActiveGroups.forEach((g) => {
       const isRoot = item.modifierGroups?.some((rg) => rg.id === g.id) ?? false;
@@ -242,6 +259,8 @@ export default function ModifierDrawer({
         new Set(opts.map((o) => o.id))
       ).map((id) => opts.find((o) => o.id === id)!);
 
+      const parentInfo = parentMap.get(g.id);
+
       uniqueOpts.forEach((o) => {
         mods.push({
           groupId: g.id,
@@ -251,6 +270,8 @@ export default function ModifierDrawer({
           price: o.price,
           quantity: counts[o.id],
           isRoot,
+          parentOptionId: parentInfo?.parentOptId,
+          parentOptionName: parentInfo?.parentOptName,
         });
       });
     });
