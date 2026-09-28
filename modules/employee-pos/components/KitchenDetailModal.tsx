@@ -185,6 +185,14 @@ export default function KitchenDetailModal({
   ) => {
     if (isDraft || !localOrder) return;
 
+    if (nextStatus === "completed" && isUnpaid) {
+      toast.error(
+        "Order is UNPAID. Please collect payment from the Orders page before completing this order.",
+        { duration: 4000 }
+      );
+      return;
+    }
+
     setUpdating(true);
     try {
       let activeEmpName = "Manager";
@@ -437,6 +445,15 @@ export default function KitchenDetailModal({
 
   const handleKitchenClear = async () => {
     if (!localOrder || !localOrder._id) return;
+
+    if (isUnpaid) {
+      toast.error(
+        "Order is UNPAID. Please collect payment from the Orders page before completing this order.",
+        { duration: 4000 }
+      );
+      return;
+    }
+
     setUpdating(true);
     try {
       let activeEmpName = "Manager";

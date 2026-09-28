@@ -281,6 +281,19 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
   };
 
   const handleUpdateStatus = async (newStatus: "pending" | "preparing" | "ready" | "completed" | "cancelled") => {
+    const paymentsTotal = order.payments
+      ? order.payments.reduce((sum: number, p: any) => sum + p.amount, 0)
+      : 0;
+    const unpaidBalance = Math.max(0, (order.total ?? 0) - paymentsTotal);
+    const isUnpaidOrder = order.paymentStatus === "unpaid" || unpaidBalance > 0.01;
+
+    if (newStatus === "completed" && isUnpaidOrder) {
+      toast.error("Order is UNPAID. Please collect payment before marking order as completed.", {
+        duration: 4000,
+      });
+      return;
+    }
+
     setUpdating(true);
     try {
       let activeEmpName = "Manager";
