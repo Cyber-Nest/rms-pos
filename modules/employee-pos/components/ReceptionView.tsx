@@ -86,6 +86,13 @@ export default function ReceptionView() {
 
   // ── Complete order by Cashier ──
   const handleCompleteOrder = async (orderId: string) => {
+    const targetOrder = orders.find((o) => o._id === orderId);
+    if (targetOrder && targetOrder.paymentStatus === "unpaid") {
+      toast.error("Order is UNPAID. Please collect payment from the Orders page before completing.", {
+        duration: 4000,
+      });
+      return;
+    }
     setCompletingId(orderId);
     try {
       let activeEmpName = "Manager";
@@ -123,6 +130,13 @@ export default function ReceptionView() {
 
   // ── Hand over delivery order by Cashier ──
   const handleHandoverDelivery = async (orderId: string) => {
+    const targetOrder = orders.find((o) => o._id === orderId);
+    if (targetOrder && targetOrder.paymentStatus === "unpaid") {
+      toast.error("Order is UNPAID. Please collect payment from the Orders page before completing.", {
+        duration: 4000,
+      });
+      return;
+    }
     setCompletingId(orderId);
     try {
       let activeEmpName = "Manager";
