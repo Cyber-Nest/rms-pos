@@ -297,7 +297,7 @@ export default function MonthlySalesView({ startDate, endDate }: MonthlySalesVie
         
         {/* Horizontal scrollable wrapper */}
         <div className="overflow-auto flex-1 text-[11px] font-sans table-scrollbar">
-          <table className="min-w-[4200px] text-left border-collapse table-fixed">
+          <table className="min-w-[4310px] text-left border-collapse table-fixed">
             
             {/* Header definition */}
             <thead className="sticky top-0 z-20 bg-neutral-900 border-b border-neutral-300">
@@ -308,7 +308,7 @@ export default function MonthlySalesView({ startDate, endDate }: MonthlySalesVie
                 <th className="bg-blue-50/90 text-blue-950 border-r border-neutral-300 w-[110px]">Date</th>
                 
                 {/* Sales Summary */}
-                <th colSpan={8} className="bg-stone-100/90 text-stone-900 border-r border-neutral-300 w-[820px]">
+                <th colSpan={9} className="bg-stone-100/90 text-stone-900 border-r border-neutral-300 w-[930px]">
                   Sales Summary
                 </th>
                 
@@ -373,9 +373,10 @@ export default function MonthlySalesView({ startDate, endDate }: MonthlySalesVie
                 
                 {/* Sales Summary */}
                 <th className="py-2.5 px-3 text-right w-[100px] border-r border-neutral-800/40">Sub Total</th>
+                <th className="py-2.5 px-3 text-right w-[100px] border-r border-neutral-800/40">Discount</th>
+                <th className="py-2.5 px-3 text-right w-[110px] border-r border-neutral-800/40 bg-stone-800/60 text-amber-300 font-900">Net Total</th>
                 <th className="py-2.5 px-3 text-right w-[100px] border-r border-neutral-800/40">Delivery Charges</th>
                 <th className="py-2.5 px-3 text-right w-[100px] border-r border-neutral-800/40">Debit Card Charges</th>
-                <th className="py-2.5 px-3 text-right w-[100px] border-r border-neutral-800/40">Discount</th>
                 <th className="py-2.5 px-3 text-right w-[80px] border-r border-neutral-800/40">Tax</th>
                 <th className="py-2.5 px-3 text-right w-[110px] border-r border-neutral-800/40">Grand Total</th>
                 <th className="py-2.5 px-3 text-right w-[90px] border-r border-neutral-800/40">Tips</th>
@@ -450,89 +451,93 @@ export default function MonthlySalesView({ startDate, endDate }: MonthlySalesVie
             
             {/* Body */}
             <tbody className="divide-y divide-neutral-200/70 font-650 text-neutral-850">
-              {data.map((row, idx) => (
-                <tr key={idx} className="even:bg-neutral-50/60 hover:bg-neutral-100/50 transition-colors h-9">
-                  {/* Date */}
-                  <td className="py-1.5 px-3.5 border-r border-neutral-250 text-center font-800 text-neutral-900">{row.date}</td>
-                  
-                  {/* Sales Summary */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.salesSummary.subtotal.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.salesSummary.deliveryCharges.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.salesSummary.debitCharges.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-rose-600 border-r border-neutral-200/60 font-700">(${row.salesSummary.discount.toFixed(2)})</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.salesSummary.tax.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r border-neutral-200/60">${row.salesSummary.grandTotal.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.salesSummary.tips.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-800 text-neutral-900 bg-stone-50/70 border-r-2 border-neutral-350">${row.salesSummary.finalAmount.toFixed(2)}</td>
-                  
-                  {/* Payment Type */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.cash.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.accountPay.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.creditCardSales.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.debitCardSales.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r border-neutral-200/60">${row.paymentType.grandTotal.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.paymentType.debitTips.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.paymentType.creditTips.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-800 text-neutral-900 bg-teal-50/20 border-r-2 border-neutral-350">${row.paymentType.finalAmount.toFixed(2)}</td>
-                  
-                  {/* Order Type */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.takeout.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.dineIn.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.delivery.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.driveThrough.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 bg-cyan-50/20 border-r-2 border-neutral-350">${row.orderType.total.toFixed(2)}</td>
-                  
-                  {/* Orders */}
-                  <td className="py-1.5 px-3 text-center tabular-nums font-700 text-neutral-900 border-r border-neutral-200/60">{row.orders.completed}</td>
-                  <td className="py-1.5 px-3 text-center tabular-nums text-neutral-400 border-r border-neutral-200/60">{row.orders.paidCancelled}</td>
-                  <td className="py-1.5 px-3 text-center tabular-nums text-neutral-400 border-r border-neutral-200/60">{row.orders.unpaidCancelled}</td>
-                  <td className="py-1.5 px-3 text-center tabular-nums text-neutral-400 border-r border-neutral-200/60">{row.orders.refund}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-450 border-r-2 border-neutral-350">${row.orders.refundAmount.toFixed(2)}</td>
-                  
-                  {/* Tax */}
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.taxBreakdown.pst.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.taxBreakdown.gst.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.taxBreakdown.hst.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 bg-emerald-50/20 border-r-2 border-neutral-350">${row.taxBreakdown.total.toFixed(2)}</td>
-                  
-                  {/* Card Type */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.cardType.amex.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.cardType.interac.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.cardType.mastercard.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r-2 border-neutral-350">${row.cardType.visa.toFixed(2)}</td>
-                  
-                  {/* Online */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.online.website.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.online.uber.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.online.skip.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.online.doordash.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 bg-pink-50/20 border-r-2 border-neutral-350">${row.online.total.toFixed(2)}</td>
-                  
-                  {/* POS */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.pos.posSales.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r-2 border-neutral-350">${row.pos.total.toFixed(2)}</td>
-                  
-                  {/* Expense */}
-                  <td className="py-1.5 px-3 text-right tabular-nums text-amber-700 font-700 border-r-2 border-neutral-350">${row.expense.amount.toFixed(2)}</td>
-                  
-                  {/* Shortage / Overage */}
-                  <td className={`py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 ${row.shortage.cash < 0 ? 'text-rose-600' : row.shortage.cash > 0 ? 'text-emerald-600' : 'text-neutral-505'}`}>
-                    {row.shortage.cash < 0 ? `-` : row.shortage.cash > 0 ? `+` : ``}${Math.abs(row.shortage.cash).toFixed(2)}
-                  </td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 text-neutral-400">${row.shortage.card.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r-2 border-neutral-350 text-neutral-400">${row.shortage.accountPay.toFixed(2)}</td>
-                  
-                  {/* Deposit */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-850">${row.deposit.cash.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-850">${row.deposit.card.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r-2 border-neutral-350 font-700 text-neutral-850">${row.deposit.accountPay.toFixed(2)}</td>
-                  
-                  {/* Money to be Collected */}
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-900">${row.moneyToBeCollected.cash.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-900">${row.moneyToBeCollected.card.toFixed(2)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900">${row.moneyToBeCollected.accountPay.toFixed(2)}</td>
-                </tr>
-              ))}
+              {data.map((row, idx) => {
+                const netTotal = row.salesSummary.subtotal - row.salesSummary.discount;
+                return (
+                  <tr key={idx} className="even:bg-neutral-50/60 hover:bg-neutral-100/50 transition-colors h-9">
+                    {/* Date */}
+                    <td className="py-1.5 px-3.5 border-r border-neutral-250 text-center font-800 text-neutral-900">{row.date}</td>
+                    
+                    {/* Sales Summary */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.salesSummary.subtotal.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-rose-600 border-r border-neutral-200/60 font-700">(${row.salesSummary.discount.toFixed(2)})</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-800 text-neutral-900 bg-amber-50/50 border-r border-neutral-200/60">${netTotal.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.salesSummary.deliveryCharges.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.salesSummary.debitCharges.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.salesSummary.tax.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r border-neutral-200/60">${row.salesSummary.grandTotal.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.salesSummary.tips.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-800 text-neutral-900 bg-stone-50/70 border-r-2 border-neutral-350">${row.salesSummary.finalAmount.toFixed(2)}</td>
+                    
+                    {/* Payment Type */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.cash.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.accountPay.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.creditCardSales.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.paymentType.debitCardSales.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r border-neutral-200/60">${row.paymentType.grandTotal.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.paymentType.debitTips.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.paymentType.creditTips.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-800 text-neutral-900 bg-teal-50/20 border-r-2 border-neutral-350">${row.paymentType.finalAmount.toFixed(2)}</td>
+                    
+                    {/* Order Type */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.takeout.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.dineIn.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.delivery.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.orderType.driveThrough.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 bg-cyan-50/20 border-r-2 border-neutral-350">${row.orderType.total.toFixed(2)}</td>
+                    
+                    {/* Orders */}
+                    <td className="py-1.5 px-3 text-center tabular-nums font-700 text-neutral-900 border-r border-neutral-200/60">{row.orders.completed}</td>
+                    <td className="py-1.5 px-3 text-center tabular-nums text-neutral-400 border-r border-neutral-200/60">{row.orders.paidCancelled}</td>
+                    <td className="py-1.5 px-3 text-center tabular-nums text-neutral-400 border-r border-neutral-200/60">{row.orders.unpaidCancelled}</td>
+                    <td className="py-1.5 px-3 text-center tabular-nums text-neutral-400 border-r border-neutral-200/60">{row.orders.refund}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-450 border-r-2 border-neutral-350">${row.orders.refundAmount.toFixed(2)}</td>
+                    
+                    {/* Tax */}
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.taxBreakdown.pst.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.taxBreakdown.gst.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.taxBreakdown.hst.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 bg-emerald-50/20 border-r-2 border-neutral-350">${row.taxBreakdown.total.toFixed(2)}</td>
+                    
+                    {/* Card Type */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.cardType.amex.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.cardType.interac.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.cardType.mastercard.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r-2 border-neutral-350">${row.cardType.visa.toFixed(2)}</td>
+                    
+                    {/* Online */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.online.website.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.online.uber.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.online.skip.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-neutral-400 border-r border-neutral-200/60">${row.online.doordash.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 bg-pink-50/20 border-r-2 border-neutral-350">${row.online.total.toFixed(2)}</td>
+                    
+                    {/* POS */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60">${row.pos.posSales.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900 border-r-2 border-neutral-350">${row.pos.total.toFixed(2)}</td>
+                    
+                    {/* Expense */}
+                    <td className="py-1.5 px-3 text-right tabular-nums text-amber-700 font-700 border-r-2 border-neutral-350">${row.expense.amount.toFixed(2)}</td>
+                    
+                    {/* Shortage / Overage */}
+                    <td className={`py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 ${row.shortage.cash < 0 ? 'text-rose-600' : row.shortage.cash > 0 ? 'text-emerald-600' : 'text-neutral-505'}`}>
+                      {row.shortage.cash < 0 ? `-` : row.shortage.cash > 0 ? `+` : ``}${Math.abs(row.shortage.cash).toFixed(2)}
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 text-neutral-400">${row.shortage.card.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r-2 border-neutral-350 text-neutral-400">${row.shortage.accountPay.toFixed(2)}</td>
+                    
+                    {/* Deposit */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-850">${row.deposit.cash.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-850">${row.deposit.card.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r-2 border-neutral-350 font-700 text-neutral-850">${row.deposit.accountPay.toFixed(2)}</td>
+                    
+                    {/* Money to be Collected */}
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-900">${row.moneyToBeCollected.cash.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums border-r border-neutral-200/60 font-700 text-neutral-900">${row.moneyToBeCollected.card.toFixed(2)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums font-700 text-neutral-900">${row.moneyToBeCollected.accountPay.toFixed(2)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
             
             {/* Grand Total Footer Row styled clean orange to match screen */}
@@ -542,9 +547,10 @@ export default function MonthlySalesView({ startDate, endDate }: MonthlySalesVie
                 
                 {/* Sales Summary */}
                 <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20">${totals.salesSummary.subtotal.toFixed(2)}</td>
+                <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20 opacity-95">(${totals.salesSummary.discount.toFixed(2)})</td>
+                <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20 font-950">${(totals.salesSummary.subtotal - totals.salesSummary.discount).toFixed(2)}</td>
                 <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20 opacity-80">${totals.salesSummary.deliveryCharges.toFixed(2)}</td>
                 <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20 opacity-80">${totals.salesSummary.debitCharges.toFixed(2)}</td>
-                <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20 opacity-95">(${totals.salesSummary.discount.toFixed(2)})</td>
                 <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20">${totals.salesSummary.tax.toFixed(2)}</td>
                 <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20">${totals.salesSummary.grandTotal.toFixed(2)}</td>
                 <td className="py-2.5 px-3 text-right tabular-nums border-r border-neutral-300/20">${totals.salesSummary.tips.toFixed(2)}</td>
