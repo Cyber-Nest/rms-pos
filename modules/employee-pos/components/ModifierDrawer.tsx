@@ -733,14 +733,16 @@ export default function ModifierDrawer({
         <div className="w-[37%] flex flex-col bg-neutral-50 px-5 py-5 justify-between overflow-hidden">
           <div className="flex-1 flex flex-col min-h-0 space-y-4 mb-4">
             {/* Item info */}
-            <div className="pb-3 border-b border-neutral-200 flex-shrink-0">
-              <p className="text-[9px] font-600 text-neutral-400 uppercase tracking-widest">
-                Base Price
-              </p>
-              <p className="text-[15px] font-800 text-neutral-900 leading-tight mt-0.5">
-                ${item.price.toFixed(2)}
-              </p>
-            </div>
+            {item.price > 0 && (
+              <div className="pb-3 border-b border-neutral-200 flex-shrink-0">
+                <p className="text-[9px] font-600 text-neutral-400 uppercase tracking-widest">
+                  Base Price
+                </p>
+                <p className="text-[15px] font-800 text-neutral-900 leading-tight mt-0.5">
+                  ${item.price.toFixed(2)}
+                </p>
+              </div>
+            )}
 
             {/* Selected choices */}
             <div className="flex-1 overflow-y-auto min-h-0 space-y-2.5 pr-1">
