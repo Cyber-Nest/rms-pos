@@ -95,9 +95,13 @@ export default function MenuCard({ item, onOpenModifiers }: MenuCardProps) {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className={`text-[13px] md:text-[14px] font-bold ${isOutOfStock ? "text-neutral-400" : "text-neutral-900"}`}>
-            ${item.price.toFixed(2)}
-          </span>
+          {item.price > 0 ? (
+            <span className={`text-[13px] md:text-[14px] font-bold ${isOutOfStock ? "text-neutral-400" : "text-neutral-900"}`}>
+              ${item.price.toFixed(2)}
+            </span>
+          ) : (
+            <div />
+          )}
           {!isOutOfStock ? (
             <button
               onClick={handleAdd}
