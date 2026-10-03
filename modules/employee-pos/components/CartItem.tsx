@@ -101,15 +101,15 @@ export default function CartItem({ item, onEdit }: CartItemProps) {
   );
 
   return (
-    <div className="flex items-start gap-2.5 py-2.5 border-b border-neutral-100 group last:border-0">
+    <div className="flex items-start gap-2.5 py-3 border-b border-neutral-100 group last:border-0">
       {/* Thumbnail */}
-      <div className="w-10 h-10 md:w-11 md:h-11 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200 flex-shrink-0 mt-0.5">
+      <div className="w-11 h-11 md:w-12 md:h-12 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200 flex-shrink-0 mt-0.5">
         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <h5 className="text-[12px] md:text-[13px] font-bold text-neutral-800 leading-tight truncate">{item.name}</h5>
+        <h5 className="text-[14px] md:text-[15px] font-bold text-neutral-800 leading-tight truncate">{item.name}</h5>
 
         {/* Selected Modifiers as Vertical List */}
         {formattedModifiers.length > 0 ? (
@@ -117,7 +117,7 @@ export default function CartItem({ item, onEdit }: CartItemProps) {
             {formattedModifiers.map((modText, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-1 text-[10px] md:text-[10.5px] font-semibold text-neutral-600 leading-tight"
+                className="flex items-start gap-1 text-[11.5px] md:text-[12.5px] font-semibold text-neutral-600 leading-tight"
               >
                 <span className="text-neutral-400 font-bold leading-none select-none">•</span>
                 <span>{modText}</span>
@@ -125,13 +125,13 @@ export default function CartItem({ item, onEdit }: CartItemProps) {
             ))}
           </div>
         ) : (
-          <p className="text-[10px] md:text-[10.5px] text-neutral-400 italic font-normal mt-0.5 leading-tight">
+          <p className="text-[11px] md:text-[12px] text-neutral-400 italic font-normal mt-0.5 leading-tight">
             No customization
           </p>
         )}
 
         {item.note && (
-          <p className="text-[9px] md:text-[10px] font-semibold text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 mt-1 border border-amber-200 inline-block max-w-full truncate">
+          <p className="text-[10.5px] md:text-[11.5px] font-semibold text-amber-700 bg-amber-50 rounded px-1.5 py-0.5 mt-1 border border-amber-200 inline-block max-w-full truncate">
             Note: {item.note}
           </p>
         )}
@@ -139,18 +139,18 @@ export default function CartItem({ item, onEdit }: CartItemProps) {
 
       {/* Qty + Price */}
       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-        <span className="text-[12px] md:text-[13px] font-bold text-neutral-900">${item.totalPrice.toFixed(2)}</span>
+        <span className="text-[14px] md:text-[15px] font-bold text-neutral-900">${item.totalPrice.toFixed(2)}</span>
         <div className="flex items-center gap-1">
           {/* Qty control */}
           <div className="flex items-center border border-neutral-200 rounded-md overflow-hidden bg-white">
-            <button onClick={() => decreaseQuantity(item.id)} className="w-6 h-6 md:w-6 md:h-6 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 hover:text-brand-primary transition-all cursor-pointer">
-              <Minus size={8} strokeWidth={3} />
+            <button onClick={() => decreaseQuantity(item.id)} className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 hover:text-brand-primary transition-all cursor-pointer">
+              <Minus size={10} strokeWidth={3} />
             </button>
-            <span className="w-6 h-6 md:w-6 md:h-6 flex items-center justify-center text-[11px] md:text-[12px] font-bold text-neutral-800 border-x border-neutral-200">
+            <span className="w-7 h-7 flex items-center justify-center text-[12px] md:text-[13px] font-bold text-neutral-800 border-x border-neutral-200">
               {item.quantity}
             </span>
-            <button onClick={() => increaseQuantity(item.id)} className="w-6 h-6 md:w-6 md:h-6 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 hover:text-green-600 transition-all cursor-pointer">
-              <Plus size={8} strokeWidth={3} />
+            <button onClick={() => increaseQuantity(item.id)} className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 hover:text-green-600 transition-all cursor-pointer">
+              <Plus size={10} strokeWidth={3} />
             </button>
           </div>
 
@@ -159,9 +159,9 @@ export default function CartItem({ item, onEdit }: CartItemProps) {
             <button
               onClick={() => onEdit(item)}
               title="Edit customization"
-              className="w-6 h-6 flex items-center justify-center text-sky-600 bg-sky-50 hover:bg-sky-100 hover:text-sky-700 rounded-md transition-all cursor-pointer"
+              className="w-7 h-7 flex items-center justify-center text-sky-600 bg-sky-50 hover:bg-sky-100 hover:text-sky-700 rounded-md transition-all cursor-pointer"
             >
-              <Pencil size={11} />
+              <Pencil size={12} />
             </button>
           )}
 
@@ -169,9 +169,9 @@ export default function CartItem({ item, onEdit }: CartItemProps) {
           <button
             onClick={() => removeFromCart(item.id)}
             title="Remove item"
-            className="w-6 h-6 flex items-center justify-center text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 rounded-md transition-all cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center text-red-400 bg-red-50 hover:bg-red-100 hover:text-red-500 rounded-md transition-all cursor-pointer"
           >
-            <Trash2 size={11} />
+            <Trash2 size={12} />
           </button>
         </div>
       </div>
