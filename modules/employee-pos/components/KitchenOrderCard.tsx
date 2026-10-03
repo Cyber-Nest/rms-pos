@@ -133,22 +133,52 @@ export default function KitchenOrderCard({
       <div className={`h-1.5 w-full ${statusBarBg}`} />
 
       {/* ── Ticket Header ── */}
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-neutral-100 flex items-center justify-between bg-white shrink-0">
-        <div className="flex flex-col gap-0.5">
-          <span className="font-bold text-[13px] sm:text-[13.5px] text-neutral-800 tracking-wide">
-            {order.orderNumber}
-          </span>
-          <span className="text-[10px] sm:text-[10.5px] text-neutral-400 font-medium">
-            {new Date(order.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
-        <span className={`px-2 py-0.5 rounded-full border text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider ${typeBadgeClass}`}>
-          {formattedType}
-        </span>
-      </div>
+      {(() => {
+        let rawName: string | null = null;
+        if (typeof order.customer === "string") {
+          rawName = order.customer;
+        } else if (order.customer && typeof order.customer === "object") {
+          rawName = order.customer.name || ((order.customer as any).firstName ? `${(order.customer as any).firstName || ""} ${(order.customer as any).lastName || ""}` : null);
+        }
+        if (!rawName && (order as any).customerName) {
+          rawName = (order as any).customerName;
+        }
+
+        const clean = rawName ? rawName.trim() : "";
+        const customerName =
+          clean && clean.toLowerCase() !== "no name" && clean !== "#DRAFT"
+            ? clean
+            : null;
+
+        return (
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-neutral-100 flex items-center justify-between bg-white shrink-0">
+            <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
+              <span className="font-bold text-[13px] sm:text-[13.5px] text-neutral-800 tracking-wide">
+                {order.orderNumber}
+              </span>
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[10.5px] text-neutral-400 font-medium truncate">
+                <span>
+                  {new Date(order.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                {customerName && (
+                  <>
+                    <span className="text-neutral-300 font-bold">•</span>
+                    <span className="font-bold text-neutral-900 text-[11px] sm:text-[11.5px] truncate" title={customerName}>
+                      {customerName}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+            <span className={`px-2 py-0.5 rounded-full border text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider shrink-0 ${typeBadgeClass}`}>
+              {formattedType}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* ── Ticket Body (Items List) ── */}
       <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between gap-3 sm:gap-4 min-h-0">
