@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   FileText,
   Download,
+  CreditCard,
 } from "lucide-react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -60,6 +61,15 @@ const getGroupedModifiers = (modifiers: any[]): GroupedModifier[] => {
   if (!modifiers) return [];
   const grouped: GroupedModifier[] = [];
   modifiers.forEach((mod) => {
+    let optName = mod.optionName || "";
+    let modQty = mod.quantity && Number(mod.quantity) > 0 ? Number(mod.quantity) : 1;
+
+    const match = optName.match(/^(.*?)\s*\([xX](\d+)\)$/);
+    if (match) {
+      optName = match[1];
+      modQty = parseInt(match[2], 10);
+    }
+
     const isRootVal =
       mod.isRoot !== undefined
         ? mod.isRoot
@@ -69,19 +79,22 @@ const getGroupedModifiers = (modifiers: any[]): GroupedModifier[] => {
           );
 
     const existing = grouped.find(
-      (g) => g.groupId === mod.groupId && g.optionId === mod.optionId,
+      (g) =>
+        (g.groupId && mod.groupId ? g.groupId === mod.groupId : g.groupName === mod.groupName) &&
+        (g.optionId && mod.optionId ? g.optionId === mod.optionId : g.optionName === optName),
     );
+
     if (existing) {
-      existing.quantity += 1;
+      existing.quantity += modQty;
     } else {
       grouped.push({
         groupId: mod.groupId,
         groupName: mod.groupName,
         optionId: mod.optionId,
-        optionName: mod.optionName,
+        optionName: optName,
         price: mod.price,
         isRoot: isRootVal,
-        quantity: 1,
+        quantity: modQty,
       });
     }
   });
@@ -103,6 +116,11 @@ export default function KitchenDetailModal({
   const [isEditing, setIsEditing] = useState(false);
   const [editItems, setEditItems] = useState<any[]>([]);
 
+  // Collect Payment Form State
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [payMethod, setPayMethod] = useState<"cash" | "credit" | "debit">("cash");
+  const [cashGivenInput, setCashGivenInput] = useState("");
+
   // Cancel Modal State
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -117,6 +135,8 @@ export default function KitchenDetailModal({
 
   useEffect(() => {
     setLocalOrder(order);
+    setShowPayForm(false);
+    setCashGivenInput("");
   }, [order]);
 
   // Initialize due date based on database order data (dueAt or createdAt)
@@ -187,9 +207,10 @@ export default function KitchenDetailModal({
 
     if (nextStatus === "completed" && isUnpaid) {
       toast.error(
-        "Order is UNPAID. Please collect payment from the Orders page before completing this order.",
+        "Order is UNPAID. Please collect payment before completing this order.",
         { duration: 4000 }
       );
+      setShowPayForm(true);
       return;
     }
 
@@ -266,90 +287,59 @@ export default function KitchenDetailModal({
     }
   };
 
-  // Mark unpaid order as paid
-  const executeMarkAsPaid = async () => {
+  // Collect Payment Action inside Kitchen Detail Modal
+  const handleCollectPayment = async () => {
+    if (!localOrder) return;
     setUpdating(true);
     try {
-      const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-      const payload = {
-        payments: [
-          {
-            method: "cash" as const,
-            amount: unpaidBalance,
-            cashGiven: unpaidBalance,
-            changeGiven: 0,
-          },
-        ],
-      };
-      const res = await axios.patch(
-        `${apiUrl}/orders/${localOrder._id}/payment`,
-        payload,
-      );
-      if (res.data.success) {
-        toast.success(
-          `Order ${localOrder.orderNumber} payment difference of $${unpaidBalance.toFixed(2)} marked as PAID!`,
-        );
+      const amount = unpaidBalance;
+      const parsedCash = parseFloat(cashGivenInput);
+      const hasInput = cashGivenInput.trim() !== "" && !isNaN(parsedCash);
+      const cashGivenVal = payMethod === "cash" ? (hasInput ? parsedCash : amount) : 0;
+      const changeGivenVal = payMethod === "cash" ? Math.max(0, cashGivenVal - amount) : 0;
 
+      if (payMethod === "cash" && hasInput && cashGivenVal < amount) {
+        toast.error(`Cash given ($${cashGivenVal.toFixed(2)}) is less than total amount ($${amount.toFixed(2)})`);
+        setUpdating(false);
+        return;
+      }
+
+      const paymentsPayload = [
+        {
+          method: payMethod,
+          amount: amount,
+          cashGiven: cashGivenVal,
+          changeGiven: changeGivenVal,
+          personName: "Kitchen Collected",
+        },
+      ];
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await axios.patch(`${apiUrl}/orders/${localOrder._id}/payment`, {
+        payments: paymentsPayload,
+      });
+
+      if (res.data.success) {
+        toast.success("Payment recorded successfully!");
+        setShowPayForm(false);
+        setCashGivenInput("");
         setLocalOrder({
           ...localOrder,
           paymentStatus: "paid",
           paymentTiming: "pay-now",
-          payments: [...(localOrder.payments || []), ...payload.payments],
+          payments: [...(localOrder.payments || []), ...paymentsPayload],
         });
-
         onStatusChange();
       } else {
         throw new Error(res.data.message || "Payment update failed");
       }
     } catch (err: any) {
-      toast.error(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to update payment status",
-      );
+      toast.error(err.response?.data?.message || err.message || "Failed to record payment");
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleMarkAsPaid = () => {
-    if (isDraft || !localOrder) return;
-
-    toast(
-      (t) => (
-        <div className="flex flex-col gap-2 p-1.5 min-w-[220px]">
-          <p className="text-[11px] font-700 text-neutral-800 uppercase tracking-wide">
-            Confirm Payment
-          </p>
-          <p className="text-[10px] text-neutral-500 font-500">
-            Are you sure you want to mark order {localOrder.orderNumber} as
-            PAID?
-          </p>
-          <div className="flex justify-end gap-2 mt-1.5">
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="px-2.5 py-1 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[10px] font-700 transition-all cursor-pointer border border-neutral-200"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                executeMarkAsPaid();
-              }}
-              className="px-2.5 py-1 rounded bg-brand-primary hover:bg-brand-primary-hover text-white text-[10px] font-700 transition-all cursor-pointer"
-            >
-              Yes, Paid
-            </button>
-          </div>
-        </div>
-      ),
-      {
-        duration: 10000,
-      },
-    );
-  };
   // ── Reorder Order (Kitchen side clone) ───────────────────────
   const handleReorder = () => {
     if (isDraft || !localOrder) return;
@@ -448,9 +438,10 @@ export default function KitchenDetailModal({
 
     if (isUnpaid) {
       toast.error(
-        "Order is UNPAID. Please collect payment from the Orders page before completing this order.",
+        "Order is UNPAID. Please collect payment before completing this order.",
         { duration: 4000 }
       );
+      setShowPayForm(true);
       return;
     }
 
@@ -499,44 +490,6 @@ export default function KitchenDetailModal({
     } finally {
       setUpdating(false);
     }
-  };
-
-  const handlePrintReceipt = async () => {
-    if (isDraft || !localOrder) return;
-
-    toast(
-      (t) => (
-        <div className="flex flex-col gap-2 p-1.5 min-w-[220px]">
-          <p className="text-[11px] font-700 text-neutral-800 uppercase tracking-wide">
-            Confirm Reorder
-          </p>
-          <p className="text-[10px] text-neutral-500 font-500">
-            Are you sure you want to REORDER / duplicate order{" "}
-            {localOrder.orderNumber}?
-          </p>
-          <div className="flex justify-end gap-2 mt-1.5">
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="px-2.5 py-1 rounded bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[10px] font-700 transition-all cursor-pointer border border-neutral-200"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                executeReorder();
-              }}
-              className="px-2.5 py-1 rounded bg-brand-primary hover:bg-brand-primary-hover text-white text-[10px] font-700 transition-all cursor-pointer"
-            >
-              Yes, Reorder
-            </button>
-          </div>
-        </div>
-      ),
-      {
-        duration: 10000,
-      },
-    );
   };
 
   // ── Update Order (Kitchen side edit) ─────────────────────────
@@ -984,13 +937,17 @@ export default function KitchenDetailModal({
               <>
                 {renderTransitionButtons()}
 
-                {/* Unpaid/Paid toggle pill */}
+                {/* Unpaid/Paid status pill */}
                 {isUnpaid ? (
-                  <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10.5px] sm:text-[11.5px] font-700 select-none uppercase tracking-wider border border-red-250 text-red-700 bg-red-50">
+                  <button
+                    onClick={() => setShowPayForm((prev) => !prev)}
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10.5px] sm:text-[11.5px] font-800 select-none uppercase tracking-wider border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 transition-all cursor-pointer shadow-xs"
+                    title="Order is Unpaid. Click to collect payment"
+                  >
                     Unpaid
-                  </span>
+                  </button>
                 ) : (
-                  <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10.5px] sm:text-[11.5px] font-700 select-none uppercase tracking-wider border border-emerald-250 text-emerald-700 bg-emerald-50">
+                  <span className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10.5px] sm:text-[11.5px] font-800 select-none uppercase tracking-wider border border-emerald-300 text-emerald-700 bg-emerald-50 shadow-xs">
                     Paid
                   </span>
                 )}
@@ -1059,39 +1016,39 @@ export default function KitchenDetailModal({
                           >
                             <div className="flex items-start">
                               <div className="flex-1">
-                                <h4 className="font-700 text-[15.5px] text-brand-primary leading-tight">
+                                <h4 className="font-extrabold text-[15.5px] text-brand-primary leading-tight">
                                   {item.name}
                                 </h4>
 
                                 {item.selectedModifiers &&
                                   item.selectedModifiers.length > 0 && (
-                                    <div className="pl-3 mt-1.5 border-l-2 border-neutral-200 flex flex-col gap-1 text-[13px] font-sans">
+                                    <div className="pl-3 mt-1.5 border-l-2 border-neutral-300 flex flex-col gap-1 text-[13px] font-sans">
                                       {getGroupedModifiers(
                                         item.selectedModifiers,
                                       ).map((mod, modIdx) => (
                                         <div
                                           key={modIdx}
-                                          className="flex flex-col text-neutral-600"
+                                          className="flex flex-col text-neutral-800"
                                         >
                                           {mod.isRoot ? (
                                             <>
-                                              <span className="text-neutral-450 font-700 text-[11px] uppercase tracking-wider mt-1 select-none">
+                                              <span className="text-neutral-500 font-extrabold text-[10.5px] uppercase tracking-wider mt-1 select-none block">
                                                 {mod.groupName}
                                               </span>
-                                              <div className="flex justify-between items-baseline text-neutral-700 font-600 pl-0.5">
+                                              <div className="flex justify-between items-baseline text-neutral-900 font-bold pl-0.5 text-[13px]">
                                                 <span>{mod.optionName}</span>
                                                 {mod.quantity > 1 && (
-                                                  <span className="font-700 text-neutral-850 ml-1 text-[11.5px]">
+                                                  <span className="font-extrabold text-neutral-900 ml-1 text-[11.5px]">
                                                     x{mod.quantity}
                                                   </span>
                                                 )}
                                               </div>
                                             </>
                                           ) : (
-                                            <div className="flex justify-between items-baseline text-neutral-555 font-500 text-[12px] pl-2 italic">
+                                            <div className="flex justify-between items-baseline text-neutral-900 font-bold text-[12.5px] pl-2">
                                               <span>{mod.optionName}</span>
                                               {mod.quantity > 1 && (
-                                                <span className="font-600 text-neutral-600 ml-1 text-[10.5px]">
+                                                <span className="font-extrabold text-neutral-900 ml-1 text-[11px]">
                                                   x{mod.quantity}
                                                 </span>
                                               )}
@@ -1159,39 +1116,39 @@ export default function KitchenDetailModal({
                           >
                             <div className="flex items-center">
                               <div className="flex-1 pr-4">
-                                <h4 className="font-bold text-[15.5px] text-neutral-800 leading-tight">
+                                <h4 className="font-extrabold text-[15.5px] text-neutral-900 leading-tight">
                                   {item.name}
                                 </h4>
 
                                 {item.selectedModifiers &&
                                   item.selectedModifiers.length > 0 && (
-                                    <div className="pl-2.5 mt-1 border-l-2 border-neutral-200 flex flex-col gap-0.5 text-[13px] font-sans">
+                                    <div className="pl-2.5 mt-1 border-l-2 border-neutral-300 flex flex-col gap-1 text-[13px] font-sans">
                                       {getGroupedModifiers(
                                         item.selectedModifiers,
                                       ).map((mod, modIdx) => (
                                         <div
                                           key={modIdx}
-                                          className="flex flex-col text-neutral-500"
+                                          className="flex flex-col text-neutral-800"
                                         >
                                           {mod.isRoot ? (
                                             <div className="mt-0.5">
-                                              <span className="text-neutral-400 font-bold text-[11px] uppercase tracking-wider select-none">
+                                              <span className="text-neutral-500 font-extrabold text-[10.5px] uppercase tracking-wider select-none block">
                                                 {mod.groupName}
                                               </span>
-                                              <div className="flex justify-between items-baseline text-neutral-600 font-semibold pl-0.5">
+                                              <div className="flex justify-between items-baseline text-neutral-900 font-bold pl-0.5 text-[13px]">
                                                 <span>{mod.optionName}</span>
                                                 {mod.quantity > 1 && (
-                                                  <span className="font-bold text-neutral-800 ml-1 text-[11.5px]">
+                                                  <span className="font-extrabold text-neutral-900 ml-1 text-[11.5px]">
                                                     x{mod.quantity}
                                                   </span>
                                                 )}
                                               </div>
                                             </div>
                                           ) : (
-                                            <div className="flex justify-between items-baseline text-neutral-500 font-medium text-[12px] pl-1.5 italic">
+                                            <div className="flex justify-between items-baseline text-neutral-900 font-bold text-[12.5px] pl-1.5">
                                               <span>{mod.optionName}</span>
                                               {mod.quantity > 1 && (
-                                                <span className="font-semibold text-neutral-600 ml-1 text-[10.5px]">
+                                                <span className="font-extrabold text-neutral-900 ml-1 text-[11px]">
                                                   x{mod.quantity}
                                                 </span>
                                               )}
@@ -1312,8 +1269,8 @@ export default function KitchenDetailModal({
                       $
                       {(isEditing
                         ? getEditTotals().total
-                        : ((localOrder.total as number | undefined) ?? 0)
-                      ).toFixed(2)}
+                        : ((localOrder.total as number | undefined) ?? 0))
+                      .toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between text-[12.5px] font-700 text-red-650 pt-1 items-center">
@@ -1331,6 +1288,113 @@ export default function KitchenDetailModal({
                   </div>
                 </div>
               </div>
+
+              {/* ── Collect Payment Section (Inside Modal) ── */}
+              {isUnpaid && !isDraft && localOrder.status !== "cancelled" && (
+                showPayForm ? (
+                  <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-3 font-sans shadow-sm animate-scale-up">
+                    <div className="flex items-center justify-between border-b border-neutral-100 pb-2">
+                      <span className="text-[11px] font-800 text-neutral-800 uppercase tracking-wide">
+                        Record Payment Amount: <span className="text-brand-primary">${unpaidBalance.toFixed(2)}</span>
+                      </span>
+                    </div>
+
+                    {/* Method Selection Tabs (CASH / CREDIT / DEBIT) */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["cash", "credit", "debit"] as const).map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setPayMethod(method)}
+                          className={`py-2 rounded-lg text-[10.5px] font-800 uppercase tracking-wider transition-all cursor-pointer border ${
+                            payMethod === method
+                              ? "bg-neutral-900 text-white border-neutral-900 shadow-xs"
+                              : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-350"
+                          }`}
+                        >
+                          {method}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Cash Input & Change Calculation */}
+                    {payMethod === "cash" && (
+                      <div className="space-y-2.5 bg-neutral-50 p-3 rounded-xl border border-neutral-200">
+                        <div>
+                          <label className="text-[9.5px] font-800 text-neutral-500 uppercase tracking-wider block mb-1">
+                            Cash Given
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-[12px]">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={cashGivenInput}
+                              onChange={(e) => setCashGivenInput(e.target.value)}
+                              placeholder={unpaidBalance.toFixed(2)}
+                              className="w-full bg-white border border-neutral-200 rounded-lg pl-7 pr-3 py-2 text-[13px] font-bold font-mono text-neutral-800 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Return Amount (Change) */}
+                        {(() => {
+                          const parsedCash = parseFloat(cashGivenInput);
+                          const hasInput = cashGivenInput.trim() !== "" && !isNaN(parsedCash);
+                          const cashGivenVal = hasInput ? parsedCash : unpaidBalance;
+                          const returnAmt = cashGivenVal - unpaidBalance;
+
+                          if (hasInput && cashGivenVal < unpaidBalance) {
+                            return (
+                              <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[10.5px]">
+                                <span className="text-red-700 font-700">Insufficient Cash:</span>
+                                <span className="text-red-600 font-800 font-mono">-${Math.abs(returnAmt).toFixed(2)}</span>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200 rounded-lg px-3 py-2 text-[10.5px]">
+                              <span className="text-emerald-800 font-800 uppercase tracking-wide">Return Amount (Change):</span>
+                              <span className="text-emerald-700 font-900 font-mono text-[12px]">${Math.max(0, returnAmt).toFixed(2)}</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Actions: Confirm / Cancel */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCollectPayment}
+                        disabled={updating}
+                        className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-800 uppercase tracking-wider transition-all cursor-pointer shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowPayForm(false)}
+                        disabled={updating}
+                        className="py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-200 rounded-xl text-[11px] font-800 uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowPayForm(true)}
+                    disabled={updating}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[12px] font-800 uppercase tracking-wider transition-all cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                  >
+                    <CreditCard size={15} />
+                    Collect Payment
+                  </button>
+                )
+              )}
 
               {/* Cancel Order */}
               {!isDraft &&

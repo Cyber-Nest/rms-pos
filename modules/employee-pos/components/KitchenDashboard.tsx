@@ -89,7 +89,7 @@ export default function KitchenDashboard() {
         params: {
           status: "pending,preparing,ready",
           fields:
-            "orderNumber,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared,branchId,branchName,branchCode",
+            "orderNumber,customer,orderSource,orderType,status,createdAt,items,orderTiming,scheduledAt,dueAt,total,paymentStatus,kitchenCleared,branchId,branchName,branchCode",
           excludeKitchenCleared: "true",
           ...(branchId ? { branchId } : {}),
         },

@@ -311,11 +311,12 @@ export default function ModifierDrawer({
         Object.values(optionDetails).forEach(({ opt, freeQty, paidQty }) => {
           const totalQty = freeQty + paidQty;
           if (totalQty > 0) {
+            const formattedName = totalQty > 1 ? `${opt.name} (x${totalQty})` : opt.name;
             mods.push({
               groupId: g.id,
               groupName: g.name,
               optionId: opt.id,
-              optionName: opt.name,
+              optionName: formattedName,
               price: paidQty * opt.price,
               quantity: totalQty,
               isRoot,
@@ -335,13 +336,15 @@ export default function ModifierDrawer({
         ).map((id) => opts.find((o) => o.id === id)!);
 
         uniqueOpts.forEach((o) => {
+          const countQty = counts[o.id];
+          const formattedName = countQty > 1 ? `${o.name} (x${countQty})` : o.name;
           mods.push({
             groupId: g.id,
             groupName: g.name,
             optionId: o.id,
-            optionName: o.name,
-            price: o.price * counts[o.id],
-            quantity: counts[o.id],
+            optionName: formattedName,
+            price: o.price * countQty,
+            quantity: countQty,
             isRoot,
             parentOptionId: parentInfo?.parentOptId,
             parentOptionName: parentInfo?.parentOptName,

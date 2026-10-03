@@ -23,6 +23,15 @@ const getGroupedModifiers = (modifiers: any[]): GroupedModifier[] => {
   if (!modifiers) return [];
   const grouped: GroupedModifier[] = [];
   modifiers.forEach((mod) => {
+    let optName = mod.optionName || "";
+    let modQty = mod.quantity && Number(mod.quantity) > 0 ? Number(mod.quantity) : 1;
+
+    const match = optName.match(/^(.*?)\s*\([xX](\d+)\)$/);
+    if (match) {
+      optName = match[1];
+      modQty = parseInt(match[2], 10);
+    }
+
     const isRootVal =
       mod.isRoot !== undefined
         ? mod.isRoot
@@ -32,19 +41,22 @@ const getGroupedModifiers = (modifiers: any[]): GroupedModifier[] => {
           );
 
     const existing = grouped.find(
-      (g) => g.groupId === mod.groupId && g.optionId === mod.optionId,
+      (g) =>
+        (g.groupId && mod.groupId ? g.groupId === mod.groupId : g.groupName === mod.groupName) &&
+        (g.optionId && mod.optionId ? g.optionId === mod.optionId : g.optionName === optName),
     );
+
     if (existing) {
-      existing.quantity += 1;
+      existing.quantity += modQty;
     } else {
       grouped.push({
         groupId: mod.groupId,
         groupName: mod.groupName,
         optionId: mod.optionId,
-        optionName: mod.optionName,
+        optionName: optName,
         price: mod.price,
         isRoot: isRootVal,
-        quantity: 1,
+        quantity: modQty,
       });
     }
   });
@@ -133,22 +145,52 @@ export default function KitchenOrderCard({
       <div className={`h-1.5 w-full ${statusBarBg}`} />
 
       {/* ── Ticket Header ── */}
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-neutral-100 flex items-center justify-between bg-white shrink-0">
-        <div className="flex flex-col gap-0.5">
-          <span className="font-bold text-[13px] sm:text-[13.5px] text-neutral-800 tracking-wide">
-            {order.orderNumber}
-          </span>
-          <span className="text-[10px] sm:text-[10.5px] text-neutral-400 font-medium">
-            {new Date(order.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
-        <span className={`px-2 py-0.5 rounded-full border text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider ${typeBadgeClass}`}>
-          {formattedType}
-        </span>
-      </div>
+      {(() => {
+        let rawName: string | null = null;
+        if (typeof order.customer === "string") {
+          rawName = order.customer;
+        } else if (order.customer && typeof order.customer === "object") {
+          rawName = order.customer.name || ((order.customer as any).firstName ? `${(order.customer as any).firstName || ""} ${(order.customer as any).lastName || ""}` : null);
+        }
+        if (!rawName && (order as any).customerName) {
+          rawName = (order as any).customerName;
+        }
+
+        const clean = rawName ? rawName.trim() : "";
+        const customerName =
+          clean && clean.toLowerCase() !== "no name" && clean !== "#DRAFT"
+            ? clean
+            : null;
+
+        return (
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-neutral-100 flex items-center justify-between bg-white shrink-0">
+            <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
+              <span className="font-bold text-[13px] sm:text-[13.5px] text-neutral-800 tracking-wide">
+                {order.orderNumber}
+              </span>
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[10.5px] text-neutral-400 font-medium truncate">
+                <span>
+                  {new Date(order.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                {customerName && (
+                  <>
+                    <span className="text-neutral-300 font-bold">•</span>
+                    <span className="font-bold text-neutral-900 text-[11px] sm:text-[11.5px] truncate" title={customerName}>
+                      {customerName}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+            <span className={`px-2 py-0.5 rounded-full border text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider shrink-0 ${typeBadgeClass}`}>
+              {formattedType}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* ── Ticket Body (Items List) ── */}
       <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between gap-3 sm:gap-4 min-h-0">
@@ -164,38 +206,38 @@ export default function KitchenOrderCard({
                   {item.quantity}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-neutral-800 font-bold text-[14px] sm:text-[14.5px] leading-tight">
+                  <p className="text-neutral-900 font-extrabold text-[14.5px] sm:text-[15px] leading-tight">
                     {item.name}
                   </p>
 
                   {/* Modifiers */}
                   {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                    <div className="pl-2.5 mt-1 border-l-2 border-neutral-200 flex flex-col gap-0.5">
+                    <div className="pl-2.5 mt-1 border-l-2 border-neutral-300 flex flex-col gap-1">
                       {getGroupedModifiers(item.selectedModifiers).map(
                         (mod, modIdx) => (
                           <div
                             key={modIdx}
-                            className="text-[11.5px] sm:text-[12px] leading-tight"
+                            className="text-[12px] sm:text-[12.5px] leading-tight"
                           >
                             {mod.isRoot ? (
                               <div className="mt-1">
-                                <span className="text-[9.5px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-neutral-500 uppercase tracking-wider block">
                                   {mod.groupName}
                                 </span>
-                                <div className="flex justify-between items-baseline font-semibold text-neutral-700">
+                                <div className="flex justify-between items-baseline font-bold text-neutral-900 text-[12.5px] sm:text-[13px]">
                                   <span>{mod.optionName}</span>
                                   {mod.quantity > 1 && (
-                                    <span className="font-bold text-neutral-800 text-[10.5px] sm:text-[11px]">
+                                    <span className="font-extrabold text-neutral-900 text-[11px] sm:text-[11.5px]">
                                       x{mod.quantity}
                                     </span>
                                   )}
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex justify-between items-baseline text-neutral-500 font-medium text-[11px] sm:text-[11.5px] pl-1.5">
+                              <div className="flex justify-between items-baseline text-neutral-800 font-bold text-[12px] sm:text-[12.5px] pl-1.5">
                                 <span>{mod.optionName}</span>
                                 {mod.quantity > 1 && (
-                                  <span className="font-semibold text-neutral-600 text-[9.5px] sm:text-[10px]">
+                                  <span className="font-extrabold text-neutral-900 text-[10.5px] sm:text-[11px]">
                                     x{mod.quantity}
                                   </span>
                                 )}
