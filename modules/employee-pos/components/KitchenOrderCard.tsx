@@ -23,6 +23,15 @@ const getGroupedModifiers = (modifiers: any[]): GroupedModifier[] => {
   if (!modifiers) return [];
   const grouped: GroupedModifier[] = [];
   modifiers.forEach((mod) => {
+    let optName = mod.optionName || "";
+    let modQty = mod.quantity && Number(mod.quantity) > 0 ? Number(mod.quantity) : 1;
+
+    const match = optName.match(/^(.*?)\s*\([xX](\d+)\)$/);
+    if (match) {
+      optName = match[1];
+      modQty = parseInt(match[2], 10);
+    }
+
     const isRootVal =
       mod.isRoot !== undefined
         ? mod.isRoot
@@ -32,19 +41,22 @@ const getGroupedModifiers = (modifiers: any[]): GroupedModifier[] => {
           );
 
     const existing = grouped.find(
-      (g) => g.groupId === mod.groupId && g.optionId === mod.optionId,
+      (g) =>
+        (g.groupId && mod.groupId ? g.groupId === mod.groupId : g.groupName === mod.groupName) &&
+        (g.optionId && mod.optionId ? g.optionId === mod.optionId : g.optionName === optName),
     );
+
     if (existing) {
-      existing.quantity += 1;
+      existing.quantity += modQty;
     } else {
       grouped.push({
         groupId: mod.groupId,
         groupName: mod.groupName,
         optionId: mod.optionId,
-        optionName: mod.optionName,
+        optionName: optName,
         price: mod.price,
         isRoot: isRootVal,
-        quantity: 1,
+        quantity: modQty,
       });
     }
   });

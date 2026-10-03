@@ -61,7 +61,7 @@ function getFormattedModifierList(selectedModifiers: SelectedModifier[]): string
       const childDetails = childList
         .map((c) => {
           let text = c.optionName;
-          if (c.quantity && c.quantity > 1) text += ` (x${c.quantity})`;
+          if (c.quantity && c.quantity > 1 && !c.optionName.includes(`(x${c.quantity})`)) text += ` (x${c.quantity})`;
           if (c.price > 0) text += ` (+$${c.price.toFixed(2)})`;
           return text;
         })
@@ -83,7 +83,7 @@ function getFormattedModifierList(selectedModifiers: SelectedModifier[]): string
       if (m.parentOptionName) {
         lineText = `${m.parentOptionName} - ${m.optionName}`;
       }
-      if (m.quantity && m.quantity > 1) lineText += ` (x${m.quantity})`;
+      if (m.quantity && m.quantity > 1 && !m.optionName.includes(`(x${m.quantity})`)) lineText += ` (x${m.quantity})`;
       if (m.price > 0) lineText += ` (+$${m.price.toFixed(2)})`;
       resultLines.push(lineText);
     }

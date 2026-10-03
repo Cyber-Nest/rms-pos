@@ -624,11 +624,21 @@ export default function OrderDetailModal({ order, onClose, onRefresh }: OrderDet
                       {/* Render modifiers if any */}
                       {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                         <div className="pl-3 mt-1 border-l-2 border-neutral-300 space-y-0.5 text-neutral-800 text-[12.5px] font-bold">
-                          {item.selectedModifiers.map((mod, mIdx) => (
-                            <p key={mIdx}>
-                              <span className="text-neutral-500 font-extrabold uppercase text-[10.5px]">{mod.groupName}:</span> <span className="font-bold text-neutral-900">{mod.optionName}</span> {mod.price > 0 ? `(+$${mod.price.toFixed(2)})` : ''}
-                            </p>
-                          ))}
+                          {item.selectedModifiers.map((mod, mIdx) => {
+                            const modQty = mod.quantity && Number(mod.quantity) > 0 ? Number(mod.quantity) : 1;
+                            let optName = mod.optionName || "";
+                            const match = optName.match(/^(.*?)\s*\([xX](\d+)\)$/);
+                            if (match) {
+                              optName = match[1];
+                            }
+                            const finalQty = match ? parseInt(match[2], 10) : modQty;
+
+                            return (
+                              <p key={mIdx}>
+                                <span className="text-neutral-500 font-extrabold uppercase text-[10.5px]">{mod.groupName}:</span> <span className="font-bold text-neutral-900">{optName}</span>{finalQty > 1 ? <span className="font-extrabold text-neutral-900 ml-1">(x{finalQty})</span> : ''} {mod.price > 0 ? `(+$${mod.price.toFixed(2)})` : ''}
+                              </p>
+                            );
+                          })}
                         </div>
                       )}
                       {item.note && (
