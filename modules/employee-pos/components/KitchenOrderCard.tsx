@@ -60,6 +60,20 @@ const getGroupedModifiers = (modifiers: any[]): GroupedModifier[] => {
       });
     }
   });
+
+  // For non-root groups with 2+ items, promote isRoot to true so the header shows
+  const groupCounts: Record<string, number> = {};
+  grouped.forEach((g) => {
+    const key = g.groupId || g.groupName || "";
+    groupCounts[key] = (groupCounts[key] || 0) + 1;
+  });
+  grouped.forEach((g) => {
+    const key = g.groupId || g.groupName || "";
+    if (!g.isRoot && groupCounts[key] >= 2) {
+      g.isRoot = true;
+    }
+  });
+
   return grouped;
 };
 
@@ -213,39 +227,46 @@ export default function KitchenOrderCard({
                   {/* Modifiers */}
                   {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                     <div className="pl-2.5 mt-1 border-l-2 border-neutral-300 flex flex-col gap-1">
-                      {getGroupedModifiers(item.selectedModifiers).map(
-                        (mod, modIdx) => (
-                          <div
-                            key={modIdx}
-                            className="text-[12px] sm:text-[12.5px] leading-tight"
-                          >
-                            {mod.isRoot ? (
-                              <div className="mt-1">
-                                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-neutral-500 uppercase tracking-wider block">
-                                  {mod.groupName}
-                                </span>
-                                <div className="flex justify-between items-baseline font-bold text-neutral-900 text-[12.5px] sm:text-[13px]">
+                      {(() => {
+                        const mods = getGroupedModifiers(item.selectedModifiers);
+                        let lastGroupName: string | null = null;
+                        return mods.map((mod, modIdx) => {
+                          const isFirstInGroup = mod.groupName !== lastGroupName;
+                          if (isFirstInGroup) lastGroupName = mod.groupName;
+                          const showHeader = mod.isRoot && isFirstInGroup;
+                          return (
+                            <div
+                              key={modIdx}
+                              className="text-[12px] sm:text-[12.5px] leading-tight"
+                            >
+                              {showHeader ? (
+                                <div className="mt-1">
+                                  <span className="text-[10px] sm:text-[10.5px] font-extrabold text-neutral-500 uppercase tracking-wider block">
+                                    {mod.groupName}
+                                  </span>
+                                  <div className="flex justify-between items-baseline font-bold text-neutral-900 text-[12.5px] sm:text-[13px]">
+                                    <span>{mod.optionName}</span>
+                                    {mod.quantity > 1 && (
+                                      <span className="font-extrabold text-neutral-900 text-[11px] sm:text-[11.5px]">
+                                        x{mod.quantity}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex justify-between items-baseline text-neutral-800 font-bold text-[12px] sm:text-[12.5px] pl-1.5">
                                   <span>{mod.optionName}</span>
                                   {mod.quantity > 1 && (
-                                    <span className="font-extrabold text-neutral-900 text-[11px] sm:text-[11.5px]">
+                                    <span className="font-extrabold text-neutral-900 text-[10.5px] sm:text-[11px]">
                                       x{mod.quantity}
                                     </span>
                                   )}
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex justify-between items-baseline text-neutral-800 font-bold text-[12px] sm:text-[12.5px] pl-1.5">
-                                <span>{mod.optionName}</span>
-                                {mod.quantity > 1 && (
-                                  <span className="font-extrabold text-neutral-900 text-[10.5px] sm:text-[11px]">
-                                    x{mod.quantity}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ),
-                      )}
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   )}
 
